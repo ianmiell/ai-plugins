@@ -130,9 +130,12 @@ ToolSearch call before starting, e.g. for `mcp__claude_ai_Gmail__*`:
 select:mcp__claude_ai_Gmail__search_threads,mcp__claude_ai_Gmail__get_thread,mcp__claude_ai_Gmail__list_labels,mcp__claude_ai_Gmail__label_thread,mcp__claude_ai_Gmail__unlabel_thread,mcp__claude_ai_Gmail__trash_thread,mcp__claude_ai_Gmail__create_draft,mcp__claude_ai_Gmail__mark_thread_spam,mcp__claude_ai_Gmail__create_label
 ```
 
-If a meeting request or deadline comes up, Google Calendar
-(`mcp__claude_ai_Google_Calendar__*`) can check availability or create an
-event — load those only when needed.
+For anything calendar-related, use the **calendar skill**
+(`personal-assistant:calendar`). Load it with the Skill tool the first time a
+thread mentions a date, meeting or event. Use its Setup (calendar IDs, access
+check), Tools and Rules, but not its whole agenda process. It reaches both
+calendars, work and personal, through the one Calendar connector. See
+"Calendar cross-check" below for what to do with it.
 
 ## Rules
 
@@ -173,6 +176,32 @@ reply, or anything ambiguous. Note: who it's from, whether Ian was in To or
 CC, whether Ian has already replied (last message from Ian), any dates or
 deadlines, and any explicit question asked of Ian.
 
+### 2b. Calendar cross-check
+
+For every thread with a date, time, meeting or event in it, check the
+calendars before recommending anything. Group the checks: one `list_events`
+per calendar covering the dates involved, not one call per email. The
+calendar skill's IDs and rules apply.
+
+| Email type | What to check | Typical outcome |
+|---|---|---|
+| Invitation (`Invitation:`, `.ics`, Calendly/Luma "New event") | Is the event on W or P? What's Ian's response status? Any clash? | Already on and accepted → **archive**. On but `needsAction` → offer accept/decline. Clash → flag it. |
+| Accepted / Declined / Updated / Cancelled notifications | Does the calendar already show this? | Usually it does → **archive**. A cancellation still on the calendar → offer to remove or decline it. |
+| Booking confirmations (tickets, travel, appointments, restaurant) | Is there an event at that time? | Missing → offer to **add it** to the right calendar (usually P), with location and a link to the email. |
+| A person asking to meet ("can we grab 30 mins next week?") | Free slots across W+P (`suggest_time` with both addresses) | **Draft a reply** offering 2–3 slots. Don't create the event until they confirm. |
+| Deadlines (forms, renewals, payments, RSVPs) | Is there a reminder event? | Offer an all-day or short reminder event on the right calendar. |
+| Rescheduling / venue change emails | Does the event match the new details? | Offer to update the event. |
+
+Show the result next to the thread in the list, using these tags:
+`📅 in calendar (P, accepted)`, `📅 not in calendar`, `📅 pending response`,
+`⚠ clashes with <W/P event at time>`. A thread whose event is already
+correctly in the calendar usually belongs in **FYI / done**, not Schedule.
+
+Calendar and email are separate places. Archiving an invitation email doesn't
+answer the invite, and answering the invite doesn't archive the email. When
+Ian approves a calendar action for a thread, offer to archive the email in
+the same step.
+
 ### 3. Classify and recommend
 
 Put each thread in one bucket:
@@ -180,7 +209,7 @@ Put each thread in one bucket:
 | Bucket | What goes here | Default recommendation |
 |---|---|---|
 | **Act now** | A real person needs a reply or decision from Ian, deadline soon, or something blocked on Ian | Draft reply, or summarise the decision needed |
-| **Schedule** | Meeting requests, invites, things with a date | Check calendar, propose accept/decline/time |
+| **Schedule** | Meeting requests, invites, bookings, deadlines not yet reflected in the calendar | Per the calendar cross-check: accept/decline, add event, propose times |
 | **Delegate** | Something someone else should handle | Draft a forward with a one-line handoff |
 | **Read later** | Worth reading, no action needed | Label `Read later` and archive |
 | **FYI / done** | Notifications, receipts, CC'd threads Ian doesn't need to act on, threads where Ian had the last word | Archive |
@@ -200,8 +229,8 @@ show it once, note it's in both, and apply the action to both.
 Show one list per mailbox (WORK, then PERSONAL), each grouped by bucket, most
 important first. Number threads continuously across both lists (work 1–12,
 personal 13–20) so a number always means exactly one thread. For each: sender, subject, one-line summary,
-recommended action. For Act now items, add the specific question or decision
-in a second line. Example:
+recommended action, plus the calendar tag if it has one. For Act now items,
+add the specific question or decision in a second line. Example:
 
 ```
 ━━ WORK (ian.miell@container-solutions.com) — 12 threads ━━
@@ -209,7 +238,12 @@ ACT NOW
  1. Jane Doe — Contract renewal          Wants sign-off on revised terms by Fri.
     → Draft reply accepting, asking for the redline.
 
+SCHEDULE
+ 3. Bob — Invitation: Q4 planning Tue 14:00   📅 pending response  ⚠ clashes with P "Dentist" 14:00
+    → Decline with note, or move the dentist?
+
 FYI / DONE
+ 4. Calendly — New event: Eamonn Tue 16:30    📅 in calendar (W, accepted)  → Archive
  5. GitHub — PR #123 merged               → Archive
 ...
 
@@ -245,9 +279,15 @@ thread's own mailbox:
   Ian's voice — short, direct, plain British English, no corporate filler;
   a bit more informal for personal mail.
   Show the draft text in the summary so Ian can review it before sending.
-- **Schedule**: check the calendar (the work Google Calendar connector; for
-  personal invites, say if that calendar isn't connected), then propose; only create or respond to
-  events once Ian confirms.
+- **Calendar actions** (accept/decline, add, update, remove): follow the
+  calendar skill's Change step and Rules, including saying who gets
+  notified. Put the event on the calendar that matches the mailbox the email
+  came to (work email → W, personal email → P) unless Ian says otherwise.
+  For added events, put a link to the source email in the description (the
+  thread's Gmail web URL). Then archive the email if Ian approved that.
+- **Propose times**: draft a reply (never send) with the slots from
+  `suggest_time`. Hold nothing in the calendar until the other person
+  confirms.
 
 Afterwards, report what was done in a few lines per mailbox (counts per
 action, list of drafts created with subjects), and what's left that needs Ian personally.
