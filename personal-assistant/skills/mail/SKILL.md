@@ -139,8 +139,7 @@ calendars, work and personal, through the one Calendar connector. See
 
 For Ian's task system, use the **gtd skill** (`personal-assistant:gtd`).
 Load it with the Skill tool the first time a thread needs a task. Use its How
-to run it, Commands and Rules (approval before every write; it pushes to
-GitHub). See "GTD cross-check" below.
+to run it, Commands and Rules (approval before every write). See "GTD cross-check" below.
 
 ## Rules
 
@@ -149,7 +148,8 @@ GitHub). See "GTD cross-check" below.
 `<base>/../../rules/`). They hold Ian's standing preferences, and they win
 over anything below that contradicts them. As of October 2026 they cover:
 Read later stays in the inbox and starred, processed inbox threads are
-starred, and nothing outside the inbox is starred.
+starred, nothing outside the inbox is starred, and emails with a gtd task
+raised against them are suggested for archiving.
 
 - **Never send email.** Write replies and forwards as drafts with
   `create_draft`; Ian sends them. Only use `send_message`, `reply` or
@@ -331,8 +331,8 @@ thread's own mailbox:
 - **gtd task**: create it with the gtd skill. Subject `PREFIX: <what to do>`.
   Notes: the Gmail link on the line after `Task Number:` (work: the thread's
   `viewUrl` from the connector; personal: `gog gmail url <threadId>`), then
-  a 2–5 line excerpt or summary of what's needed and by when. Batch all new
-  tasks in a run, push once, and report the task numbers. Then archive the
+  a 2–5 line excerpt or summary of what's needed and by when. Report the
+  task numbers. Then archive the
   thread if approved.
 - **gtd note / close**: append to `tasks/N/notes.md` (with the link and a
   dated one-liner), or `bin/gtd close N`. Always after approval.
