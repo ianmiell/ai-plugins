@@ -139,6 +139,13 @@ calendars, work and personal, through the one Calendar connector. See
 
 ## Rules
 
+**House rules:** before each run, read every `.md` file in the plugin's
+`rules/` folder (two levels up from this skill's base directory, i.e.
+`<base>/../../rules/`). They hold Ian's standing preferences, and they win
+over anything below that contradicts them. As of October 2026 they cover:
+Read later stays in the inbox and starred, processed inbox threads are
+starred, and nothing outside the inbox is starred.
+
 - **Never send email.** Write replies and forwards as drafts with
   `create_draft`; Ian sends them. Only use `send_message`, `reply` or
   `forward` if Ian explicitly says "send it" for that specific message.
@@ -211,7 +218,7 @@ Put each thread in one bucket:
 | **Act now** | A real person needs a reply or decision from Ian, deadline soon, or something blocked on Ian | Draft reply, or summarise the decision needed |
 | **Schedule** | Meeting requests, invites, bookings, deadlines not yet reflected in the calendar | Per the calendar cross-check: accept/decline, add event, propose times |
 | **Delegate** | Something someone else should handle | Draft a forward with a one-line handoff |
-| **Read later** | Worth reading, no action needed | Label `Read later` and archive |
+| **Read later** | Worth reading, no action needed | Keep in inbox + star (see `rules/`) |
 | **FYI / done** | Notifications, receipts, CC'd threads Ian doesn't need to act on, threads where Ian had the last word | Archive |
 | **Unsubscribe / junk** | Marketing, newsletters Ian never opens, cold sales | Trash, and note the unsubscribe link if there is one |
 | **Suspicious** | Possible phishing or spam | Mark spam (after confirmation) |
@@ -267,13 +274,18 @@ just take free-text instructions.
 Carry out only the approved actions, each through the connector for the
 thread's own mailbox:
 
-- **Archive**: `unlabel_thread` removing `INBOX`.
-- **Read later / other labels**: labels are per mailbox. `list_labels` on
-  that mailbox to find the label id; create it with `create_label` if missing
-  (ask first the first time for each mailbox); then
-  `label_thread` and remove `INBOX`.
-- **Trash**: `trash_thread`.
+- **Archive**: `unlabel_thread` removing `INBOX` and `STARRED` (gog:
+  `thread modify <id> --remove INBOX,STARRED`).
+- **Keep / Read later**: leave in the inbox and star it (`label_thread`
+  adding `STARRED`; gog: `thread modify <id> --add STARRED`).
+- **Other labels** (only when Ian asks for one): labels are per mailbox.
+  `list_labels` on that mailbox to find the label id; create it with
+  `create_label` if missing (ask first the first time for each mailbox);
+  then `label_thread`, and remove `INBOX` and `STARRED`.
+- **Trash**: `trash_thread` (gog: `gmail trash <messageIds>`).
 - **Spam**: `mark_thread_spam`.
+- **Then apply the house rules:** star every thread from the batch that's
+  still in the inbox, and make sure nothing that left the inbox is starred.
 - **Draft reply / forward**: `create_draft` in the existing thread, in the
   same mailbox, so it's sent from the address the email went to. Write in
   Ian's voice — short, direct, plain British English, no corporate filler;
