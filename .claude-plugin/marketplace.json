@@ -1,0 +1,13 @@
+{
+  "name": "ai-plugins",
+  "owner": {
+    "name": "ianmiell"
+  },
+  "plugins": [
+    {
+      "name": "personal-assistant",
+      "source": "./personal-assistant",
+      "description": "Ian Miell's personal assistant"
+    }
+  ]
+}
