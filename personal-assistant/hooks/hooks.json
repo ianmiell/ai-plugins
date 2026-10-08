@@ -1,0 +1,17 @@
+{
+  "description": "personal-assistant: schedule recurring mail triage when PA_MAIL_EVERY is set",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/schedule-mail.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
