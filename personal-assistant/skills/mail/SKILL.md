@@ -137,6 +137,11 @@ check), Tools and Rules, but not its whole agenda process. It reaches both
 calendars, work and personal, through the one Calendar connector. See
 "Calendar cross-check" below for what to do with it.
 
+For Ian's task system, use the **gtd skill** (`personal-assistant:gtd`).
+Load it with the Skill tool the first time a thread needs a task. Use its How
+to run it, Commands and Rules (approval before every write; it pushes to
+GitHub). See "GTD cross-check" below.
+
 ## Rules
 
 **House rules:** before each run, read every `.md` file in the plugin's
@@ -208,6 +213,29 @@ Calendar and email are separate places. Archiving an invitation email doesn't
 answer the invite, and answering the invite doesn't archive the email. When
 Ian approves a calendar action for a thread, offer to archive the email in
 the same step.
+
+### 2c. GTD cross-check
+
+Email that needs real work belongs in gtd, not left in the inbox. For each
+**Act now**, **Delegate** or **waiting on someone** thread:
+
+1. **Look for an existing task.** Grep open tasks (`status/todo`,
+   `status/waiting`) for the Gmail thread or message id, the sender's name and
+   the key subject words. If one exists, tag the thread `🗂 task N` and
+   recommend **add a note** (new info from this email) or **close N** (the
+   email resolves it).
+2. **Otherwise, offer a new task** when doing it takes more than a couple of
+   minutes, or Ian has promised something (e.g. "I'll send you a
+   proposal"). Tag it `🗂 → new task`, and propose a subject with the right
+   prefix (work mailbox → `CS:`, personal admin → `HOME:`, writing, courses
+   and publishers → `MC:`). Things Ian is waiting on others for become a task
+   moved to `waiting` with `defer N DAYS`.
+3. Quick replies (under two minutes) stay as drafts. Don't make tasks for
+   them.
+
+Once a task tracks a thread, the email can leave the inbox. Recommend
+**task + archive** (and unstar, per the house rules). The task holds the
+link back to the email.
 
 ### 3. Classify and recommend
 
@@ -300,6 +328,14 @@ thread's own mailbox:
 - **Propose times**: draft a reply (never send) with the slots from
   `suggest_time`. Hold nothing in the calendar until the other person
   confirms.
+- **gtd task**: create it with the gtd skill. Subject `PREFIX: <what to do>`.
+  Notes: the Gmail link on the line after `Task Number:` (work: the thread's
+  `viewUrl` from the connector; personal: `gog gmail url <threadId>`), then
+  a 2–5 line excerpt or summary of what's needed and by when. Batch all new
+  tasks in a run, push once, and report the task numbers. Then archive the
+  thread if approved.
+- **gtd note / close**: append to `tasks/N/notes.md` (with the link and a
+  dated one-liner), or `bin/gtd close N`. Always after approval.
 
 Afterwards, report what was done in a few lines per mailbox (counts per
 action, list of drafts created with subjects), and what's left that needs Ian personally.

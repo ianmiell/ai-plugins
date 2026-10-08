@@ -1,6 +1,6 @@
 {
   "name": "personal-assistant",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Ian Miell's personal assistant",
   "author": { "name": "ianmiell" }
 }

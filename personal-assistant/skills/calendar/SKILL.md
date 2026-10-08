@@ -53,6 +53,14 @@ with `--gmail-no-send` for `ian.miell@gmail.com`. Follow its Rules (drafts
 only, never send), but not its whole triage process. Work events go with the
 work mailbox, personal events with the personal one.
 
+### GTD
+
+Use the **gtd skill** (`personal-assistant:gtd`) for Ian's task system in
+`~/git/gtd`. Load it with the Skill tool when a calendar task touches tasks,
+reminders, people notes or meeting records, and follow its How to run it,
+Commands and Rules. Calendar is for things at a time. gtd is for things to
+do. Don't duplicate one in the other.
+
 ## Tools
 
 Load the schemas in one ToolSearch call:
@@ -147,7 +155,13 @@ response, external, or have no location or link, search the matching
 mailbox for the related email (by title, organiser or date) and add a
 `✉` note. Examples: the invite email still sitting in the inbox, a recent
 reschedule, a ticket or agenda attachment. Keep it to one line per event.
-Skip this for routine internal meetings. Number
+Skip this for routine internal meetings.
+
+**gtd reminders on these days.** Check open gtd tasks whose reminder
+(`.remindme`) falls in the window, from `bin/gtd waiting` and
+`bin/gtd reminders`, and list them under the day as `🗂 4630 CS: Leonardo next
+demo prep (reminder)`. Leave out `MEETING:` tasks; they mirror calendar
+events. Number
 anything Ian might act on, and take shorthand replies ("accept 1 2",
 "decline 2 with note: clash").
 
@@ -192,6 +206,20 @@ Act only on a yes, through the mail skill.
 - **"Find a time with X and email them":** use `suggest_time` across W+P
   (plus X if their calendar is visible), then draft the email with 2–3
   slots in the right mailbox. Don't create the event until X confirms.
+- **Meeting prep with gtd:** for each external or one-to-one meeting, look
+  up attendees in `people/Firstname_Lastname.md` (`bin/gtd people show`).
+  Grep `meetings/` for earlier transcripts or `*.aisummary` files with them,
+  and grep open tasks for their name or company. Summarise what's relevant in
+  a few lines: last time you met, open tasks involving them, commitments
+  made.
+- **After a meeting:** if Ian lists follow-ups, offer to create gtd tasks
+  for them (prefix by context, notes with the meeting title and date), and
+  `waiting` tasks with a `defer` for things others owe Ian.
+- **Deadlines without a time** (e.g. "renew by 22 Oct"): prefer a gtd task
+  with `bin/gtd defer N DAYS` over a calendar event. Use a calendar event only
+  if Ian wants it blocking time.
+- **Past `MEETING:` tasks:** if the agenda shows them still open after the
+  meeting, offer `bin/gtd clear-meetings`.
 - **Invites that exist only as email** (e.g. an `.ics` from an external
   system that never reached the calendar): offer to add it, linking the
   email.
