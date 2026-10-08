@@ -148,8 +148,9 @@ to run it, Commands and Rules (approval before every write). See "GTD cross-chec
 `<base>/../../rules/`). They hold Ian's standing preferences, and they win
 over anything below that contradicts them. As of October 2026 they cover:
 Read later stays in the inbox and starred, processed inbox threads are
-starred, nothing outside the inbox is starred, and emails with a gtd task
-raised against them are suggested for archiving.
+starred, nothing outside the inbox is starred, emails with a gtd task
+raised against them are suggested for archiving, and meaningful email
+interactions are noted in the person's gtd people file.
 
 - **Never send email.** Write replies and forwards as drafts with
   `create_draft`; Ian sends them. Only use `send_message`, `reply` or

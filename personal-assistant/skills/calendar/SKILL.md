@@ -31,6 +31,20 @@ can't change it. The fix is in Google Calendar on the personal account:
 Settings → *ian.miell@gmail.com* → Share with specific people → give
 `ian.miell@container-solutions.com` "Make changes and manage sharing".
 
+`accessRole` only shows calendar sharing. It doesn't show whether the
+**connector's own login** may write. In October 2026 the connector was
+read-only: `respond_to_event` failed with `Insufficient scope …
+calendar.events`, although `accessRole` was `owner`. So before proposing any
+change, check write access once with a harmless no-op. Call `update_event`
+on an event Ian organised (e.g. a "daily beach" occurrence), passing only
+`eventId`, `calendarId` and `notificationLevel: NONE`, and no fields to
+change. If that fails with an insufficient-scope error, say so up front: the
+agenda, clash checks and free-time search still work, but accept/decline,
+create, move and cancel don't. Tell Ian to reconnect the Google Calendar
+connector in claude.ai → Settings → Connectors with full permissions (tick
+every box on Google's consent screen), then restart Claude Code. Until then,
+list the changes for Ian to make by hand rather than attempting them.
+
 **Fallback:** gog (see the mail skill) can reach the personal calendar
 directly. Its login currently only has Gmail scopes. The Calendar API is
 already enabled in the `ianmiell-gog-personal` project, so Ian would need to
