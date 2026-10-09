@@ -15,5 +15,7 @@ Always READ LATER (keep + star), never junk or archive by default:
 
 - Our World in Data (`newsletter@ourworldindata.org`), including "Data Insight" emails
 - The Rest Is History (`therestishistory@mail.beehiiv.com`)
+- Bartech CTO forum (`noreply@discourse.bartechcto.net`, "[Bartech] …" posts).
+  A Gmail filter in the personal mailbox stars these on arrival.
 
 When Ian says he reads another newsletter, add it to this list.
