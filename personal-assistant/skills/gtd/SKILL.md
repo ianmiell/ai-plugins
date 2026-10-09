@@ -123,7 +123,11 @@ invariants in `AGENTS.md`).
 
 - **Mail:** turns emails that need real work into tasks (with the Gmail
   link), links emails to existing tasks, and offers to close or update tasks
-  when a reply resolves them. See the mail skill's "GTD" section.
+  when a reply resolves them. See the mail skill's "GTD" section. Every
+  email linked to task N gets the Gmail label `GTD-<N>` (see
+  `rules/label-emails-with-gtd-task.md`), so `label:GTD-<N>` finds a task's
+  emails. When working on a task here and you find a related email, label it
+  the same way, through the mail skill's connector or gog for that mailbox.
 - **Calendar:** shows gtd reminders falling on the agenda's days, uses
   people notes and past meeting records for meeting prep, and turns meeting
   follow-ups into tasks. See the calendar skill's "GTD" section.

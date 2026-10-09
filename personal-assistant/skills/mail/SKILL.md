@@ -157,8 +157,8 @@ process.
 over anything below that contradicts them. As of October 2026 they cover:
 Read later stays in the inbox and starred, processed inbox threads are
 starred, nothing outside the inbox is starred, emails with a gtd task
-raised against them are suggested for archiving, and meaningful email
-interactions are noted in the person's gtd people file.
+raised against them are suggested for archiving and labelled `GTD-<N>`,
+and meaningful email interactions are noted in the person's gtd people file.
 
 - **Never send email.** Write replies and forwards as drafts with
   `create_draft`; Ian sends them. Only use `send_message`, `reply` or
@@ -228,11 +228,12 @@ the same step.
 Email that needs real work belongs in gtd, not left in the inbox. For each
 **Act now**, **Delegate** or **waiting on someone** thread:
 
-1. **Look for an existing task.** Grep open tasks (`status/todo`,
-   `status/waiting`) for the Gmail thread or message id, the sender's name and
-   the key subject words. If one exists, tag the thread `🗂 task N` and
-   recommend **add a note** (new info from this email) or **close N** (the
-   email resolves it).
+1. **Look for an existing task.** Check the thread's labels for `GTD-<N>`
+   first. Otherwise grep open tasks (`status/todo`, `status/waiting`) for the
+   Gmail thread or message id, the sender's name and the key subject words.
+   If one exists, tag the thread `🗂 task N` and recommend **add a note**
+   (new info from this email) or **close N** (the email resolves it), plus
+   the `GTD-N` label if it isn't already on the thread.
 2. **Otherwise, offer a new task** when doing it takes more than a couple of
    minutes, or Ian has promised something (e.g. "I'll send you a
    proposal"). Tag it `🗂 → new task`, and propose a subject with the right
@@ -341,10 +342,17 @@ thread's own mailbox:
   Notes: the Gmail link on the line after `Task Number:` (work: the thread's
   `viewUrl` from the connector; personal: `gog gmail url <threadId>`), then
   a 2–5 line excerpt or summary of what's needed and by when. Report the
-  task numbers. Then archive the
+  task numbers. Label the thread `GTD-<N>` (see below). Then archive the
   thread if approved.
 - **gtd note / close**: append to `tasks/N/notes.md` (with the link and a
-  dated one-liner), or `bin/gtd close N`. Always after approval.
+  dated one-liner), or `bin/gtd close N`. Always after approval. Label the
+  thread `GTD-<N>` if it isn't already.
+- **GTD-N label** (per `rules/label-emails-with-gtd-task.md`): in the
+  thread's own mailbox, find `GTD-<N>` with `list_labels` (gog:
+  `gmail labels list`), create it with `create_label` (gog:
+  `gmail labels create GTD-<N>`) if missing, without asking, then
+  `label_thread` (gog: `gmail thread modify <id> --add-label GTD-<N>`). Do
+  this before archiving, and keep the label when archiving.
 
 Afterwards, report what was done in a few lines per mailbox (counts per
 action, list of drafts created with subjects), and what's left that needs Ian personally.
