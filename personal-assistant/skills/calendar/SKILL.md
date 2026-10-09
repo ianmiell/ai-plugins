@@ -75,6 +75,15 @@ reminders, people notes or meeting records, and follow its How to run it,
 Commands and Rules. Calendar is for things at a time. gtd is for things to
 do. Don't duplicate one in the other.
 
+### Slack
+
+Use the **slack skill** (`personal-assistant:slack`) for Ian's Container
+Solutions Slack. Load it with the Skill tool when a calendar task involves
+colleagues: prepping an internal meeting (recent DMs and threads with the
+attendees), or offering times to a colleague, which is usually quicker as a
+Slack DM than an email. Use its Setup, Tools and Rules (drafts only, never
+send), not its whole triage process. External people get email.
+
 ## Tools
 
 Load the schemas in one ToolSearch call:
@@ -216,10 +225,14 @@ Act only on a yes, through the mail skill.
 
 - **"Prep for tomorrow / this meeting":** for each event, pull the related
   email threads (agenda, attachments, last exchange with the organiser) via
-  the mail skill and summarise in a few lines per meeting.
+  the mail skill, and for meetings with colleagues the recent Slack DMs and
+  threads with them via the slack skill. Summarise in a few lines per
+  meeting.
 - **"Find a time with X and email them":** use `suggest_time` across W+P
   (plus X if their calendar is visible), then draft the email with 2–3
-  slots in the right mailbox. Don't create the event until X confirms.
+  slots in the right mailbox. For a Container Solutions colleague, offer a
+  Slack DM draft instead (slack skill). Don't create the event until X
+  confirms.
 - **Meeting prep with gtd:** for each external or one-to-one meeting, look
   up attendees in `people/Firstname_Lastname.md` (`bin/gtd people show`).
   Grep `meetings/` for earlier transcripts or `*.aisummary` files with them,

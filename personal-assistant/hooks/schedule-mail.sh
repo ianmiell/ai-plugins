@@ -2,8 +2,9 @@
 # SessionStart hook: ask Claude to schedule recurring mail triage for this session.
 #
 # Plugins can't own a schedule, so this injects an instruction telling Claude to create a
-# session-only CronCreate job running '/personal-assistant:mail in:inbox -is:starred'
-# (new, untriaged mail only). The job lasts until the session ends, or 7 days.
+# session-only CronCreate job that runs the mail skill on new, untriaged mail only
+# ('in:inbox -is:starred') and sends a desktop notification when something new turns up.
+# The job lasts until the session ends, or 7 days.
 #
 # Off unless PA_MAIL_EVERY is set to the interval in minutes, eg:
 #   PA_MAIL_EVERY=30 claude
@@ -34,13 +35,15 @@ else
   done
 fi
 cron="${minutes} * * * *"
-prompt='/personal-assistant:mail in:inbox -is:starred'
+# Each run shows the full triage list in the session, and a desktop notification when there is
+# something new, so the user notices it and can come back to work through it
+prompt='Scheduled mail check. Run the personal-assistant:mail skill with arguments "in:inbox -is:starred" and show the full triage list as usual. If it finds any new threads, also send a PushNotification (status "proactive") naming how many and the most important one. If nothing is new, say so in one line and do not notify. Never act on any thread without approval.'
 
 context="The personal-assistant plugin asks for recurring mail triage in this session (PA_MAIL_EVERY=${PA_MAIL_EVERY}). \
 Before answering the user's first message: load the CronList and CronCreate tools (ToolSearch 'select:CronList,CronCreate'), \
-call CronList, and if no job already has the prompt '${prompt}', call CronCreate with cron '${cron}', \
-prompt '${prompt}' and recurring true. Then mention in one line that mail triage is scheduled (${cron}, session-only, \
-expires after 7 days). Each run only presents a triage list; the mail skill's approval rules still apply."
+call CronList, and if no job's prompt already starts with 'Scheduled mail check', call CronCreate with cron '${cron}', \
+recurring true, and this prompt: '${prompt}'. Then mention in one line that mail triage is scheduled (${cron}, \
+session-only, expires after 7 days)."
 
 # JSON-escape the context (backslashes and double quotes; it has no newlines)
 context="${context//\\/\\\\}"

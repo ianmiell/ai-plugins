@@ -141,6 +141,14 @@ For Ian's task system, use the **gtd skill** (`personal-assistant:gtd`).
 Load it with the Skill tool the first time a thread needs a task. Use its How
 to run it, Commands and Rules (approval before every write). See "GTD cross-check" below.
 
+For Slack, use the **slack skill** (`personal-assistant:slack`). Load it with
+the Skill tool when an email points to Slack ("see the thread in #channel",
+"pinged you on Slack"), when the same topic is clearly live on Slack (check
+there before drafting a reply that might already be overtaken), or when the
+quickest way to delegate to a Container Solutions colleague is a Slack DM. Use
+its Setup, Tools and Rules (drafts only, never send), not its whole triage
+process.
+
 ## Rules
 
 **House rules:** before each run, read every `.md` file in the plugin's
@@ -246,7 +254,7 @@ Put each thread in one bucket:
 |---|---|---|
 | **Act now** | A real person needs a reply or decision from Ian, deadline soon, or something blocked on Ian | Draft reply, or summarise the decision needed |
 | **Schedule** | Meeting requests, invites, bookings, deadlines not yet reflected in the calendar | Per the calendar cross-check: accept/decline, add event, propose times |
-| **Delegate** | Something someone else should handle | Draft a forward with a one-line handoff |
+| **Delegate** | Something someone else should handle | Draft a forward with a one-line handoff (for a Container Solutions colleague, offer a Slack DM draft instead, via the slack skill) |
 | **Read later** | Worth reading, no action needed | Keep in inbox + star (see `rules/`) |
 | **FYI / done** | Notifications, receipts, CC'd threads Ian doesn't need to act on, threads where Ian had the last word | Archive |
 | **Unsubscribe / junk** | Marketing, newsletters Ian never opens, cold sales | Trash, and note the unsubscribe link if there is one |

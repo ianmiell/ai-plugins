@@ -127,6 +127,10 @@ invariants in `AGENTS.md`).
 - **Calendar:** shows gtd reminders falling on the agenda's days, uses
   people notes and past meeting records for meeting prep, and turns meeting
   follow-ups into tasks. See the calendar skill's "GTD" section.
+- **Slack:** turns Slack conversations that need real work, or that Ian
+  promised to follow up, into tasks (with the Slack message link), and adds
+  notes to existing tasks. See the slack skill's "Calendar and gtd
+  cross-check".
 
-Both load this skill with the Skill tool (`personal-assistant:gtd`) and follow
+They all load this skill with the Skill tool (`personal-assistant:gtd`) and follow
 its How to run it, Commands and Rules sections.
