@@ -1,6 +1,7 @@
 ---
 name: gtd
 description: Manage Ian's GTD task system, the `gtd` command in ~/git/gtd (git-backed tasks, reminders, people notes and meeting records). Lists, shows and searches tasks, creates tasks (e.g. from an email or meeting), adds notes, changes status or priority, sets reminders and closes tasks. Use when Ian mentions gtd, tasks, todos, "add a task", "what's on my list", "what am I waiting on", reminders, or invokes /gtd. Also used by the mail and calendar skills to turn emails and meetings into tasks. Optional argument, e.g. "/gtd todo", "/gtd waiting", "/gtd 4646", "/gtd add Call the bank".
+allowed-tools: Bash(pa-gtd *)
 ---
 
 # GTD
@@ -19,7 +20,12 @@ commands. This skill covers how to drive the tool safely from Claude Code.
 
 ## How to run it
 
-Always run gtd like this:
+Use the plugin's **`pa-gtd`** command for everything it covers. It's in the
+plugin's `bin/`, so it's on PATH: call it by bare name, one command per Bash call,
+never chained with `&&`, `;` or `|`. It runs `bin/gtd` with the settings below, and one
+permission rule (`Bash(pa-gtd *)`) covers it, so no prompts.
+
+For anything else, run gtd like this (these still ask for permission):
 
 ```bash
 cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd <command> … </dev/null
@@ -60,31 +66,30 @@ cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd <command> … </dev/
 
 | Need | Command |
 |---|---|
-| Open tasks | `bin/gtd todo` (also `waiting [DAYS]`, `background`, `someday`, `new`) |
-| One task | `bin/gtd show N` |
+| Open tasks | `pa-gtd list [todo\|waiting\|background\|someday\|new]` (default todo). `waiting DAYS`: raw `bin/gtd waiting DAYS` |
+| One task | `pa-gtd show N` |
 | Tasks with reminders not in waiting | `bin/gtd reminders` |
 | Open tasks with TODO lines | `bin/gtd todos` |
 | History of a task | `bin/gtd info N` |
-| Person | `bin/gtd people show Firstname_Lastname` |
-| Find tasks | `grep -rli 'TEXT' tasks/*/notes.md`, then map hits to status with `ls status/*/N` |
+| Person | `pa-gtd person <name or email>` finds the file; read it, or raw `bin/gtd people show Firstname_Lastname` |
+| Find open tasks | `pa-gtd find WORD…`: open (todo/waiting) tasks whose notes contain every word, as `N  status  subject` |
 
 Don't use `bin/gtd search`, `go`, `edit`, `vi`, `dashboard`, `remind`, or
 `people new`/`people edit`. They're interactive (paging, editors, shells).
 `grep` and `show` cover the same ground.
 
-To find open tasks quickly, check `status/todo/` and `status/waiting/`
-(symlinks named by task number) and grep only those `notes.md` files. Avoid
+`pa-gtd find` only reads open tasks (`status/todo/`, `status/waiting/`). Avoid
 globbing everything into context; the repo is huge.
 
 ### Write (needs Ian's approval each time)
 
 | Action | Command |
 |---|---|
-| New task | `GO_TO_TASK=N bin/gtd nt "PREFIX: Subject"` (`GO_TO_TASK=N` stops it opening a shell). Then read the number from `.metadata/lasttask`. |
-| Add notes | Append to `tasks/N/notes.md` (keep lines 1–2 intact), then `bin/gtd push` so gtd records it |
-| Status | `bin/gtd ms <todo\|waiting\|background\|someday\|t\|w\|b\|s> N` |
+| New task | `pa-gtd new "PREFIX: Subject"`: prints `task N: subject` and checks the subject matches. |
+| Add notes | `pa-gtd note N --text "…"` appends (lines 1–2 stay intact) and pushes |
+| Status | `pa-gtd status N <todo\|waiting\|background\|someday>` |
 | Priority | `bin/gtd mp <high\|medium\|low\|h\|m\|l> N` |
-| Reminder | `bin/gtd defer N DAYS` sets a reminder DAYS from now and moves the task to waiting. For a repeating reminder, ask Ian to run `! ~/git/gtd/bin/gtd remind N` (it's interactive). |
+| Reminder | `pa-gtd defer N DAYS` sets a reminder DAYS from now and moves the task to waiting. For a repeating reminder, ask Ian to run `! ~/git/gtd/bin/gtd remind N` (it's interactive). |
 | Close | `bin/gtd close N …`. It refuses if any file contains `TODO`. If the task has a reminder it asks whether to remove it: pipe `printf 'y\n'` only if Ian agreed to drop the reminder, otherwise `printf 'n\n'`. |
 | Unremind | `bin/gtd unremind N` |
 

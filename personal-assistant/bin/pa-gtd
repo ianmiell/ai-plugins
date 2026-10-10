@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""pa-gtd: fixed, prompt-free commands for Ian's gtd repo (~/git/gtd), used by the mail,
+calendar, slack and gtd skills. Runs bin/gtd with the safe settings (web display, no stdin,
+timeout) as argument lists, so one permission rule `Bash(pa-gtd *)` covers it.
+
+Writes still need Ian's approval in the conversation, as the skills' rules say.
+
+  pa-gtd find WORD...          open tasks (todo/waiting) whose notes contain every WORD
+  pa-gtd show N                bin/gtd show N
+  pa-gtd list [STATUS]         bin/gtd todo|waiting|background|someday (default todo)
+  pa-gtd person NAME_OR_EMAIL  matching people/ files
+  pa-gtd new "PREFIX: Subject" create a task; prints its number
+  pa-gtd note N --text "..."   append text (or stdin) to tasks/N/notes.md, then push
+  pa-gtd defer N DAYS          reminder in DAYS, move to waiting
+  pa-gtd status N STATUS       todo|waiting|background|someday
+  pa-gtd push                  bin/gtd push
+"""
+import argparse
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+GTD = Path.home() / "git" / "gtd"
+OPEN = ("todo", "waiting")
+
+
+def gtd(*args):
+    env = dict(os.environ, GTD_DISPLAY_CONTEXT="web", GO_TO_TASK="N")
+    r = subprocess.run([str(GTD / "bin" / "gtd"), *args], cwd=GTD, env=env, capture_output=True,
+                       text=True, stdin=subprocess.DEVNULL, timeout=120)
+    out = re.sub(r"Processing \d+/\d+", "", r.stdout)
+    sys.stdout.write(out)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit(r.returncode)
+
+
+def subject(n):
+    p = GTD / "tasks" / str(n) / "notes.md"
+    return p.read_text(errors="replace").splitlines()[0].lstrip("# ") if p.exists() else "?"
+
+
+def cmd_find(a):
+    words = [w.lower() for w in a.words]
+    for status in OPEN:
+        d = GTD / "status" / status
+        for n in sorted(os.listdir(d), key=lambda s: int(s) if s.isdigit() else 0):
+            p = GTD / "tasks" / n / "notes.md"
+            if p.exists() and all(w in p.read_text(errors="replace").lower() for w in words):
+                print(f"{n}\t{status}\t{subject(n)}")
+
+
+def cmd_person(a):
+    q = a.query.lower()
+    for p in sorted((GTD / "people").glob("*.md")):
+        if q.replace(" ", "_") in p.stem.lower() or q in p.read_text(errors="replace").lower():
+            print(p.relative_to(GTD))
+
+
+def cmd_new(a):
+    gtd("nt", a.subject)
+    n = (GTD / ".metadata" / "lasttask").read_text().strip()
+    got = subject(n)
+    if got != a.subject.strip():
+        sys.exit(f"created task {n}, but its subject is '{got}', not '{a.subject}'")
+    print(f"\ntask {n}: {got}")
+
+
+def cmd_note(a):
+    p = GTD / "tasks" / str(a.n) / "notes.md"
+    if not p.exists():
+        sys.exit(f"no task {a.n}")
+    text = a.text if a.text is not None else sys.stdin.read()
+    with p.open("a") as f:
+        f.write(("" if text.startswith("\n") else "\n") + text.rstrip("\n") + "\n")
+    gtd("push")
+
+
+def main():
+    p = argparse.ArgumentParser(prog="pa-gtd", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("find"); s.add_argument("words", nargs="+"); s.set_defaults(f=cmd_find)
+    s = sub.add_parser("show"); s.add_argument("n", type=int); s.set_defaults(f=lambda a: gtd("show", str(a.n)))
+    s = sub.add_parser("list"); s.add_argument("status", nargs="?", default="todo",
+                                                choices=["todo", "waiting", "background", "someday", "new"])
+    s.set_defaults(f=lambda a: gtd(a.status))
+    s = sub.add_parser("person"); s.add_argument("query"); s.set_defaults(f=cmd_person)
+    s = sub.add_parser("new"); s.add_argument("subject"); s.set_defaults(f=cmd_new)
+    s = sub.add_parser("note"); s.add_argument("n", type=int); s.add_argument("--text")
+    s.set_defaults(f=cmd_note)
+    s = sub.add_parser("defer"); s.add_argument("n", type=int); s.add_argument("days", type=int)
+    s.set_defaults(f=lambda a: gtd("defer", str(a.n), str(a.days)))
+    s = sub.add_parser("status"); s.add_argument("n", type=int)
+    s.add_argument("status", choices=["todo", "waiting", "background", "someday"])
+    s.set_defaults(f=lambda a: gtd("ms", a.status, str(a.n)))
+    sub.add_parser("push").set_defaults(f=lambda a: gtd("push"))
+    a = p.parse_args()
+    a.f(a)
+
+
+if __name__ == "__main__":
+    main()

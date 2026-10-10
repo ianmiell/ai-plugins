@@ -1,6 +1,7 @@
 ---
 name: slack
 description: Triage Ian's Slack (Container Solutions workspace) — DMs, group DMs, @-mentions and replies in threads Ian is part of — and help decide what to do with each — reply, react, delegate, schedule, make a gtd task or ignore. Drafts replies, never sends without approval. Use when Ian asks to go through Slack, catch up on Slack, see who's waiting on him, or invokes /slack. Optional argument sets scope, e.g. "/slack today", "/slack 2d", "/slack since monday", "/slack dms", "/slack #ccf-releases", "/slack from:Gustavo".
+allowed-tools: Bash(pa-gtd *) mcp__claude_ai_Slack__slack_read_user_profile mcp__claude_ai_Slack__slack_search_public_and_private mcp__claude_ai_Slack__slack_read_channel mcp__claude_ai_Slack__slack_read_thread mcp__claude_ai_Slack__slack_list_user_channels mcp__claude_ai_Slack__slack_search_users mcp__claude_ai_Slack__slack_send_message_draft mcp__claude_ai_Google_Calendar__list_calendars mcp__claude_ai_Google_Calendar__list_events mcp__claude_ai_Google_Calendar__search_events mcp__claude_ai_Google_Calendar__get_event mcp__claude_ai_Google_Calendar__suggest_time
 ---
 
 # Slack triage

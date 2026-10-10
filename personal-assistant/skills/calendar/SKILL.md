@@ -1,6 +1,7 @@
 ---
 name: calendar
 description: Manage Ian's two Google calendars together, work (ian.miell@container-solutions.com) and personal (ian.miell@gmail.com). Shows a combined agenda, flags clashes between them, handles pending invites, finds free time across both and creates, moves or cancels events on the right calendar. Use when Ian asks what's on today, this week or tomorrow, wants to book, move or cancel something, asks when they're free, wants to prep for meetings from related email, or invokes /calendar. Optional argument sets scope, e.g. "/calendar today", "/calendar week", "/calendar invites", "/calendar free 1h thursday".
+allowed-tools: Bash(pa-gtd *) mcp__claude_ai_Google_Calendar__list_calendars mcp__claude_ai_Google_Calendar__list_events mcp__claude_ai_Google_Calendar__search_events mcp__claude_ai_Google_Calendar__get_event mcp__claude_ai_Google_Calendar__suggest_time
 ---
 
 # Calendar

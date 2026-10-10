@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""pa-mail: fixed, prompt-free commands for Ian's personal mailbox (ian.miell@gmail.com) via gog.
+
+Every call goes through gog with the account pinned and --gmail-no-send, so nothing here can
+send mail. Commands are run as argument lists (no shell), so one permission rule
+`Bash(pa-mail *)` covers the whole mail skill's use of the personal mailbox.
+
+  pa-mail check                       account + write-access check
+  pa-mail list [QUERY] [--max N]      threads as JSON lines (default query: in:inbox -is:starred)
+  pa-mail read THREAD [--full]        thread as text (long lines trimmed unless --full)
+  pa-mail url THREAD...               Gmail web links
+  pa-mail archive THREAD...           remove INBOX and STARRED
+  pa-mail star THREAD...              add STARRED (keep in inbox)
+  pa-mail unstar THREAD...            remove STARRED
+  pa-mail trash THREAD...             move every message in each thread to Trash (recoverable 30 days)
+  pa-mail spam THREAD...              mark as spam and remove from inbox
+  pa-mail label NAME THREAD...        add label NAME (created if missing); does not archive
+  pa-mail attachment MSG INDEX OUT    save one attachment (0-based index) to OUT
+  pa-mail filters                     list Gmail filters
+"""
+import argparse
+import json
+import subprocess
+import sys
+
+ACCOUNT = "ian.miell@gmail.com"
+GOG = ["gog", "-a", ACCOUNT, "--gmail-no-send", "--no-input"]
+
+
+def gog(*args, json_out=False, check=True):
+    cmd = GOG + (["--json"] if json_out else []) + list(args)
+    r = subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
+    if check and r.returncode != 0:
+        sys.stderr.write(r.stderr or r.stdout)
+        sys.exit(r.returncode or 1)
+    return json.loads(r.stdout) if json_out and r.stdout.strip() else r.stdout
+
+
+def cmd_check(_):
+    sent = gog("--results-only", "gmail", "search", "--max", "1", "--", "in:sent", json_out=True) or []
+    sender = sent[0].get("from", "") if sent else ""
+    ok_account = ACCOUNT in sender
+    print(f"account: {'ok' if ok_account else 'MISMATCH'} ({sender or 'no sent mail found'})")
+    unstarred = gog("--results-only", "gmail", "search", "--max", "1", "--", "-is:starred", json_out=True) or []
+    if unstarred:
+        gog("gmail", "thread", "modify", unstarred[0]["id"], "--remove", "STARRED")
+        print("write access: ok")
+    else:
+        print("write access: not checked (no unstarred thread)")
+    sys.exit(0 if ok_account else 1)
+
+
+def cmd_list(a):
+    rows = gog("--results-only", "gmail", "search", "--max", str(a.max), "--", a.query, json_out=True) or []
+    for t in rows:
+        print(json.dumps({k: t.get(k) for k in ("id", "date", "from", "subject", "labels", "messageCount")}))
+
+
+def cmd_read(a):
+    out = gog("gmail", "thread", "get", a.thread)
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        print(line if a.full or len(line) <= 400 else line[:400] + " …[trimmed]")
+
+
+def cmd_url(a):
+    sys.stdout.write(gog("gmail", "url", *a.threads))
+
+
+def modify(threads, *flags):
+    for t in threads:
+        gog("gmail", "thread", "modify", t, *flags)
+        print(f"ok {t}")
+
+
+def message_ids(thread):
+    d = gog("gmail", "thread", "get", thread, json_out=True)
+    return [m["id"] for m in d.get("thread", d).get("messages", [])]
+
+
+def cmd_trash(a):
+    for t in a.threads:
+        ids = message_ids(t)
+        gog("gmail", "trash", *ids)
+        print(f"trashed {t} ({len(ids)} messages)")
+
+
+def cmd_label(a):
+    labels = gog("--results-only", "gmail", "labels", "list", json_out=True) or []
+    if not any(l.get("name") == a.name for l in labels):
+        gog("gmail", "labels", "create", a.name)
+        print(f"created label {a.name}")
+    modify(a.threads, "--add-label", a.name)
+
+
+def main():
+    p = argparse.ArgumentParser(prog="pa-mail", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("check").set_defaults(f=cmd_check)
+    s = sub.add_parser("list"); s.add_argument("query", nargs="?", default="in:inbox -is:starred")
+    s.add_argument("--max", type=int, default=25); s.set_defaults(f=cmd_list)
+    s = sub.add_parser("read"); s.add_argument("thread"); s.add_argument("--full", action="store_true")
+    s.set_defaults(f=cmd_read)
+    s = sub.add_parser("url"); s.add_argument("threads", nargs="+"); s.set_defaults(f=cmd_url)
+    for name, flags in (("archive", ("--remove", "INBOX,STARRED")), ("star", ("--add", "STARRED")),
+                        ("unstar", ("--remove", "STARRED")), ("spam", ("--add", "SPAM", "--remove", "INBOX,STARRED"))):
+        s = sub.add_parser(name); s.add_argument("threads", nargs="+")
+        s.set_defaults(f=lambda a, fl=flags: modify(a.threads, *fl))
+    s = sub.add_parser("trash"); s.add_argument("threads", nargs="+"); s.set_defaults(f=cmd_trash)
+    s = sub.add_parser("label"); s.add_argument("name"); s.add_argument("threads", nargs="+")
+    s.set_defaults(f=cmd_label)
+    s = sub.add_parser("attachment"); s.add_argument("message"); s.add_argument("index"); s.add_argument("out")
+    s.set_defaults(f=lambda a: sys.stdout.write(gog("gmail", "attachment", a.message, a.index,
+                                                    "--use-indexed-attachment-ids", "--out", a.out)))
+    sub.add_parser("filters").set_defaults(f=lambda a: sys.stdout.write(gog("gmail", "settings", "filters", "list")))
+    a = p.parse_args()
+    a.f(a)
+
+
+if __name__ == "__main__":
+    main()
