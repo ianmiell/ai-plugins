@@ -346,10 +346,19 @@ thread's own mailbox:
   Notes: the Gmail link on the line after `Task Number:` (work: the thread's
   `viewUrl` from the connector; personal: `gog gmail url <threadId>`), then
   a 2–5 line excerpt or summary of what's needed and by when. Report the
-  task numbers. Then archive the
-  thread if approved.
+  task numbers.
+  **Always label the thread `GTD-<N>`** with the new task's number, in the
+  mailbox it came from, as part of creating the task (no separate approval):
+  - work: `list_labels`, `create_label` with display name `GTD-<N>` if it
+    doesn't exist, then `label_thread` with its label id;
+  - personal: `gmail labels create GTD-<N>` if needed, then
+    `gmail thread modify <id> --add GTD-<N>`.
+  Then archive the thread if approved. The label is how closing the task later
+  finds and tidies its mail (`rules/close-task-tidies-mail.md`).
 - **gtd note / close**: append to `tasks/N/notes.md` (with the link and a
-  dated one-liner), or `bin/gtd close N`. Always after approval.
+  dated one-liner), or `bin/gtd close N`. Always after approval. When a note
+  links a thread to an existing task, label that thread `GTD-<N>` too. When
+  closing, tidy the task's mail per `rules/close-task-tidies-mail.md`.
 
 Afterwards, report what was done in a few lines per mailbox (counts per
 action, list of drafts created with subjects), and what's left that needs Ian personally.

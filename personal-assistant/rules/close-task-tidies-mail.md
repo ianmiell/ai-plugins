@@ -1,7 +1,9 @@
 # Closing a gtd task tidies its email
 
 Email tied to a gtd task carries a Gmail label `GTD-<task number>` (e.g. `GTD-4652`), in
-whichever mailbox the email is in. When task N is closed, its email is finished with:
+whichever mailbox the email is in. The mail skill adds the label whenever it creates a task
+from an email or links an email to an existing task. When task N is closed, its email is
+finished with:
 
 1. **Archive** every thread labelled `GTD-N`, in both mailboxes, and unstar it (see
    unstar-outside-inbox.md):
