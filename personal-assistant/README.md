@@ -13,5 +13,5 @@ skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by
 skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; drafts replies, never sends
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 hooks/hooks.json        - SessionStart hook: with PA_MAIL_EVERY=<minutes> set, schedules /mail
-                          (new mail only) every N minutes for the session (hooks/schedule-mail.sh)
+                          (new mail only) and /slack every N minutes for the session (hooks/schedule-mail.sh)
 ```
