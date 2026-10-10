@@ -157,8 +157,9 @@ process.
 over anything below that contradicts them. As of October 2026 they cover:
 Read later stays in the inbox and starred, processed inbox threads are
 starred, nothing outside the inbox is starred, emails with a gtd task
-raised against them are suggested for archiving, and meaningful email
-interactions are noted in the person's gtd people file.
+raised against them are suggested for archiving, meaningful email
+interactions are noted in the person's gtd people file, and closing a gtd
+task archives its `GTD-<N>`-labelled mail and removes the label.
 
 - **Never send email.** Write replies and forwards as drafts with
   `create_draft`; Ian sends them. Only use `send_message`, `reply` or
@@ -224,6 +225,10 @@ Ian approves a calendar action for a thread, offer to archive the email in
 the same step.
 
 ### 2c. GTD cross-check
+
+First, per the house rule `close-task-tidies-mail.md`: list the `GTD-<number>` labels in
+both mailboxes, and for any whose task is now closed, archive its threads and remove the
+label. Report it in one line before the triage list.
 
 Email that needs real work belongs in gtd, not left in the inbox. For each
 **Act now**, **Delegate** or **waiting on someone** thread:

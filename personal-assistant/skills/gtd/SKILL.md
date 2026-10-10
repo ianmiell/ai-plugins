@@ -85,7 +85,7 @@ globbing everything into context; the repo is huge.
 | Status | `bin/gtd ms <todo\|waiting\|background\|someday\|t\|w\|b\|s> N` |
 | Priority | `bin/gtd mp <high\|medium\|low\|h\|m\|l> N` |
 | Reminder | `bin/gtd defer N DAYS` sets a reminder DAYS from now and moves the task to waiting. For a repeating reminder, ask Ian to run `! ~/git/gtd/bin/gtd remind N` (it's interactive). |
-| Close | `bin/gtd close N …`. It refuses if any file contains `TODO`. If the task has a reminder it asks whether to remove it: pipe `printf 'y\n'` only if Ian agreed to drop the reminder, otherwise `printf 'n\n'`. |
+| Close | `bin/gtd close N …`. It refuses if any file contains `TODO`. If the task has a reminder it asks whether to remove it: pipe `printf 'y\n'` only if Ian agreed to drop the reminder, otherwise `printf 'n\n'`. Then tidy its email: archive threads labelled `GTD-N` in both mailboxes and remove the label (plugin rule `rules/close-task-tidies-mail.md`; use the mail skill's mailbox setup). |
 | Unremind | `bin/gtd unremind N` |
 
 Show Ian the exact subject, prefix, notes and status before creating a
