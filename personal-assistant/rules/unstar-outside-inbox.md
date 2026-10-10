@@ -10,3 +10,4 @@ same operation:
 If a triage run finds starred threads outside the inbox (`is:starred
 -in:inbox`) that this plugin didn't create, list them and offer to unstar
 them. Don't unstar them unasked, because older stars may predate this rule.
+Leave out threads Ian moved out of the inbox himself (see respect-manual-moves.md).
