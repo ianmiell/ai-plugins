@@ -1,5 +1,5 @@
 {
-  "description": "personal-assistant: schedule recurring mail triage when PA_MAIL_EVERY is set",
+  "description": "personal-assistant: schedule a daily mail and Slack triage when PA_MAIL_AT is set",
   "hooks": {
     "SessionStart": [
       {

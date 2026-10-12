@@ -1,5 +1,5 @@
 {
   "env": {
-    "PA_MAIL_EVERY": "30"
+    "PA_MAIL_AT": "09:30"
   }
 }
