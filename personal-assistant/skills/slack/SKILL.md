@@ -1,6 +1,8 @@
 ---
 name: slack
 description: Triage Ian's Slack (Container Solutions workspace) — DMs, group DMs, @-mentions and replies in threads Ian is part of — and help decide what to do with each — reply, react, delegate, schedule, make a gtd task or ignore. Drafts replies, never sends without approval. Use when Ian asks to go through Slack, catch up on Slack, see who's waiting on him, or invokes /slack. Optional argument sets scope, e.g. "/slack today", "/slack 2d", "/slack since monday", "/slack dms", "/slack #ccf-releases", "/slack from:Gustavo".
+model: Sonnet 4.6
+effort: low
 ---
 
 # Slack triage
