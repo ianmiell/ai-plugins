@@ -40,9 +40,10 @@ is local time.
 
 ## Rules
 
-- **Ask before renaming and before deleting.** Show the exact before → after
-  names, or the file to delete and the checks it passed, and wait for a yes.
+- **Ask before renaming.** Show the exact before → after
+  names, and wait for a yes.
   One yes can cover the rename of all of one meeting's files.
+- **You can delete .mkv without asking.**
 - **Never overwrite.** If a target name already exists, stop and ask.
 - **Deleting the `.mkv` is permanent** (Ian chose `rm` over the Trash). Do
   it only if every check in step 5 passes. Never delete a `.mp4`, `.txt` or
@@ -137,11 +138,11 @@ Delete it only if all of these hold, and show Ian each result:
 3. neither file has changed in the last 60 seconds:
    `$(( $(date +%s) - $(/usr/bin/stat -f %m <file>) ))`
 
-If all pass, ask "Delete `<stem>.mkv` (N MB) permanently?" and on a yes run
-`rm -- <stem>.mkv`. If any check fails, keep the `.mkv` and say which check
-failed. A missing `.mp4` usually means OBS didn't remux. Ian can remux it in
-OBS (File → Remux Recordings) or with `ffmpeg -i <stem>.mkv -c copy
-<new stem>.mp4`; offer to run the `ffmpeg` command, and recheck afterwards.
+If all pass delete and run `rm -- <stem>.mkv`. If any check fails, keep
+the `.mkv` and say which check failed. A missing `.mp4` usually means
+OBS didn't remux. Ian can remux it in OBS (File → Remux Recordings) or
+with `ffmpeg -i <stem>.mkv -c copy <new stem>.mp4`; offer to run the
+`ffmpeg` command, and recheck afterwards.
 
 ### 6. What next?
 
