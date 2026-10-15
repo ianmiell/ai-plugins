@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: install-meeting-watch.sh fills in the __PLACEHOLDERS__ (launchd doesn't expand ~). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ianmiell.meeting-watch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__SCRIPT__</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MEETINGS_DIR</key>
+    <string>__MEETINGS_DIR__</string>
+  </dict>
+  <key>WatchPaths</key>
+  <array>
+    <string>__MEETINGS_DIR__</string>
+  </array>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>__LOG__</string>
+  <key>StandardErrorPath</key>
+  <string>__LOG__</string>
+</dict>
+</plist>

@@ -239,6 +239,9 @@ Act only on a yes, through the mail skill.
   and grep open tasks for their name or company. Summarise what's relevant in
   a few lines: last time you met, open tasks involving them, commitments
   made.
+- **After a recorded meeting:** naming the recording, deleting the `.mkv` and
+  working through the transcript is the meeting skill's job
+  (`personal-assistant:meeting`). Hand over to it.
 - **After a meeting:** if Ian lists follow-ups, offer to create gtd tasks
   for them (prefix by context, notes with the meeting title and date), and
   `waiting` tasks with a `defer` for things others owe Ian.
