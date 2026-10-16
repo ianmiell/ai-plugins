@@ -14,10 +14,13 @@
   <dict>
     <key>MEETINGS_DIR</key>
     <string>__MEETINGS_DIR__</string>
+    <key>INBOX_DIR</key>
+    <string>__INBOX_DIR__</string>
   </dict>
   <key>WatchPaths</key>
   <array>
     <string>__MEETINGS_DIR__</string>
+    <string>__INBOX_DIR__</string>
   </array>
   <key>ThrottleInterval</key>
   <integer>10</integer>

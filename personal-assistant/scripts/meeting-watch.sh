@@ -1,19 +1,25 @@
 #!/bin/bash
-# meeting-watch.sh: run by launchd whenever ~/git/gtd/meetings changes (see
-# com.ianmiell.meeting-watch.plist and install-meeting-watch.sh).
+# meeting-watch.sh: run by launchd whenever the recordings inbox or ~/git/gtd/meetings changes
+# (see com.ianmiell.meeting-watch.plist and install-meeting-watch.sh).
 #
-# Looks for new bare-stem transcripts (YYYYMMDD_HHMM.txt, written by Whisper Transcription),
-# waits until each has stopped growing, and opens one iTerm2 window running
+# Opens one iTerm2 window running
 #   claude '/personal-assistant:meeting <stem> ...'
+# for each new item, once it has stopped growing:
+#   - a recording in the inbox: OBS records YYYYMMDD_HHMM.mkv there and remuxes it to
+#     YYYYMMDD_HHMM.mp4. /meeting names it and moves the .mp4 into the meetings folder, where
+#     Whisper Transcription's Watch Folder transcribes it under its final name.
+#   - a bare-stem transcript (YYYYMMDD_HHMM.txt) in the meetings folder, e.g. one exported from
+#     Whisper Transcription by hand.
 # Each stem is handled once: it's recorded in the seen file even if Ian skips it. Run
 # /personal-assistant:meeting by hand to pick up anything left over.
 #
-# launchd fires on any change in the folder (OBS writing, remuxes, git pulls), so this must
+# launchd fires on any change in either folder (OBS writing, remuxes, git pulls), so this must
 # be quick and safe to run repeatedly.
 
 set -u
 
 MEETINGS_DIR="${MEETINGS_DIR:-${HOME}/git/gtd/meetings}"
+INBOX_DIR="${INBOX_DIR:-${HOME}/Movies/meetings-inbox}"
 GTD_DIR="$(dirname "${MEETINGS_DIR}")"
 STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/personal-assistant"
 SEEN="${STATE_DIR}/meeting-seen"
@@ -58,13 +64,15 @@ EOF
 
 shopt -s nullglob
 new_stems=()
-for txt in "${MEETINGS_DIR}"/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].txt
+for file in "${INBOX_DIR}"/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].mp4 \
+            "${MEETINGS_DIR}"/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].txt
 do
-  stem=$(basename "${txt}" .txt)
+  name=$(basename "${file}")
+  stem=${name%.*}
   grep -qxF "${stem}" "${SEEN}" && continue
-  if ! settled "${txt}"
+  if ! settled "${file}"
   then
-    echo "$(date '+%F %T') ${stem}.txt is empty, gone or still growing; will retry on the next change"
+    echo "$(date '+%F %T') ${name} is empty, gone or still growing; will retry on the next change"
     continue
   fi
   echo "${stem}" >> "${SEEN}"
@@ -73,5 +81,5 @@ done
 
 (( ${#new_stems[@]} == 0 )) && exit 0
 
-echo "$(date '+%F %T') new transcript(s): ${new_stems[*]}"
+echo "$(date '+%F %T') new meeting(s): ${new_stems[*]}"
 open_iterm "${new_stems[@]}" || echo "$(date '+%F %T') failed to open iTerm2 (check Automation permission)" >&2
