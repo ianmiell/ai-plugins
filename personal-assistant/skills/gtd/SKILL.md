@@ -137,6 +137,9 @@ invariants in `AGENTS.md`).
 - **Meeting:** names new meeting transcripts after their calendar event and
   turns a meeting's actions into tasks, people notes and a closed `MEETING:`
   task. See the meeting skill's step 6.
+- **LinkedIn sync:** adds new LinkedIn connections to `people/` with
+  `gtd import-connections --auto` and sets the levels Ian agrees. See the
+  linkedin-sync skill.
 
 They all load this skill with the Skill tool (`personal-assistant:gtd`) and follow
 its How to run it, Commands and Rules sections.

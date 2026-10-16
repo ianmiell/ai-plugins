@@ -12,7 +12,8 @@ skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, 
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
 skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; drafts replies, never sends
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
-scripts/                - launchd agent that opens /meeting in iTerm2 when a new recording or transcript appears
+skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels
+scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 ```
 
@@ -27,3 +28,16 @@ skill names the recording and moves it into the meetings folder, where
 Whisper Transcription's Watch Folder transcribes it. Remove it with
 `scripts/install-meeting-watch.sh --uninstall`. The log is
 `~/Library/Logs/com.ianmiell.meeting-watch.log`.
+
+## LinkedIn sync
+
+`scripts/install-linkedin-sync.sh` installs a launchd agent that opens an
+iTerm2 window running `claude '/personal-assistant:linkedin-sync'` every
+Monday at 08:30 (on waking, if the Mac was asleep). The skill reads
+LinkedIn's Recently added connections page in Chrome, through Claude in
+Chrome, back to the newest connection already in `~/git/gtd/people`, adds
+the new people with `gtd import-connections --auto`, and suggests a level
+for each from the calendars, meeting transcripts and email. Run it now with
+`launchctl kickstart gui/$(id -u)/com.ianmiell.linkedin-sync`, remove it
+with `scripts/install-linkedin-sync.sh --uninstall`. The log is
+`~/Library/Logs/com.ianmiell.linkedin-sync.log`.
