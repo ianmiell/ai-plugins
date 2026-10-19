@@ -1,8 +1,6 @@
 ---
 name: mail
 description: Triage Ian's two Gmail inboxes (work ian.miell@container-solutions.com and personal ian.miell@gmail.com) and help decide what to do with each email — reply, delegate, schedule, archive, unsubscribe or trash. Use when Ian asks to go through the mail, triage or clear the inbox, catch up on email, or invokes /mail. Optional argument narrows the scope, e.g. "/mail last 2 days", "/mail from:someone@example.com", "/mail unread", "/mail work", "/mail personal".
-model: Sonnet 4.6
-effort: low
 ---
 
 # Mail triage

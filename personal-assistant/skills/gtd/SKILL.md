@@ -1,8 +1,6 @@
 ---
 name: gtd
 description: Manage Ian's GTD task system, the `gtd` command in ~/git/gtd (git-backed tasks, reminders, people notes and meeting records). Lists, shows and searches tasks, creates tasks (e.g. from an email or meeting), adds notes, changes status or priority, sets reminders and closes tasks. Use when Ian mentions gtd, tasks, todos, "add a task", "what's on my list", "what am I waiting on", reminders, or invokes /gtd. Also used by the mail and calendar skills to turn emails and meetings into tasks. Optional argument, e.g. "/gtd todo", "/gtd waiting", "/gtd 4646", "/gtd add Call the bank".
-model: Sonnet 4.6
-effort: low
 ---
 
 # GTD
