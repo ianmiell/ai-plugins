@@ -15,5 +15,7 @@ Always READ LATER (keep + star), never junk or archive by default:
 
 - Our World in Data (`newsletter@ourworldindata.org`), including "Data Insight" emails
 - The Rest Is History (`therestishistory@mail.beehiiv.com`)
+- Prof G Markets (`profgmedia+markets-newsletter@substack.com`), by Scott Galloway & Ed Elson.
+  Not the Prof G Pod, which goes to the trash (see newsletters-to-trash.md)
 
 When Ian says he reads another newsletter, add it to this list.

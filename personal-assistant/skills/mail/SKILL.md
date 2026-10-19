@@ -159,7 +159,8 @@ Read later stays in the inbox and starred, processed inbox threads are
 starred, nothing outside the inbox is starred, emails with a gtd task
 raised against them are suggested for archiving, meaningful email
 interactions are noted in the person's gtd people file, and closing a gtd
-task archives its `GTD-<N>`-labelled mail and removes the label.
+task archives its `GTD-<N>`-labelled mail and removes the label, and
+newsletters Ian doesn't read are trashed.
 
 - **Never send email.** Write replies and forwards as drafts with
   `create_draft`; Ian sends them. Only use `send_message`, `reply` or
