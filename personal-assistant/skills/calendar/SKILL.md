@@ -120,6 +120,12 @@ calendar, use `list_events` with `fullText`.
   proposing times, a note to the organiser) is a draft in the right mailbox,
   via the mail skill's rules. Calendar responses (accept/decline) are the
   only messages that go out directly, and only after approval.
+- **Write in Ian's voice.** Emails, Slack DMs, decline comments and event
+  descriptions follow `voices/common.md` plus `voices/email.md` or
+  `voices/slack.md` at the plugin root (`<base>/../../voices/`): see the
+  "Yes / accept", "Decline" and "Scheduling" rows. A decline comment is one
+  short clause ("clash, sorry - can we move it?"). Run drafts through
+  `scripts/voice-check.py` before showing them.
 
 ## Process
 

@@ -1,7 +1,8 @@
 # Ian's Slack voice
 
-Read this before writing any Slack draft. It was built in October 2026 from
-about 380 of Ian's own Slack messages (mostly May–Oct 2026, a few older):
+Read `common.md` first, then this, before writing any Slack draft. Built in
+October 2026 from about 380 of Ian's own Slack messages (mostly May–Oct
+2026, a few older):
 1:1 DMs (about 45%), internal channels (about 35%, leadership, sales,
 engineering, client-account and social channels), group DMs (about 15%) and
 a shared channel with an outside partner (about 5%).

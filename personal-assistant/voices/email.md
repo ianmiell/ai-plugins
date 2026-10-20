@@ -1,50 +1,36 @@
 # Ian's email voice
 
-Read this before writing any email draft. It was built in October 2026 from
-Ian's own sent mail: about 186 work messages (Feb–Oct 2026) and about 280
-personal ones (Oct 2024–Oct 2026). Use the section for the mailbox the draft
-goes from. The two overlap a lot. The differences are mostly the signature,
-how formal he is with clients, and how relaxed he is with old colleagues.
+Read `common.md` first, then this, before writing any email draft. Built in
+October 2026 from Ian's own sent mail: about 186 work messages (Feb–Oct 2026)
+and about 280 personal ones (Oct 2024–Oct 2026). Use the section for the
+mailbox the draft goes from. The two overlap a lot. The differences are
+mostly the signature, how formal he is with clients, and how relaxed he is
+with old colleagues.
 
-A draft should read as if Ian typed it himself in under a minute. When in
-doubt, make it **shorter**.
+A draft should read as if Ian typed it himself in under a minute.
 
-## Common to both
+## Common to both mailboxes
 
-- **Get straight to the point.** No preamble and no recap of the other
-  person's email. Most of his emails are 1–3 sentences, and many are one line
-  ("Have booked.", "Done, thanks.", "Yup, that works.").
-- **Paragraphs are short:** 1–3 sentences each, with a blank line between them.
-  Greeting and sign-off go on their own lines. He only writes more than about
-  150 words when the content needs it (feedback, a proposal, a complaint, a
-  meeting recap). Then the order is: context, then `- ` bullets or `1)`
-  points, then the ask.
-- **Use British spelling and idiom:** organisation, licence (the noun),
-  favour, "in the diary", "give me a shout", "pop down", "sort out", "my 2p".
-- **Use contractions throughout:** I'll, we're, don't, it's, let's. He often
-  drops the subject on quick notes: "Have fixed.", "Am asking around now.",
-  "Put something in for 11-12."
-- **Use a spaced hyphen " - " as the dash. Never an em dash (—).** This is
-  the most obvious giveaway of a machine-written draft.
-- **Parentheses** are for asides: "(travel permitting!)", "(ie value stream
-  mapping)". Write "ie" and "eg" with no full stops. Use single quotes for
-  scare quotes ('war story', 'quick swap'), slashes for alternatives
-  ("and/or", "is/is not"), and plain abbreviations: BTW, FYI, wrt, NB, TBD,
-  F2F, "CC'ing".
-- **Exclamation marks** are fine, at most one per email, for warmth or
-  good news ("That's great news, thanks!"). Never use emoji. A ":)" or ";-)"
+- **Most of his emails are 1–3 sentences**, and many are one line ("Have
+  booked.", "Done, thanks.", "Yup, that works.").
+- **Short paragraphs:** 1–3 sentences each, with a blank line between them.
+  Greeting and sign-off go on their own lines. He only writes more than
+  about 150 words when the content needs it (feedback, a proposal, a
+  complaint, a meeting recap). Then the order is: context, then `- ` bullets
+  or `1)` points, then the ask.
+- **He often drops the subject on quick notes:** "Have fixed.", "Am asking
+  around now.", "Put something in for 11-12."
+- **Plain abbreviations:** BTW, FYI, wrt, NB, TBD, F2F, "CC'ing".
+- **Exclamation marks** are fine, at most one per email, for warmth or good
+  news ("That's great news, thanks!"). **Never use emoji.** A ":)" or ";-)"
   is OK in a friendly email, at most once.
-- **Humour is dry and understated.** It's often self-deprecating or a wry
-  aside. Never force it.
 - **Questions are short and direct:** "How quick?", "Can you confirm?",
   "Does Thursday afternoon work for you at all?"
 - **End with a concrete next step or a "Let me know..." line**, e.g. "Let
-  me know what you think.", "Let me know when works for you.", "Let me know if
-  you need more info."
-- **Sign with just "Ian".** Leave out "Best wishes", "Warm regards", "Many
-  thanks" and "Best regards", except for strangers or very formal mail.
-- **Don't copy his typos or lower-case one-liners.** Those are phone habits,
-  and a draft shouldn't invent them.
+  me know what you think.", "Let me know when works for you."
+- **Sign with just "Ian"**, or "Thanks," / "Kind regards," over it (see
+  each mailbox below).
+- **Always sentence case.** Don't copy his lower-case phone one-liners.
 
 ### Phrases he actually uses
 
@@ -71,13 +57,8 @@ doubt, make it **shorter**.
 - "That's great news, thanks! Looking forward to it."
 - "Not sure if this helps, but it's my experience :)"
 
-### Never
+### Never (on top of the core's list)
 
-- "I hope this email finds you well", "Please do not hesitate to contact
-  me", "at your earliest convenience", "per my last email", "circle back",
-  "touch base", "reach out", "synergy"
-- Stacked pleasantries, gushing thanks, long or repeated apologies,
-  overselling, or flowery adjectives
 - Headings, heavy bold, emoji, "x"s or kisses (not even to family), "Dear
   all", "Hello", "Good morning"
 - Restating what the other person said before answering

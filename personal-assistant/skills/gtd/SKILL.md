@@ -88,6 +88,11 @@ globbing everything into context; the repo is huge.
 | Close | `bin/gtd close N …`. It refuses if any file contains `TODO`. If the task has a reminder it asks whether to remove it: pipe `printf 'y\n'` only if Ian agreed to drop the reminder, otherwise `printf 'n\n'`. Then tidy its email: archive threads labelled `GTD-N` in both mailboxes and remove the label (plugin rule `rules/close-task-tidies-mail.md`; use the mail skill's mailbox setup). |
 | Unremind | `bin/gtd unremind N` |
 
+Write subjects, notes and people-note lines in Ian's house style:
+`voices/notes.md` at the plugin root (`<base>/../../voices/`). The mail,
+meeting, slack and calendar skills use it too when they create tasks or log
+people notes.
+
 Show Ian the exact subject, prefix, notes and status before creating a
 task, then report the new task number. Never hand-edit `status/` or
 `priority/` symlinks or `.metadata/lasttask`. Use the commands (see the

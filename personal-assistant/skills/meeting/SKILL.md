@@ -238,9 +238,13 @@ until Ian says done:
    `- YYYY-MM-DD (meeting): <one-sentence summary> [meetings/<file>.txt]` under
    a `### Meeting log` heading. Find attendees from the calendar event.
 4. **Follow-up email** draft to the external attendees, in the mailbox that
-   matches the event's calendar, through the mail skill. Never send.
+   matches the event's calendar, through the mail skill. Never send. Write
+   it in Ian's voice (`voices/common.md` and `voices/email.md` at the plugin
+   root, `<base>/../../voices/`); the "Meeting recap (work)" row there is the
+   shape for a recap, and `scripts/voice-check.py --channel email` checks it.
 5. **Slack follow-up** draft for colleagues, through the slack skill. Never
-   send.
+   send. Use `voices/slack.md`, eg the channel-update shape for a client
+   meeting, and `voice-check.py --channel slack`.
 6. **The `MEETING:` task**: find the open gtd task for this event (grep
    `status/todo/` and `status/waiting/` for the event id or title). Offer to
    add the transcript file name to its notes, and then to close it.
