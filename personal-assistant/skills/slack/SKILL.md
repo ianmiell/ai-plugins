@@ -9,7 +9,7 @@ Go through what has happened on Slack since Ian last looked, find what needs him
 an action for each conversation, and carry out the actions Ian approves. The goal is that
 nobody is left waiting on Ian without him knowing, and channel noise doesn't eat his day.
 
-To go through every channel at once (both mailboxes, Slack, WhatsApp and pending
+To go through every channel at once (both mailboxes, Slack, WhatsApp, LinkedIn and pending
 invites), use the **comms skill** (`/comms`) instead; it loads this one for the Slack part
 and follows its Setup, Tools and Rules.
 

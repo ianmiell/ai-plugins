@@ -1,6 +1,6 @@
 ---
 name: comms
-description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms unread".
+description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages and invitations, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread".
 ---
 
 # Comms: every channel at once
@@ -17,6 +17,7 @@ remain for a single channel (`/mail`, `/slack`, `/whatsapp`, `/calendar invites`
 | `P✉` | Personal mail, ian.miell@gmail.com | `personal-assistant:mail` | `in:inbox` |
 | `S` | Slack, Container Solutions | `personal-assistant:slack` | since its last run |
 | `WA` | WhatsApp | `personal-assistant:whatsapp` | since its last run |
+| `LI` | LinkedIn messages and invitations | this skill (below), in Chrome | the 10 newest conversations |
 | `📅` | Pending invites on W and P | `personal-assistant:calendar` | next 4 weeks |
 
 Load the **mail, slack, whatsapp, calendar and gtd** skills with the Skill tool at the
@@ -25,6 +26,34 @@ full to its channel, and so do the plugin's house rules in `rules/*.md` (read th
 Use their Gather, cross-check and Classify steps for the detail of each channel. This
 skill replaces their **Present** and **Execute** steps with the combined ones below, and
 does the calendar and gtd cross-checks once for everything.
+
+### LinkedIn
+
+LinkedIn has no connector or API for messages, so this skill reads it in Ian's own
+signed-in Chrome through Claude in Chrome. Load the `claude-in-chrome` skill, then
+`select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__tabs_create_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__get_page_text,mcp__claude-in-chrome__tabs_close_mcp`.
+
+- **Read with `get_page_text` only.** Open a new tab, navigate to
+  `https://www.linkedin.com/messaging/`, and read the page text. It gives the 10 newest
+  conversations, each with the name, date and last message, prefixed `You:` when Ian sent
+  it, plus the whole of the newest conversation (LinkedIn opens it automatically, which
+  marks it read). Then navigate the same tab to
+  `https://www.linkedin.com/mynetwork/invitation-manager/received/` for pending
+  invitations (ignore the "Suggestions for you" below them). Close the tab when done.
+- **No scripts, clicks or typing on LinkedIn.** On the messaging page, `javascript_tool`,
+  screenshots and clicks fail with "Cannot access a chrome-extension:// URL of different
+  extension" (another extension injects into the message box, October 2026), and
+  conversation list items have no links, so other conversations can't be opened. Don't
+  work round this. If an item needs the whole conversation, say so and Ian opens it.
+- **Never send, accept or connect.** Replies are drafts shown in the conversation for Ian
+  to paste; invitations are accepted or ignored by Ian in LinkedIn. LinkedIn restricts
+  accounts that look automated, so keep to the two page loads above.
+- If the page shows a sign-in form or a security check, don't type anything: report it
+  and carry on without LinkedIn.
+- **What counts:** a conversation is waiting on Ian when its last message isn't `You:`.
+  Cold pitches (recruiters, agencies, sales, "free review", Premium offers) go in Junk with
+  no draft unless Ian asks; the LinkedIn voice guide's "Sales pitch decline" row is for
+  when he does. Event invitations from people Ian met go in Schedule.
 
 Where a channel skill and this one disagree on how to present or batch things, this one
 wins. On what's allowed (sending, deleting, approvals, privacy), the stricter rule wins.
@@ -53,8 +82,9 @@ Everything in the channel skills' Rules, and in particular:
   repeated.
 - A time (`today`, `2d`, `since monday`): that window for Slack and WhatsApp, and
   `in:inbox newer_than:…` for mail. Invites stay at 4 weeks ahead.
-- `work`: W✉, S and invites on W. `personal`: P✉, WA and invites on P.
-- Channel names (`mail`, `work-mail`, `personal-mail`, `slack`, `whatsapp`, `invites`):
+- `work`: W✉, S, LI and invites on W. `personal`: P✉, WA and invites on P.
+- Channel names (`mail`, `work-mail`, `personal-mail`, `slack`, `whatsapp`, `linkedin`,
+  `invites`):
   only those, in any combination.
 - `unread`: `is:unread` for mail, `--unread` for WhatsApp, and the normal window for Slack
   (it has no unread state).
@@ -71,6 +101,8 @@ Run every channel's access check in parallel, in one go, before gathering:
 - WhatsApp: `whatsapp.py chats --limit 1` (whatsapp skill, Setup).
 - Calendar: `list_events` on both calendar IDs for the invite window, checking
   `accessRole` (calendar skill, Setup).
+- LinkedIn: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
+  with the fix (open Chrome and check the Claude extension is connected) and carry on.
 
 Report failures in one block at the top, with each fix, and carry on with the channels
 that work. Never silently skip a channel, and never present a partial run as complete.
@@ -78,7 +110,7 @@ that work. Never silently skip a channel, and never present a partial run as com
 ### 3. Gather, in parallel
 
 Fire the independent calls together: inbox searches for both mailboxes, the three Slack
-searches, `whatsapp.py chats`, and `list_events` for pending invites (`responseStatus:
+searches, `whatsapp.py chats`, the two LinkedIn page reads, and `list_events` for pending invites (`responseStatus:
 needsAction` on Ian's attendee entry). Then read what needs reading, as each channel
 skill's Gather step says. Also list `GTD-<N>` labels in both mailboxes for the
 `close-task-tidies-mail` rule.
@@ -91,7 +123,8 @@ and start with the newest 25 mail threads per mailbox, as the mail skill does.
 Turn messages into **items**: one per conversation, and one per *topic* when the same
 person (or the same thing) turns up on more than one channel. For example: an email from a
 colleague plus their Slack ping "sent you an email"; a calendar invite plus the email
-inviting Ian; a WhatsApp "see my email" plus the email. Match on the person (name, email
+inviting Ian; a WhatsApp "see my email" plus the email; LinkedIn's "X sent you a message" or invitation
+email plus the LinkedIn conversation (archive the email, act on LinkedIn). Match on the person (name, email
 address, Slack profile, phone), the subject and the dates. A merged item lists every
 channel it touches (`W✉+S`) and gets one recommendation, usually a reply on the channel
 where the real content is, plus tidying the others (archive the email, 👀 on the ping).
@@ -140,7 +173,7 @@ group chatter compact: one line per item, or one line per channel when there are
 ("W✉ 14–22: notifications and receipts → archive"). Example (made-up names):
 
 ```
-━━ COMMS — W✉ 18 · P✉ 6 · S since Mon 17:00 · WA since Mon 18:00 · 📅 2 invites ━━
+━━ COMMS — W✉ 18 · P✉ 6 · S since Mon 17:00 · WA since Mon 18:00 · LI 10 · 📅 2 invites ━━
 ACT NOW
  1. W✉+S  Jane Doe (Acme) — Contract renewal       Wants sign-off on the revised terms by Fri;
           pinged on Slack too.  🗂 → new task "CS: Sign off Acme renewal"
@@ -149,21 +182,26 @@ ACT NOW
           → Draft "yup, pencilled in" and add to P 19:00
  3. S     Bob — DM, 11:02                           Needs your view on the bench offer.
           → Draft reply
+ 4. LI    Chris — Oct 19                             Can't do Fri; offers Wed or Mon.
+          📅 Mon 10:00 free  → Draft "Monday works - 10am?" for you to paste
 
 SCHEDULE
- 4. 📅 W  Q4 planning Tue 14:00 (Bob)              📅 pending response  ⚠ clashes with P dentist
+ 5. 📅 W  Q4 planning Tue 14:00 (Bob)              📅 pending response  ⚠ clashes with P dentist
           → Decline with note, or move the dentist?
 
 READ LATER
- 5. P✉    Newsletter you read — Weekly issue         → Keep, star
+ 6. P✉    Newsletter you read — Weekly issue         → Keep, star
 
 FYI / DONE
- 6–13. W✉  GitHub, Calendly and receipt notifications  → Archive
-14.   WA  Street group (muted) — 40 unread, nothing for you
+ 7–14. W✉  GitHub, Calendly and receipt notifications  → Archive
+15.   WA  Street group (muted) — 40 unread, nothing for you
+
+JUNK
+16.   LI  3 cold pitches (recruiter, agency, Premium offer)  → No reply
 ```
 
 If Act now is empty across every channel, say so first. Then ask how to proceed, taking
-shorthand that spans channels: "go", "go except 4", "draft 1 2 3, archive 6–13", "2: say
+shorthand that spans channels: "go", "go except 5", "draft 1 2 3 4, archive 7–14", "2: say
 I'll call tonight", "task 1". Use AskUserQuestion only for a single decision that needs
 options.
 
@@ -179,17 +217,19 @@ skill's Execute step:
   if asked.
 - **WhatsApp** (whatsapp skill): `whatsapp.py draft`, **one at a time**, after Ian has
   seen the text, saying which chat each one is in before the next.
+- **LinkedIn**: show each draft's text with the conversation's name for Ian to paste;
+  nothing is typed into LinkedIn.
 - **Calendar** (calendar skill): respond, add, move, saying who gets notified; then offer
   to archive the related email.
 - **gtd** (gtd skill): new tasks with the source link or chat reference (and the `GTD-<N>`
   Gmail label for email), notes on existing tasks, closes.
 - **People notes**: per `rules/people-notes-from-email.md`, with the channel in the line
-  (`email, work`, `email, personal`, `slack`, `whatsapp`), then one `bin/gtd push`.
+  (`email, work`, `email, personal`, `slack`, `whatsapp`, `linkedin`), then one `bin/gtd push`.
 
 **Drafts are in Ian's voice.** Before the first draft of a run, read `voices/common.md`
-plus the guide for each channel drafted on (`email.md`, `slack.md`, `whatsapp.md`, and
-`notes.md` for gtd text), and run every draft through `scripts/voice-check.py --channel
-email|slack|whatsapp` before showing it. Show each draft's text in the report.
+plus the guide for each channel drafted on (`email.md`, `slack.md`, `whatsapp.md`,
+`linkedin.md`, and `notes.md` for gtd text), and run every draft through
+`scripts/voice-check.py --channel email|slack|whatsapp|linkedin` before showing it. Show each draft's text in the report.
 
 Do independent actions in parallel (archiving in two mailboxes and Slack drafts don't
 depend on each other); do WhatsApp drafts last, one by one, since each takes over the app
@@ -204,7 +244,7 @@ to do nothing).
 A short report grouped by channel: what was archived, starred, trashed; drafts (where and
 their text); calendar changes and who was notified; tasks and notes created; people notes
 added; and what still needs Ian personally (sending each draft, pressing Enter on
-WhatsApp, approvals only he can give). Give any errors as they came.
+WhatsApp, pasting LinkedIn drafts, accepting invitations, approvals only he can give). Give any errors as they came.
 
 If a mailbox had more threads than the first batch, offer the next batch, saying which
 mailbox.

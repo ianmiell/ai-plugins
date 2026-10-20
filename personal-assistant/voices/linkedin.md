@@ -4,10 +4,11 @@ Built from Ian's LinkedIn data export: about 700 posts with text (2010 to 2026, 
 
 ## Messages
 
-No DM data, so this is inferred. Match the register of his short comment replies and connection notes.
+The export had no DMs, so this was first inferred from his comment replies and connection notes. A look at a real thread in October 2026 (read through Chrome for `/comms`) confirmed it and added the point about replies: once a conversation is going, LinkedIn DMs are Slack-like.
 
-- **Greeting:** "Hey [name]," or "Hi [name]," with the name, or plain "Hey," for strangers. Never "Dear".
-- **Sign-off:** a bare "Ian" on its own, often after "Hope you're well!" Nothing else: no "Best regards", no title, no signature block.
+- **First message:** "Hey [name]," or "Hi [name]," with the name, or plain "Hey," for strangers. Never "Dear". Restarting a quiet thread is one line: "hey [name], all ok?".
+- **Replies in an ongoing thread:** no greeting and no sign-off, often lower case, one or two lines: "coffee sounds good, got a preferred time/place?", "Tomorrow is good", "i guess you got busy yesterday! got time today?". Longer, reflective replies are sentence case and may trail off with "...".
+- **Sign-off:** only on a first message, and then a bare "Ian" on its own, often after "Hope you're well!" Nothing else: no "Best regards", no title, no signature block.
 - **Length:** one to three sentences. One idea per message.
 - **Register:** chatty, first name terms, exclamation marks are fine. Abbreviations like LMK, tbh and TBF show up.
 
