@@ -90,7 +90,7 @@ globbing everything into context; the repo is huge.
 
 Write subjects, notes and people-note lines in Ian's house style:
 `voices/notes.md` at the plugin root (`<base>/../../voices/`). The mail,
-meeting, slack and calendar skills use it too when they create tasks or log
+meeting, slack, whatsapp and calendar skills use it too when they create tasks or log
 people notes.
 
 Show Ian the exact subject, prefix, notes and status before creating a
@@ -136,6 +136,9 @@ invariants in `AGENTS.md`).
   promised to follow up, into tasks (with the Slack message link), and adds
   notes to existing tasks. See the slack skill's "Calendar and gtd
   cross-check".
+- **WhatsApp:** the same for WhatsApp chats (`HOME:` for personal, `CS:` for
+  work contacts), noting the chat and message time since there's no link.
+  See the whatsapp skill's "Calendar and gtd cross-check".
 
 - **Meeting:** names new meeting transcripts after their calendar event and
   turns a meeting's actions into tasks, people notes and a closed `MEETING:`

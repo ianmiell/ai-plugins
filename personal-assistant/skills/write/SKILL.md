@@ -6,7 +6,7 @@ description: Draft something in Ian's own voice for a channel the other skills d
 # Write as Ian
 
 Turn what Ian wants to say into a draft that reads as if he wrote it, for the
-channels the mail, slack and calendar skills don't handle. Never publish,
+channels the mail, slack, whatsapp and calendar skills don't handle. Never publish,
 post, send or comment anything: Ian does that.
 
 ## Voices
@@ -19,7 +19,7 @@ Read `common.md` first, then the channel's guide:
 | LinkedIn post, DM, comment, connection note | `linkedin.md` | `linkedin` |
 | Blog post, article, talk abstract, write-up | `writing.md` | `writing` |
 | PR review comment or summary | `review.md` | `review` |
-| Email or Slack (if asked here) | `email.md` / `slack.md` | `email` / `slack` |
+| Email, Slack or WhatsApp (if asked here) | `email.md` / `slack.md` / `whatsapp.md` | `email` / `slack` / `whatsapp` |
 
 ## Rules
 

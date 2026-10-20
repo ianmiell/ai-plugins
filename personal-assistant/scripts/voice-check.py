@@ -14,12 +14,13 @@ import argparse
 import re
 import sys
 
-CHANNELS = ("email", "slack", "linkedin", "writing", "review", "notes")
+CHANNELS = ("email", "slack", "whatsapp", "linkedin", "writing", "review", "notes")
 
 # Rough word ceilings: past these a draft is unusually long for Ian.
 MAX_WORDS = {
   "email": 180,
   "slack": 60,
+  "whatsapp": 40,
   "linkedin": 250,
   "writing": None,
   "review": 80,
@@ -95,6 +96,7 @@ EMOJI = re.compile(
   "|:[a-z0-9_+-]+:"
 )
 GREETING = re.compile(r"^\s*(hi|hey|hello|dear|good (morning|afternoon))\b", re.I)
+FORMAL_GREETING = re.compile(r"^\s*(hi|hello|dear|good (morning|afternoon|evening))\b", re.I)
 SIGNOFF = re.compile(r"(^|\n)\s*(thanks,?|cheers,?|kind regards,?)?\s*\n?\s*ian\.?\s*$", re.I)
 
 
@@ -128,7 +130,7 @@ def check(text, channel):
   emoji = EMOJI.findall(prose)
   if channel in NO_EMOJI and emoji:
     problems.append(f"emoji in {channel}: Ian doesn't use them here")
-  elif len(emoji) > 1 and channel in ("slack", "linkedin"):
+  elif len(emoji) > 1 and channel in ("slack", "whatsapp", "linkedin"):
     problems.append(f"{len(emoji)} emoji: use at most one")
 
   if channel == "slack":
@@ -137,6 +139,13 @@ def check(text, channel):
       problems.append("greeting on a Slack reply: drop it (only a fresh DM request opens with 'Hey [name],')")
     if SIGNOFF.search(prose.strip()):
       problems.append("signed 'Ian' on Slack: drop the sign-off")
+
+  if channel == "whatsapp":
+    first = prose.strip().splitlines()[0] if prose.strip() else ""
+    if FORMAL_GREETING.match(first):
+      problems.append("formal greeting on WhatsApp: drop it (at most 'hey [name]' to restart a quiet chat)")
+    if SIGNOFF.search(prose.strip()):
+      problems.append("signed 'Ian' on WhatsApp: drop the sign-off")
 
   limit = MAX_WORDS[channel]
   words = len(re.findall(r"\b\w+\b", prose))

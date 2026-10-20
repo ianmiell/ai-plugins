@@ -84,6 +84,15 @@ attendees), or offering times to a colleague, which is usually quicker as a
 Slack DM than an email. Use its Setup, Tools and Rules (drafts only, never
 send), not its whole triage process. External people get email.
 
+### WhatsApp
+
+Use the **whatsapp skill** (`personal-assistant:whatsapp`) for personal
+plans: when a P event's details (time, place, who's coming) were arranged on
+WhatsApp, for prepping a personal event, or when offering times to family
+and friends, which is usually a WhatsApp message rather than an email. Use
+its Setup, Tools and Rules (read only, drafts Ian sends himself), not its
+whole triage process.
+
 ## Tools
 
 Load the schemas in one ToolSearch call:

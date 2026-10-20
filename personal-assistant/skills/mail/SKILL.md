@@ -149,6 +149,12 @@ quickest way to delegate to a Container Solutions colleague is a Slack DM. Use
 its Setup, Tools and Rules (drafts only, never send), not its whole triage
 process.
 
+For WhatsApp, use the **whatsapp skill** (`personal-assistant:whatsapp`) the
+same way: when an email points to WhatsApp ("sent you the details on
+WhatsApp"), or before replying by email to a friend or family member who
+may already have had the answer there. Use its Setup, Tools and Rules (read
+only, drafts Ian sends himself).
+
 ## Rules
 
 **House rules:** before each run, read every `.md` file in the plugin's

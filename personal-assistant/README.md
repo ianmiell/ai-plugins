@@ -11,10 +11,12 @@ skills/mail/SKILL.md    - /mail: triage the Gmail inbox and decide what to do wi
 skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, invites, booking
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
 skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; drafts replies, never sends
+skills/whatsapp/SKILL.md - /whatsapp: triage WhatsApp from the desktop app's local database (read only); drafts open in the app for Ian to send
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
 skills/write/SKILL.md    - /write: draft LinkedIn posts and messages, blog posts and articles, PR review comments in Ian's voice; /write check reviews a draft
 skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; with Premium, invite recent profile viewers to connect
-voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, linkedin, writing, review and notes; read before any draft
+voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
+scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
 scripts/voice-check.py  - mechanical check of a draft against the voices (em dashes, banned phrases, US spelling, emoji, length)
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
