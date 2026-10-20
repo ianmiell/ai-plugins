@@ -12,6 +12,7 @@ skills/mail/voice.md     - how Ian writes email (work and personal), used for ev
 skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, invites, booking
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
 skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; drafts replies, never sends
+skills/slack/voice.md    - how Ian writes on Slack (DMs, channels, shared channels), used for every Slack draft
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
 skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; with Premium, invite recent profile viewers to connect
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
