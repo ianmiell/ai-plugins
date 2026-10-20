@@ -9,6 +9,10 @@ Go through both of Ian's Gmail mailboxes, sort what's there, recommend an action
 thread, and carry out the actions Ian approves. The goal is an inbox Ian can
 clear in minutes, with nothing important missed.
 
+To go through every channel at once (both mailboxes, Slack, WhatsApp and pending
+invites), use the **comms skill** (`/comms`) instead; it loads this one for the email part
+and follows its Setup, Tools and Rules.
+
 ## Setup
 
 Each mailbox is reached a different way:
