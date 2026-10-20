@@ -78,18 +78,17 @@ time.
 
 ### 1. Find the meetings to process
 
-With stems as arguments, process those. Without, list recordings in the inbox
-and bare-stem transcripts:
+The file steps (1, 3, 4 and 5) are done by `meeting-files.py` in the plugin's
+`scripts/` folder (`M=<base>/../../scripts/meeting-files.py`), which follows
+the rules below exactly. `python3 $M --help` lists its commands.
 
-```bash
-ls ~/Movies/meetings-inbox | grep -E '^[0-9]{8}_[0-9]{4}\.mp4$'
-ls ~/git/gtd/meetings | grep -E '^[0-9]{8}_[0-9]{4}\.txt$'
-```
-
-If there are none, say so and also list recordings still waiting for a
-transcript (a `.mp4` in `MEETINGS` with no `.txt` of the same stem, e.g. from
-`./find_orphan_mp4s.sh`). Then stop. With several, take them oldest first,
-one at a time.
+With stems as arguments, process those. Without, run `python3 $M pending`. It
+lists recordings in the inbox and bare-stem transcripts, each with its path
+(recording or transcript), its files and their sizes, and a warning if the
+`.mp4` is empty or changed in the last 60 seconds. With nothing to process, it
+says so and lists recordings still waiting for a transcript (a `.mp4` in
+`MEETINGS` with no `.txt` of the same stem). Then stop. With several, take
+them oldest first, one at a time.
 
 For each stem pick the path: `INBOX/<stem>.mp4` exists → recording path;
 otherwise `MEETINGS/<stem>.txt` exists → transcript path. A stem that already
@@ -148,11 +147,18 @@ For example, `DNB/Container Solutions - Follow up call` becomes
   `20261015_1130.txt.gpt-5-nano.aisummary` becomes
   `20261015_1130_<description>.txt.gpt-5-nano.aisummary`.
 
-Show the full list of before → after names and ask.
+`python3 $M plan <stem> "<event title>"` prints the path, the new stem and
+every before → after name, and `STOP` (exit 1) if any target exists. Use `-`
+as the title for `no_calendar_match`, or `--name <description>` for a name Ian
+typed. Show the list and ask.
 
 ### 4. Move or rename
 
-After a yes:
+After a yes, run `python3 $M apply <stem> "<event title>"` (same title or
+`--name` as the plan). It does what follows for either path, including the
+`gtd push` on the transcript path, and prints each move. Then, on the
+transcript path, `python3 $M dedupe <new stem>` before the final report. By
+hand:
 
 **Recording path:** check `MEETINGS/<new stem>.mp4` and `MEETINGS/<new stem>.txt`
 don't exist, then `mv -n -- INBOX/<stem>.mp4 MEETINGS/<new stem>.mp4`. Nothing
@@ -177,6 +183,11 @@ it with `rm --`. If it differs, show Ian both sizes and ask.
 
 ### 5. Delete the .mkv, then wait for the transcript
 
+`python3 $M mkv <stem> <new stem>` runs the three checks below and prints
+each as pass or FAIL. Add `--delete` to remove the `.mkv` when all pass
+(nothing is deleted if any fails, and it says how to remux a missing `.mp4`).
+Show Ian the results.
+
 Look for `<stem>.mkv` (the old stem): in `INBOX` on the recording path, in
 `MEETINGS` on the transcript path. If there isn't one, say so and move on.
 Delete it only if all of these hold, and show Ian each result:
@@ -194,8 +205,10 @@ with `ffmpeg -i <stem>.mkv -c copy MEETINGS/<new stem>.mp4`; offer to run
 the `ffmpeg` command, and recheck afterwards.
 
 **Recording path: wait for the transcript.** Tell Ian Whisper is
-transcribing, then run this with `run_in_background` (foreground `sleep` is
-blocked) and wait for it to finish:
+transcribing, then run `python3 $M wait <new stem> --add` with
+`run_in_background` (foreground `sleep` is blocked) and wait for it to finish.
+It polls every 10 seconds for up to 30 minutes until the `.txt` stops growing,
+then does the `git add` and `bin/gtd push` below. It's the same as:
 
 ```bash
 f=~/git/gtd/meetings/<new stem>.txt
@@ -236,7 +249,10 @@ until Ian says done:
 3. **People notes** for the attendees, following
    `rules/people-notes-from-email.md` but with the line
    `- YYYY-MM-DD (meeting): <one-sentence summary> [meetings/<file>.txt]` under
-   a `### Meeting log` heading. Find attendees from the calendar event.
+   a `### Meeting log` heading. Find attendees from the calendar event, their
+   files with `people-note.py find "Name" --email <address>`, and write each
+   line with `people-note.py log <File> --kind meeting --ref meetings/<file>.txt
+   "<summary>"` (both in the plugin's `scripts/`), then one `bin/gtd push`.
 4. **Follow-up email** draft to the external attendees, in the mailbox that
    matches the event's calendar, through the mail skill. Never send. Write
    it in Ian's voice (`voices/common.md` and `voices/email.md` at the plugin
@@ -245,8 +261,8 @@ until Ian says done:
 5. **Slack follow-up** draft for colleagues, through the slack skill. Never
    send. Use `voices/slack.md`, eg the channel-update shape for a client
    meeting, and `voice-check.py --channel slack`.
-6. **The `MEETING:` task**: find the open gtd task for this event (grep
-   `status/todo/` and `status/waiting/` for the event id or title). Offer to
+6. **The `MEETING:` task**: find the open gtd task for this event
+   (`gtd-find.py <event id> "<title>"`, gtd skill). Offer to
    add the transcript file name to its notes, and then to close it.
 7. **Done.**
 

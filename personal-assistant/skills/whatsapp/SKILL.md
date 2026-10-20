@@ -17,13 +17,14 @@ and follows its Setup, Tools and Rules.
 
 ### Which machine
 
-WhatsApp is only read on the MacBook Pro, where the desktop app is set up. Check first,
-with the mail skill's "Which machine" command:
+WhatsApp is only read on the MacBook Pro, where the desktop app is set up. Check first:
 
 ```sh
-[ "$(uname -s)" = Darwin ] && system_profiler SPHardwareDataType 2>/dev/null \
-  | grep -q 'Model Name: MacBook Pro' && echo macbook-pro || echo other
+python3 <base>/../../scripts/pa-env.py check --only whatsapp --only windows
 ```
+
+It prints `machine: macbook-pro` or `machine: other`, whether `whatsapp.py` can read the
+database, and the window since the last run as a `--since` value.
 
 On any other machine (klimt, the Linux box, among them; switched off there October
 2026), stop: say WhatsApp is only available on the MacBook Pro, and don't run the script
@@ -130,7 +131,8 @@ know (reactions, polls, edits).
 ### 1. Scope
 
 - No argument: since the last run (from `whatsapp-last-run`), or the last 24 hours if
-  there's no record, capped at 7 days. Say which window you used.
+  there's no record, capped at 7 days: the `--since` value `pa-env.py` printed. Say which
+  window you used.
 - `today`, `2d`, `since monday`, a date: that window (`--since` takes `2d`, `6h`, `today`,
   `yesterday` or `YYYY-MM-DD`).
 - `unread`: every chat the app shows as unread, any age. `dms` / `groups`: just those.
@@ -163,8 +165,9 @@ date, time or deadline, and whether someone else in a group has already answered
   name in the description.
 - **Requests to meet without a time**: `suggest_time` across both addresses (evenings and
   weekends for personal), and offer 2–3 options in a draft reply.
-- **Real work or promises** ("can you look at my CV?", "I'll send you the details"): grep
-  open gtd tasks for the person and subject. Tag `🗂 task N` (offer a note) or
+- **Real work or promises** ("can you look at my CV?", "I'll send you the details"): look
+  for open gtd tasks with the person and subject, in one `gtd-find.py --batch` call for all
+  the chats (gtd skill, Commands). Tag `🗂 task N` (offer a note) or
   `🗂 → new task`, with `HOME:` for personal and `CS:` for work contacts. Things Ian is
   waiting on others for become a `waiting` task with `defer N DAYS`.
 
@@ -220,11 +223,14 @@ Do only the approved actions:
 - **Calendar**: through the calendar skill's Change step and Rules.
 - **gtd task / note**: with the gtd skill. Notes: `WhatsApp: <chat name>, <date time of
   the message>` on the line after `Task Number:` (there's no link to a message), then a
-  2–5 line summary of what's needed and by when.
-- **People notes**: per the rule above.
+  2–5 line summary of what's needed and by when
+  (`gtd-new-task.py --subject "HOME: …" --link "WhatsApp: <chat name>, <date time>"`,
+  summary on stdin).
+- **People notes**: per the rule above, with
+  `people-note.py log <File> --kind whatsapp [--task N] "<summary>"`.
 
-Then write the current time to `whatsapp-last-run`. Write it only after Ian has seen the
-list, even if he chose to do nothing.
+Then record the run with `python3 <base>/../../scripts/pa-env.py mark whatsapp`. Do it
+only after Ian has seen the list, even if he chose to do nothing.
 
 Report what was done in a few lines: drafts opened (which chat, the text, and whether it's
 in the chat or on the clipboard), events added, tasks and notes created, and what still

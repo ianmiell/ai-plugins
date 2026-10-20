@@ -13,14 +13,17 @@ accept/decline notices, routine HR-tool notices, or Ian's own mail to
 himself. Colleagues count when the exchange is substantive (e.g. proposing
 a CCF demo), not for routine admin.
 
-**How to write it:**
+**How to write it:** `scripts/people-note.py` at the plugin root does all of
+this (`find`, then `log`; `check` lists lines that ended up in the wrong place).
 - Find the file by name: `ls ~/git/gtd/people | grep -i 'Firstname_Lastname'`,
   and also try the email address via `grep -li '<address>' people/*.md`.
   Watch for changed names (e.g. Louise Corrigan → Louise Cox) and
-  `_2` duplicates.
-- Append to the end of the file, under a `### Email log` heading (add the
-  heading once if it isn't there). Never edit inside the
+  `_2` duplicates. (`people-note.py find "Name" --email <address>`)
+- Add it at the end of the file's `### Email log` section (add the heading
+  once if it isn't there, before any `## LinkedIn messages` section that
+  `gtd import-messages` keeps at the end). Never edit inside the
   `## managed by linkedin_tools` … `### managed by linkedin_tools` block.
+  (`people-note.py log <File> --kind "email, work" [--task N] "<summary>"`)
 - One line per interaction:
   `- YYYY-MM-DD (email, work|personal): <one-sentence summary> [task N]`.
   Keep it factual and short. Don't paste email bodies.

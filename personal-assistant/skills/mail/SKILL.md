@@ -17,15 +17,19 @@ and follows its Setup, Tools and Rules.
 
 ### Which machine
 
-How the work mailbox is reached depends on the machine. Check once per run:
+How the work mailbox is reached depends on the machine. Check once per run,
+together with the gog mailboxes' access checks:
 
 ```sh
-[ "$(uname -s)" = Darwin ] && system_profiler SPHardwareDataType 2>/dev/null \
-  | grep -q 'Model Name: MacBook Pro' && echo macbook-pro || echo other
+python3 $S/pa-env.py check --only mail
 ```
 
-(`hw.model` doesn't work for this: Apple Silicon reports `Mac14,9` and the
-like, not `MacBookPro…`.)
+`$S` is the plugin's `scripts/` folder (`<base>/../../scripts`, where `<base>`
+is this skill's base directory). It prints `machine: macbook-pro` or
+`machine: other`. For each mailbox gog serves on that machine, it then shows
+the sent-mail account check and the write no-op (see "Mailboxes via gog"), with
+the fix when a login has expired. (It reads `system_profiler`'s Model Name:
+`hw.model` doesn't work, since Apple Silicon reports `Mac14,9` and the like.)
 
 **On a MacBook Pro**, each mailbox is reached a different way:
 
@@ -150,11 +154,27 @@ In zsh, keep one prefix array per mailbox (`P=(gog -a ian.miell@gmail.com
 --gmail-no-send --no-input)`, `W=(gog -a ian.miell@container-solutions.com
 --gmail-no-send --no-input)`; then `"${P[@]}" …`), not a string.
 
+Most of this is wrapped by scripts in `$S`, which call gog the way described
+here (always `--gmail-no-send`) and keep its bulky JSON out of the
+conversation. Use them first. They only reach the mailboxes gog serves, so
+on the MacBook Pro the work mailbox still goes through the connector.
+
+| Step | Script |
+|---|---|
+| Account and write checks | `python3 $S/pa-env.py check --only mail` |
+| List the inbox | `python3 $S/mail-gather.py list [--mailbox work\|personal] [--query '…'] [--max 25]`: one compact block per thread, numbered across mailboxes, with a first-pass hint from the house rules |
+| Read a thread | `python3 $S/mail-gather.py read <mailbox> <threadId>`: plain-text bodies with quoted replies cut (a 56 KB `thread get` comes out at about 2 KB) |
+| Archive, keep + star, trash, spam, label, `GTD-N` | `python3 $S/mail-apply.py` with a plan on stdin (Execute, below) |
+| New gtd task from a thread | `python3 $S/gtd-new-task.py --mailbox M --thread ID …` (gtd skill) |
+| Closed tasks' `GTD-N` labels | `python3 $S/gtd-label-tidy.py` |
+
+The gog commands underneath, for anything the scripts don't cover:
+
 | Step | Command |
 |---|---|
 | Account check | `gmail search 'in:sent from:me' --max 1`, then `gmail thread get <id>`: the thread must contain the `-a` address on a `SENT` message. (Search results show each thread's *first* sender, so a reply's thread shows someone else.) |
 | Write check (no-op) | `gmail thread modify <unstarred threadId> --remove STARRED` |
-| List | `gmail search '<query>' --max 25`, which returns thread `id`, from, subject, date and labels |
+| List | `gmail search --max 25 -- '<query>'`, which returns thread `id`, from, subject, date and labels (the `--` stops a query starting with `-` being read as a flag) |
 | Read | `gmail thread get <threadId>` (add `--full` for whole bodies) |
 | Archive | `gmail archive --thread <threadId> …` |
 | Label | `gmail labels list` / `gmail labels create`, then `gmail thread modify <id> --add-label <name> --remove INBOX` |
@@ -210,7 +230,8 @@ only, drafts Ian sends himself).
 
 **House rules:** before each run, read every `.md` file in the plugin's
 `rules/` folder (two levels up from this skill's base directory, i.e.
-`<base>/../../rules/`). They hold Ian's standing preferences, and they win
+`<base>/../../rules/`), and `senders.tsv` there (the senders the newsletter
+rules name, which `mail-gather.py` uses for its hints). They hold Ian's standing preferences, and they win
 over anything below that contradicts them. As of October 2026 they cover:
 Read later stays in the inbox and starred, processed inbox threads are
 starred, nothing outside the inbox is starred, emails with a gtd task
@@ -248,13 +269,29 @@ continue afterwards.
 
 ### 2. Gather
 
-Run `search_threads` against each mailbox and tag every thread with the
-mailbox it came from. For each thread, read enough to classify it —
-the snippet and sender are often enough for newsletters and notifications;
-use `get_thread` for anything from a real person, anything that might need a
-reply, or anything ambiguous. Note: who it's from, whether Ian was in To or
-CC, whether Ian has already replied (last message from Ian), any dates or
-deadlines, and any explicit question asked of Ian.
+For the gog mailboxes, run `python3 $S/mail-gather.py list` once (with
+`--mailbox` and `--query` for the scope). It reads every thread for you, and
+for each one prints the sender, subject, time, message count, flags (unread,
+starred, `cc` when Ian was only CC'd, `you last` when Ian sent the last
+message, `also in <mailbox>` when the same email reached both), the thread and
+last-message ids, the latest snippet, and a hint:
+
+| Hint | Means | Usually |
+|---|---|---|
+| `trash` / `read-later` / `fyi` | sender is in `rules/senders.tsv` | Junk → Trash / Read later → Keep + star / FYI → Archive |
+| `task N` | thread has the `GTD-N` label | archive (tracked in task N), or a note on N |
+| `invite` / `calendar notice` | invitation, or accepted/declined/updated/cancelled | calendar cross-check (2b) |
+| `you replied last` | Ian had the last word | FYI / done, unless he's waiting on them |
+| `newsletter?` / `automated?` | List-Unsubscribe header, or a no-reply sender | judge from the snippet |
+| `person` | anything else | read it |
+
+Hints are a start, not the classification. Then read
+(`mail-gather.py read <mailbox> <threadId>`) anything from a real person,
+anything that might need a reply, and anything ambiguous. For the connector
+mailbox (work on the MacBook Pro), run `search_threads` and `get_thread` as
+before. Tag every thread with the mailbox it came from. Note: who it's from,
+whether Ian was in To or CC, whether Ian has already replied (last message
+from Ian), any dates or deadlines, and any explicit question asked of Ian.
 
 ### 2b. Calendar cross-check
 
@@ -284,16 +321,19 @@ the same step.
 
 ### 2c. GTD cross-check
 
-First, per the house rule `close-task-tidies-mail.md`: list the `GTD-<number>` labels in
-both mailboxes, and for any whose task is now closed, archive its threads and remove the
-label. Report it in one line before the triage list.
+First, per the house rule `close-task-tidies-mail.md`: run
+`python3 $S/gtd-label-tidy.py`. For every `GTD-<number>` label whose task is now
+closed, it archives and unstars the label's threads in the gog mailboxes and
+removes the label. On the MacBook Pro, do the same for the work mailbox with
+the connector. Report it in one line before the triage list (the script's
+last line).
 
 Email that needs real work belongs in gtd, not left in the inbox. For each
 **Act now**, **Delegate** or **waiting on someone** thread:
 
-1. **Look for an existing task.** Grep open tasks (`status/todo`,
-   `status/waiting`) for the Gmail thread or message id, the sender's name and
-   the key subject words. If one exists, tag the thread `🗂 task N` and
+1. **Look for an existing task.** One `gtd-find.py --batch` call for all of
+   them (gtd skill, Commands), one line per thread: the thread id, the
+   sender's name and address, and the key subject words. If one exists, tag the thread `🗂 task N` and
    recommend **add a note** (new info from this email) or **close N** (the
    email resolves it).
 2. **Otherwise, offer a new task** when doing it takes more than a couple of
@@ -372,7 +412,25 @@ just take free-text instructions.
 ### 5. Execute
 
 Carry out only the approved actions, each through the connector for the
-thread's own mailbox:
+thread's own mailbox.
+
+**gog mailboxes: one `mail-apply.py` call** for every archive, keep, trash,
+spam and label in the batch, with a line for each thread shown in the list
+(`keep` for those staying in the inbox, so the star rule is covered):
+
+```bash
+python3 $S/mail-apply.py <<'EOF'
+work archive 1a15b0aad89c09a9
+personal keep 1a159da84468dd9d
+personal trash 1a159d90bf85ba96
+EOF
+```
+
+It applies the star house rules itself (what stays in the inbox is starred,
+what leaves is unstarred), refuses a new label without `--create-labels`, and
+prints a line per thread and the counts for the report. `--dry-run` shows the
+gog calls. The bullets below say what each action means, and how to do it
+with the connector.
 
 - **Archive**: `unlabel_thread` removing `INBOX` and `STARRED` (gog:
   `thread modify <id> --remove INBOX,STARRED`).
@@ -406,7 +464,12 @@ thread's own mailbox:
   `suggest_time`. Hold nothing in the calendar until the other person
   confirms.
 - **gtd task**: create it with the gtd skill. Subject `PREFIX: <what to do>`,
-  in the house style of `voices/notes.md`.
+  in the house style of `voices/notes.md`. For a gog mailbox, one call does
+  the whole of this bullet (link, notes, push, `GTD-<N>` label, archive):
+  `python3 $S/gtd-new-task.py --subject "…" --mailbox personal --thread <id>
+  [--archive] [--defer DAYS]` with the notes on stdin. On the MacBook Pro,
+  for work mail, pass the connector's `viewUrl` as `--link` instead, then
+  label the thread with the connector as below.
   Notes: the Gmail link on the line after `Task Number:` (work on the
   MacBook Pro: the thread's `viewUrl` from the connector; otherwise:
   `gog -a <address> gmail url <threadId>`), then
@@ -422,8 +485,14 @@ thread's own mailbox:
   finds and tidies its mail (`rules/close-task-tidies-mail.md`).
 - **gtd note / close**: append to `tasks/N/notes.md` (with the link and a
   dated one-liner), or `bin/gtd close N`. Always after approval. When a note
-  links a thread to an existing task, label that thread `GTD-<N>` too. When
-  closing, tidy the task's mail per `rules/close-task-tidies-mail.md`.
+  links a thread to an existing task, label that thread `GTD-<N>` too
+  (`<mailbox> gtd N <threadId>` in the `mail-apply.py` plan). When closing,
+  tidy the task's mail with `gtd-label-tidy.py --task N`
+  (`rules/close-task-tidies-mail.md`).
+- **People notes** (`rules/people-notes-from-email.md`):
+  `python3 $S/people-note.py find "Name" --email <address>`, then
+  `python3 $S/people-note.py log <File> --kind "email, work" [--task N] "<summary>"`
+  for each, then one `bin/gtd push`.
 
 Afterwards, report what was done in a few lines per mailbox (counts per
 action, list of drafts created with subjects), and what's left that needs Ian personally.

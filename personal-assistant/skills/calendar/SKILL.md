@@ -249,9 +249,11 @@ Act only on a yes, through the mail skill.
   Slack DM draft instead (slack skill). Don't create the event until X
   confirms.
 - **Meeting prep with gtd:** for each external or one-to-one meeting, look
-  up attendees in `people/Firstname_Lastname.md` (`bin/gtd people show`).
+  up attendees' files with `people-note.py find "Name" --email <address>`
+  (plugin `scripts/`), then `bin/gtd people show`.
   Grep `meetings/` for earlier transcripts or `*.aisummary` files with them,
-  and grep open tasks for their name or company. Summarise what's relevant in
+  and look for open tasks with their name or company in one
+  `gtd-find.py --batch` call (gtd skill). Summarise what's relevant in
   a few lines: last time you met, open tasks involving them, commitments
   made.
 - **After a recorded meeting:** naming the recording, deleting the `.mkv` and

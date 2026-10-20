@@ -100,11 +100,13 @@ Say up front which channels and windows the run covers.
 
 Run every channel's access check in parallel, in one go, before gathering:
 
-- Mail: the mail skill's "Which machine" check, then the sent-mail check and the write
-  no-op for each mailbox, through the work connector on the MacBook Pro or gog elsewhere,
-  and gog for personal, plus `gog auth list` (mail skill, Setup).
+- Mail, WhatsApp and the windows, in one call: `python3 $S/pa-env.py check` (`$S` is
+  `<base>/../../scripts`). It prints the machine, the sent-mail check and the write no-op
+  for every mailbox gog serves here, WhatsApp's check on the MacBook Pro (and "off on this
+  machine" elsewhere), and the Slack and WhatsApp windows from their last-run files. On
+  the MacBook Pro, also do the work connector's sent-mail check and write no-op (mail
+  skill, Setup).
 - Slack: `slack_read_user_profile` with no `user_id` (slack skill, Setup).
-- WhatsApp, on the MacBook Pro only: `whatsapp.py chats --limit 1` (whatsapp skill, Setup).
 - Calendar: `list_events` on both calendar IDs for the invite window, checking
   `accessRole` (calendar skill, Setup).
 - LinkedIn: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
@@ -115,11 +117,13 @@ that work. Never silently skip a channel, and never present a partial run as com
 
 ### 3. Gather, in parallel
 
-Fire the independent calls together: inbox searches for both mailboxes, the three Slack
-searches, `whatsapp.py chats`, the two LinkedIn page reads, and `list_events` for pending invites (`responseStatus:
-needsAction` on Ian's attendee entry). Then read what needs reading, as each channel
-skill's Gather step says. Also list `GTD-<N>` labels in both mailboxes for the
-`close-task-tidies-mail` rule.
+Fire the independent calls together: `mail-gather.py list` for the gog mailboxes (and
+`search_threads` for the work connector on the MacBook Pro), `gtd-label-tidy.py` for the
+`close-task-tidies-mail` rule, the three Slack searches, `whatsapp.py chats`, the two
+LinkedIn page reads, and `list_events` for pending invites (`responseStatus: needsAction`
+on Ian's attendee entry). Use the windows `pa-env.py check` printed for Slack (`after:`
+date, then drop results before the epoch) and WhatsApp (`--since`). Then read what needs
+reading, as each channel skill's Gather step says (`mail-gather.py read` for gog mail).
 
 If the run gets large (more than about 60 items across channels), say how many per channel
 and start with the newest 25 mail threads per mailbox, as the mail skill does.
@@ -143,12 +147,13 @@ Don't merge different topics just because they're from the same person.
   with one `list_events` per calendar over the span they cover (mail skill 2b, calendar
   skill Rules). Tag items `📅 in calendar`, `📅 not in calendar`, `📅 pending response`
   or `⚠ clashes with …`.
-- **gtd:** one pass over open tasks (`status/todo`, `status/waiting`) for every item that
-  needs work: grep for the people, companies, Gmail thread ids and subject words. Tag
-  `🗂 task N` or `🗂 → new task` with the right prefix (`CS:` work, `HOME:` personal, `MC:`
-  writing and courses). Do the `GTD-<N>` label tidy for closed tasks here.
+- **gtd:** one `gtd-find.py --batch` call (gtd skill, Commands) for every item that
+  needs work, a line per item: `<number>: person | company | thread id | subject words`.
+  Tag `🗂 task N` or `🗂 → new task` with the right prefix (`CS:` work, `HOME:` personal,
+  `MC:` writing and courses). Report the `GTD-<N>` label tidy from step 3 here.
 - **People notes:** check which people with meaningful exchanges have a gtd people file
-  (`rules/people-notes-from-email.md`), so the report can say which notes were added.
+  (`rules/people-notes-from-email.md`) with `people-note.py find "Name" [--email …]`, so
+  the report can say which notes were added.
 
 ### 6. Classify
 
@@ -218,7 +223,8 @@ skill's Execute step:
 
 - **Email** (mail skill): archive, star, label, trash, spam, draft replies and forwards in
   the mailbox the thread came from, then apply the house rules (star what stays in the
-  inbox, unstar what left it).
+  inbox, unstar what left it). For the gog mailboxes that's one `mail-apply.py` plan with a
+  line per thread shown, which applies the star rules itself.
 - **Slack** (slack skill): `slack_send_message_draft`, reactions, scheduled messages only
   if asked.
 - **WhatsApp** (whatsapp skill): `whatsapp.py draft`, **one at a time**, after Ian has
@@ -227,10 +233,12 @@ skill's Execute step:
   nothing is typed into LinkedIn.
 - **Calendar** (calendar skill): respond, add, move, saying who gets notified; then offer
   to archive the related email.
-- **gtd** (gtd skill): new tasks with the source link or chat reference (and the `GTD-<N>`
-  Gmail label for email), notes on existing tasks, closes.
-- **People notes**: per `rules/people-notes-from-email.md`, with the channel in the line
-  (`email, work`, `email, personal`, `slack`, `whatsapp`, `linkedin`), then one `bin/gtd push`.
+- **gtd** (gtd skill): new tasks with `gtd-new-task.py` (`--mailbox/--thread` for gog
+  mail, which adds the `GTD-<N>` label; `--link` with the Slack link, `WhatsApp: <chat>,
+  <time>` or the connector's `viewUrl` otherwise), notes on existing tasks, closes.
+- **People notes**: per `rules/people-notes-from-email.md`, with
+  `people-note.py log <File> --kind <channel> [--task N] "<summary>"` (`email, work`,
+  `email, personal`, `slack`, `whatsapp`, `linkedin`), then one `bin/gtd push`.
 
 **Drafts are in Ian's voice.** Before the first draft of a run, read `voices/common.md`
 plus the guide for each channel drafted on (`email.md`, `slack.md`, `whatsapp.md`,
@@ -241,9 +249,9 @@ Do independent actions in parallel (archiving in two mailboxes and Slack drafts 
 depend on each other); do WhatsApp drafts last, one by one, since each takes over the app
 or the clipboard.
 
-Then write the current time to `~/.claude/personal-assistant/slack-last-run` and
-`whatsapp-last-run` for the channels covered (after Ian has seen the list, even if he chose
-to do nothing).
+Then record the run for the channels covered with `python3 $S/pa-env.py mark slack
+whatsapp` (leave out a channel the run didn't cover), after Ian has seen the list, even if
+he chose to do nothing.
 
 ### 9. Report and continue
 

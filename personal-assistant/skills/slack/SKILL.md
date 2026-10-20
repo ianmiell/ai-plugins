@@ -97,7 +97,9 @@ A message's link, for gtd notes and the list, is
 ### 1. Scope
 
 - No argument: since the last run (from `slack-last-run`), or the last 24 hours if there's
-  no record, capped at 7 days. Say which window you used.
+  no record, capped at 7 days. `python3 <base>/../../scripts/pa-env.py check --only windows`
+  works it out and prints the `after:` date to search with and the epoch to filter by.
+  Say which window you used.
 - `today`, `2d`, `since monday`, a date: that window.
 - `dms`: only DMs and group DMs. `mentions`: only @-mentions. `#channel`: that channel only
   (find its ID with `slack_list_user_channels name_prefix`). `from:Name`: messages from that
@@ -131,8 +133,9 @@ someone else has already answered for him.
 - A date or event already arranged: check it's in the calendar and tag
   `📅 in calendar` / `📅 not in calendar`.
 - Work that takes more than a couple of minutes, or something Ian promised ("I'll look at
-  it tomorrow"): grep open gtd tasks (`status/todo`, `status/waiting`) for the person, the
-  channel or the subject. Tag `🗂 task N` (offer a note) or `🗂 → new task` with a `CS:`
+  it tomorrow"): look for open gtd tasks with the person, the channel or the subject, in one
+  `gtd-find.py --batch` call for all the conversations (gtd skill, Commands). Tag
+  `🗂 task N` (offer a note) or `🗂 → new task` with a `CS:`
   subject. Something Ian is waiting on someone else for becomes a `waiting` task with
   `defer N DAYS`.
 
@@ -196,11 +199,14 @@ Do only the approved actions:
 - **Schedule a message**: `slack_schedule_message`, only if Ian asked for it, with the exact
   send time in the report (it can't be edited afterwards except in Slack).
 - **gtd task / note**: with the gtd skill. Notes: the Slack link on the line after
-  `Task Number:`, then a 2–5 line summary of what's needed and by when.
-- **People notes**: per the rule above.
+  `Task Number:`, then a 2–5 line summary of what's needed and by when
+  (`gtd-new-task.py --subject "CS: …" --link <Slack link>`, summary on stdin).
+- **People notes**: per the rule above, with
+  `people-note.py log <File> --kind slack [--task N] "<summary>"`.
 
-Then write the current time to `slack-last-run`, so the next run starts from here. Write it
-only after Ian has seen the list, even if he chose to do nothing.
+Then record the run with `python3 <base>/../../scripts/pa-env.py mark slack`, so the next
+run starts from here. Do it only after Ian has seen the list, even if he chose to do
+nothing.
 
 Report what was done in a few lines: drafts (where, and their text), reactions, tasks and
 notes created, and what still needs Ian personally (approvals only he can give, replies he
