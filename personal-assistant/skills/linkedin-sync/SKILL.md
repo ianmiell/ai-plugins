@@ -133,6 +133,9 @@ is the same person. It commits and pushes.
    `VIEWERS-END <count>`, newest first, already without 1st-degree
    connections and anonymous viewers. Check the count. The list's degree
    can be out of date, so `connect-profile.js` checks again on the profile.
+   Older views show only as "1w ago", which can mean up to 13 days, so the
+   list can reach back nearly a week before `LAST`; the cap and the log
+   absorb it.
 4. The queue is `DEFERRED` first, then the viewers, leaving out any URL the
    log already has as `sent`, `pending` or `connected`. Send at most **20**
    invitations a run (LinkedIn allows about 100 a week). For each viewer in
