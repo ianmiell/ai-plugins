@@ -11,7 +11,9 @@ to self) stays **in the inbox** and is **starred**.
 
 ## Newsletters Ian reads
 
-Always READ LATER (keep + star), never junk or archive by default:
+Always READ LATER (keep + star), never junk or archive by default. They're the
+`read-later` lines of `senders.tsv` (next to this file), which
+`scripts/mail-gather.py` marks `[read-later]`. As of October 2026:
 
 - Our World in Data (`newsletter@ourworldindata.org`), including "Data Insight" emails
 - The Rest Is History (`therestishistory@mail.beehiiv.com`)
@@ -19,4 +21,5 @@ Always READ LATER (keep + star), never junk or archive by default:
   Not the Prof G Pod, which goes to the trash (see newsletters-to-trash.md)
 - Benedict Evans (`list@ben-evans.com`), "Benedict's Newsletter"
 
-When Ian says he reads another newsletter, add it to this list.
+When Ian says he reads another newsletter, add a `read-later` line for it to
+`senders.tsv` (that's what the scripts read), and to this list.

@@ -18,6 +18,10 @@ finished with:
    thread has it (connector: `delete_label`; gog: `gmail labels delete`), so closed tasks
    don't leave labels behind.
 
+`scripts/gtd-label-tidy.py` at the plugin root does steps 1 and 2 for the mailboxes gog
+serves (`--task N` for one task, `--dry-run` to see what it would do). On the MacBook Pro
+the work mailbox is still done with the connector.
+
 This is a standing instruction: Ian closing the task (or approving its close) covers it, with
 no separate approval. Say what was done in the close report, e.g. "Archived 2 threads and
 removed label GTD-4652".
@@ -32,5 +36,6 @@ removed label GTD-4652".
 
 Tasks are also closed by Ian running `gtd close` in a terminal, which can't reach Gmail. So
 at the start of each mail run, list the `GTD-<number>` labels in both mailboxes, check each
-task's status, and for every task now closed do steps 1 and 2 above. Report it in one line
+task's status, and for every task now closed do steps 1 and 2 above (`gtd-label-tidy.py`
+with no arguments). Report it in one line
 before the triage list, e.g. "Task 4652 closed: archived 1 thread, removed GTD-4652."

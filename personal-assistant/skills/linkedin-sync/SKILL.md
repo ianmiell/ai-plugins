@@ -101,24 +101,18 @@ is the same person. It commits and pushes.
 
 ### 4. Invite profile viewers (Premium only)
 
-1. Since when, and what's left over. In one Bash call:
+The bookkeeping is done by `linkedin-state.py` next to this file
+(`L=<base>/linkedin-state.py`; `python3 $L --help`).
 
-   ```bash
-   STATE=~/.local/state/personal-assistant; mkdir -p "$STATE"; LOG="$STATE/linkedin-invites.log"; touch "$LOG"
-   date -u +%FT%TZ                                                    # NOW
-   cat "$STATE/linkedin-sync-last" 2>/dev/null || date -u -v-7d +%FT%TZ   # LAST
-   # DEFERRED: viewers held back by a previous run's cap, and not dealt with since
-   awk -F'\t' '{s[$3]=$2; n[$3]=$4} END {for (u in s) if (s[u]=="deferred") print u "\t" n[u]}' "$LOG"
-   ```
-
-   The log has one tab-separated line per viewer tried: time, status, url,
-   name. With no `linkedin-sync-last` (the first run), `LAST` is a week ago.
+1. Since when: `python3 $L window` prints `NOW` and `LAST`. The log has one
+   tab-separated line per viewer tried: time, status, url, name. With no
+   `linkedin-sync-last` (the first run), `LAST` is a week ago.
 2. `tabs_create_mcp` for a new tab and navigate it to
    `https://www.linkedin.com/analytics/profile-views/`. Read
    `extract-viewers.js` (next to this file), replace `__SINCE__` with
    `LAST`, and run it with `javascript_tool`.
    - `premium: false`: Ian has no Premium. Say so with the `reason`, close
-     the tab, write `NOW` to `$STATE/linkedin-sync-last`, and go on to
+     the tab, `python3 $L done <NOW>`, and go on to
      step 5. (A free account sees only a few viewers, so nothing is sent.)
    - `error`: take a screenshot, tell Ian what it shows, close the tab and
      go on to step 5 without touching `linkedin-sync-last`, so the next run
@@ -129,16 +123,18 @@ is the same person. It commits and pushes.
    `VIEWERS-END <count>`, newest first, already without 1st-degree
    connections and anonymous viewers. Check the count. The list's degree
    can be out of date, so `connect-profile.js` checks again on the profile.
-4. The queue is `DEFERRED` first, then the viewers, leaving out any URL the
-   log already has as `sent`, `pending` or `connected`. Send at most **20**
-   invitations a run (LinkedIn allows about 100 a week). For each viewer in
-   turn: navigate the same tab to their URL, read `connect-profile.js`, run
-   it with `javascript_tool` (it waits a few seconds first, so the pace stays
-   human), and append its result to the log:
-
-   ```bash
-   printf '%s\t%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "<status>" "<url>" "<name>" >> ~/.local/state/personal-assistant/linkedin-invites.log
-   ```
+4. The queue: pass the page text (or just its JSON lines) to
+   `python3 $L queue` on stdin. It checks the count, and prints `url<TAB>name`
+   lines: viewers deferred by an earlier run first, then the new ones,
+   leaving out any URL the log already has as `sent`, `pending` or
+   `connected`. After 20, it prints `# over the cap` and the rest. Send at
+   most **20** invitations a run (LinkedIn allows about 100 a week). For each
+   viewer in turn: navigate the same tab to their URL, read
+   `connect-profile.js`, run it with `javascript_tool` (it waits a few seconds
+   first, so the pace stays human), and log its result with
+   `python3 $L log <status> <url> "<name>"`. "Log everyone not yet tried as
+   `deferred`" below means passing their `url<TAB>name` lines to
+   `python3 $L defer` on stdin.
 
    - `sent`, `connected`, `pending`, `no-connect`, `needs-email`: log it
      and go on to the next.
@@ -150,7 +146,7 @@ is the same person. It commits and pushes.
 
    Several `needs-email` or `no-connect` in a row is normal; but if three
    profiles running don't load as profiles, stop as for `error`.
-5. Close the tab, and write `NOW` to `$STATE/linkedin-sync-last` (also
+5. Close the tab, and write `NOW` with `python3 $L done <NOW>` (also
    after a `limit` or `unexpected` stop: the deferred viewers carry over).
 
 ### 5. The data export
@@ -170,7 +166,11 @@ from the list). LinkedIn's data export catches them.
 ### 6. Look for each new person
 
 For each person created in step 3 (and any `Pending` ones), look for signs
-Ian has dealt with them. Do the searches in bulk, not one call per person:
+Ian has dealt with them. Do the searches in bulk, not one call per person.
+The meetings and people-notes searches are one call: pass step 3's output to
+`python3 $L evidence` on stdin. It prints `name<TAB>level<TAB>evidence` per
+person (`met` with a transcript, `in-touch` with a mention, `forgotten?` with
+neither), so only the calendar and mail are left to search:
 
 - **Calendar:** `list_events` on both calendars from 30 days ago to today,
   once each. Match each person's full name against attendee display names,

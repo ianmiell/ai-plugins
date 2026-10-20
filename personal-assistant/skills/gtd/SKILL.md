@@ -66,26 +66,40 @@ cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd <command> … </dev/
 | Open tasks with TODO lines | `bin/gtd todos` |
 | History of a task | `bin/gtd info N` |
 | Person | `bin/gtd people show Firstname_Lastname` |
-| Find tasks | `grep -rli 'TEXT' tasks/*/notes.md`, then map hits to status with `ls status/*/N` |
+| Find open tasks | `python3 $S/gtd-find.py "Jane Doe" <gmail-thread-id> renewal` (see below) |
+| Find a person's file | `python3 $S/people-note.py find "Jane Doe" [--email jane@acme.com]` |
+
+`$S` is the plugin's `scripts/` folder (`<base>/../../scripts`, where `<base>` is
+this skill's base directory). The other skills use the same scripts.
 
 Don't use `bin/gtd search`, `go`, `edit`, `vi`, `dashboard`, `remind`, or
 `people new`/`people edit`. They're interactive (paging, editors, shells).
-`grep` and `show` cover the same ground.
+`gtd-find.py` and `show` cover the same ground.
 
-To find open tasks quickly, check `status/todo/` and `status/waiting/`
-(symlinks named by task number) and grep only those `notes.md` files. Avoid
-globbing everything into context; the repo is huge.
+**Finding open tasks:** `gtd-find.py` reads only `status/todo` and `status/waiting`
+(`--status closed` etc. for others), so the huge repo never comes into context. It
+matches names and subject words as whole words outside links (so "Google" doesn't hit
+every Gmail link), and thread ids, message ids and addresses anywhere, links included.
+It prints each task's number, status, reminder, subject, the terms it matched and the
+line they're on, best match first. For a triage run, check every item in one call:
+
+```bash
+python3 $S/gtd-find.py --batch <<'EOF'
+1: Jane Doe | jane@acme.com | 19a2f0c3b4d5e6f7 | renewal
+4: Sam Smith | 1a15a0c93b4fd2b5
+EOF
+```
 
 ### Write (needs Ian's approval each time)
 
 | Action | Command |
 |---|---|
-| New task | `GO_TO_TASK=N bin/gtd nt "PREFIX: Subject"` (`GO_TO_TASK=N` stops it opening a shell). Then read the number from `.metadata/lasttask`. |
+| New task | `python3 $S/gtd-new-task.py --subject "PREFIX: Subject" (--link SOURCE \| --mailbox M --thread ID [--archive]) [--defer DAYS \| --status S] [--priority P]`, notes on stdin. It runs `GO_TO_TASK=N bin/gtd nt`, writes the source line and notes, pushes, sets priority and status, and for an email labels the thread `GTD-<N>` (and archives it with `--archive`). It prints `task <N>`. By hand: `GO_TO_TASK=N bin/gtd nt "PREFIX: Subject"`, then read the number from `.metadata/lasttask`. |
 | Add notes | Append to `tasks/N/notes.md` (keep lines 1–2 intact), then `bin/gtd push` so gtd records it |
 | Status | `bin/gtd ms <todo\|waiting\|background\|someday\|t\|w\|b\|s> N` |
 | Priority | `bin/gtd mp <high\|medium\|low\|h\|m\|l> N` |
 | Reminder | `bin/gtd defer N DAYS` sets a reminder DAYS from now and moves the task to waiting. For a repeating reminder, ask Ian to run `! ~/git/gtd/bin/gtd remind N` (it's interactive). |
-| Close | `bin/gtd close N …`. It refuses if any file contains `TODO`. If the task has a reminder it asks whether to remove it: pipe `printf 'y\n'` only if Ian agreed to drop the reminder, otherwise `printf 'n\n'`. Then tidy its email: archive threads labelled `GTD-N` in both mailboxes and remove the label (plugin rule `rules/close-task-tidies-mail.md`; use the mail skill's mailbox setup). |
+| Close | `bin/gtd close N …`. It refuses if any file contains `TODO`. If the task has a reminder it asks whether to remove it: pipe `printf 'y\n'` only if Ian agreed to drop the reminder, otherwise `printf 'n\n'`. Then tidy its email (plugin rule `rules/close-task-tidies-mail.md`): `python3 $S/gtd-label-tidy.py --task N` archives and unstars its `GTD-N` threads in the gog mailboxes and deletes the label; on the MacBook Pro, do the work mailbox with the Gmail connector as the rule says. |
 | Unremind | `bin/gtd unremind N` |
 
 Write subjects, notes and people-note lines in Ian's house style:
