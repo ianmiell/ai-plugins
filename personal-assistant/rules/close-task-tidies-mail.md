@@ -7,14 +7,15 @@ finished with:
 
 1. **Archive** every thread labelled `GTD-N`, in both mailboxes, and unstar it (see
    unstar-outside-inbox.md):
-   - work: search `label:GTD-N` with the Gmail connector, then `unlabel_thread` with
-     `INBOX` and `STARRED` (plus the label, step 2);
-   - personal: `gmail search 'label:GTD-N'` with gog, then
+   - work on the MacBook Pro: search `label:GTD-N` with the Gmail connector, then
+     `unlabel_thread` with `INBOX` and `STARRED` (plus the label, step 2);
+   - personal, and work on any other machine (see the mail skill's "Which machine"):
+     `gmail search 'label:GTD-N'` with gog for that account, then
      `gmail thread modify <id> --remove INBOX,STARRED,GTD-N`.
    Also archive threads whose Gmail link is in `tasks/N/notes.md` but which never got the
    label.
 2. **Remove the `GTD-N` label** from those threads, then delete the label itself once no
-   thread has it (work: `delete_label`; personal: `gmail labels delete`), so closed tasks
+   thread has it (connector: `delete_label`; gog: `gmail labels delete`), so closed tasks
    don't leave labels behind.
 
 This is a standing instruction: Ian closing the task (or approving its close) covers it, with

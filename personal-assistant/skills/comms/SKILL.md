@@ -95,8 +95,9 @@ Say up front which channels and windows the run covers.
 
 Run every channel's access check in parallel, in one go, before gathering:
 
-- Mail: the sent-mail check and the write no-op for the work connector; `gog auth list`,
-  the sent-mail check and the write no-op for personal (mail skill, Setup).
+- Mail: the mail skill's "Which machine" check, then the sent-mail check and the write
+  no-op for each mailbox, through the work connector on the MacBook Pro or gog elsewhere,
+  and gog for personal, plus `gog auth list` (mail skill, Setup).
 - Slack: `slack_read_user_profile` with no `user_id` (slack skill, Setup).
 - WhatsApp: `whatsapp.py chats --limit 1` (whatsapp skill, Setup).
 - Calendar: `list_events` on both calendar IDs for the invite window, checking
