@@ -331,11 +331,13 @@ thread's own mailbox:
   still in the inbox, and make sure nothing that left the inbox is starred.
 - **Draft reply / forward**: `create_draft` in the existing thread, in the
   same mailbox, so it's sent from the address the email went to. Write in
-  Ian's voice: read `voice.md` (in this skill's base directory) before the
-  first draft of a run, and follow the section for the draft's mailbox (work
-  or personal) and audience. In short: get to the point, keep it short,
-  use British English, a spaced " - " rather than an em dash, no corporate
-  filler, and sign it "Ian".
+  Ian's voice: read `voices/common.md` and `voices/email.md` at the plugin
+  root (`<base>/../../voices/`) before the first draft of a run, and follow
+  the section for the draft's mailbox (work or personal) and audience. In
+  short: get to the point, keep it short, use British English, a spaced
+  " - " rather than an em dash, no corporate filler, and sign it "Ian". Run
+  each draft through `scripts/voice-check.py --channel email` (see
+  `voices/common.md`) and fix what it flags before showing it.
   Show the draft text in the summary so Ian can review it before sending.
 - **Calendar actions** (accept/decline, add, update, remove): follow the
   calendar skill's Change step and Rules, including saying who gets
@@ -346,7 +348,8 @@ thread's own mailbox:
 - **Propose times**: draft a reply (never send) with the slots from
   `suggest_time`. Hold nothing in the calendar until the other person
   confirms.
-- **gtd task**: create it with the gtd skill. Subject `PREFIX: <what to do>`.
+- **gtd task**: create it with the gtd skill. Subject `PREFIX: <what to do>`,
+  in the house style of `voices/notes.md`.
   Notes: the Gmail link on the line after `Task Number:` (work: the thread's
   `viewUrl` from the connector; personal: `gog gmail url <threadId>`), then
   a 2–5 line excerpt or summary of what's needed and by when. Report the

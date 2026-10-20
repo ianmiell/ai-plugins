@@ -181,7 +181,12 @@ Do only the approved actions:
 
 - **Draft reply**: `slack_send_message_draft` in the same DM or channel, with `thread_ts`
   when replying in a thread (always reply in the thread a question was asked in). Write in
-  Ian's voice: short, direct, plain British English, Slack-casual, no corporate filler.
+  Ian's voice: read `voices/common.md` and `voices/slack.md` at the plugin root
+  (`<base>/../../voices/`) before the first draft of a run, follow `slack.md`'s section for
+  the audience (exec, engineer, client-facing channel), and run each draft through
+  `scripts/voice-check.py --channel slack` before showing it. In
+  short: one or two lines, no greeting or sign-off, plain British English, a spaced " - "
+  rather than an em dash, at most one small emoji, no corporate filler.
   Show each draft's text in the report, with the channel link it returned.
 - **React**: `slack_add_reaction` on the specific message.
 - **Schedule a message**: `slack_schedule_message`, only if Ian asked for it, with the exact
