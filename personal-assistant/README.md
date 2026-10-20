@@ -8,6 +8,7 @@ work and workflows to help me save time and be more effective in my job.
 ```
 README.md               - this readme file
 skills/mail/SKILL.md    - /mail: triage the Gmail inbox and decide what to do with each thread
+skills/mail/voice.md     - how Ian writes email (work and personal), used for every mail draft
 skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, invites, booking
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
 skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; drafts replies, never sends

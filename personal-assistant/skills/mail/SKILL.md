@@ -331,8 +331,11 @@ thread's own mailbox:
   still in the inbox, and make sure nothing that left the inbox is starred.
 - **Draft reply / forward**: `create_draft` in the existing thread, in the
   same mailbox, so it's sent from the address the email went to. Write in
-  Ian's voice — short, direct, plain British English, no corporate filler;
-  a bit more informal for personal mail.
+  Ian's voice: read `voice.md` (in this skill's base directory) before the
+  first draft of a run, and follow the section for the draft's mailbox (work
+  or personal) and audience. In short: get to the point, keep it short,
+  use British English, a spaced " - " rather than an em dash, no corporate
+  filler, and sign it "Ian".
   Show the draft text in the summary so Ian can review it before sending.
 - **Calendar actions** (accept/decline, add, update, remove): follow the
   calendar skill's Change step and Rules, including saying who gets
