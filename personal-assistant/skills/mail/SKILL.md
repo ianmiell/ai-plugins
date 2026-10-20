@@ -65,6 +65,12 @@ Gmail connector there even if it's loaded. Wherever this skill says
 ### gog setup off the MacBook Pro (klimt, October 2026)
 
 1. `brew install gogcli` (Linuxbrew works).
+   klimt is reached over SSH only, so the GNOME keyring stays locked and
+   gog uses its encrypted file keyring instead (`gog auth keyring file`).
+   Its password is in `~/.config/gogcli/keyring-password` (mode 600), and
+   `~/.zshenv` exports it as `GOG_KEYRING_PASSWORD`. If gog asks for a
+   keyring password or says the file backend needs one, that variable is
+   missing from the shell: check `~/.zshenv`. Don't type a password in.
 2. Reuse the **same Desktop app OAuth client** from `ianmiell-gog-personal`:
    copy its JSON from the MacBook Pro, or download it again from Cloud
    Console → APIs & Services → Credentials. Then
