@@ -152,7 +152,7 @@ In zsh, keep one prefix array per mailbox (`P=(gog -a ian.miell@gmail.com
 
 | Step | Command |
 |---|---|
-| Account check | `gmail search 'in:sent' --max 1`: the sender must be the `-a` address |
+| Account check | `gmail search 'in:sent from:me' --max 1`, then `gmail thread get <id>`: the thread must contain the `-a` address on a `SENT` message. (Search results show each thread's *first* sender, so a reply's thread shows someone else.) |
 | Write check (no-op) | `gmail thread modify <unstarred threadId> --remove STARRED` |
 | List | `gmail search '<query>' --max 25`, which returns thread `id`, from, subject, date and labels |
 | Read | `gmail thread get <threadId>` (add `--full` for whole bodies) |
