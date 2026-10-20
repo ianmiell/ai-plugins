@@ -12,7 +12,7 @@ skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, 
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
 skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; drafts replies, never sends
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
-skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels
+skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; with Premium, invite recent profile viewers to connect
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 ```
@@ -37,7 +37,13 @@ Monday at 08:30 (on waking, if the Mac was asleep). The skill reads
 LinkedIn's Recently added connections page in Chrome, through Claude in
 Chrome, back to the newest connection already in `~/git/gtd/people`, adds
 the new people with `gtd import-connections --auto`, and suggests a level
-for each from the calendars, meeting transcripts and email. Run it now with
+for each from the calendars, meeting transcripts and email. If the account
+has LinkedIn Premium, it also sends a connection request (no note) to each
+profile viewer since the last sync who isn't already a connection, at most
+20 a run, carrying the rest over to the next. The last sync time is in
+`~/.local/state/personal-assistant/linkedin-sync-last` and every invitation
+tried is logged in `~/.local/state/personal-assistant/linkedin-invites.log`.
+Run it now with
 `launchctl kickstart gui/$(id -u)/com.ianmiell.linkedin-sync`, remove it
 with `scripts/install-linkedin-sync.sh --uninstall`. The log is
 `~/Library/Logs/com.ianmiell.linkedin-sync.log`.
