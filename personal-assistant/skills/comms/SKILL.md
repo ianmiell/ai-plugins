@@ -30,7 +30,8 @@ does the calendar and gtd cross-checks once for everything.
 ### LinkedIn
 
 LinkedIn has no connector or API for messages, so this skill reads it in Ian's own
-signed-in Chrome through Claude in Chrome. Load the `claude-in-chrome` skill, then
+signed-in Chrome through Claude in Chrome, so it's MacBook Pro only (klimt has no desktop
+Chrome or extension; switched off there October 2026). Load the `claude-in-chrome` skill, then
 `select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__tabs_create_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__get_page_text,mcp__claude-in-chrome__tabs_close_mcp`.
 
 - **Read with `get_page_text` only.** Open a new tab, navigate to
@@ -89,10 +90,11 @@ Everything in the channel skills' Rules, and in particular:
 - `unread`: `is:unread` for mail, `--unread` for WhatsApp, and the normal window for Slack
   (it has no unread state).
 
-WhatsApp is MacBook Pro only (whatsapp skill, "Which machine"). On any other machine, such
-as klimt, leave WA out of every scope, including `personal` and an explicit `whatsapp`,
-and don't load the whatsapp skill. Say once that it's off on this machine; that isn't a
-failed channel.
+WhatsApp and LinkedIn are MacBook Pro only (the mail skill's "Which machine" check). On
+any other machine, such as klimt, leave WA and LI out of every scope, including `work`,
+`personal` and an explicit `whatsapp` or `linkedin`, and don't load the whatsapp or
+claude-in-chrome skills. Say once that they're off on this machine; that isn't a failed
+channel.
 
 Say up front which channels and windows the run covers.
 
@@ -107,7 +109,7 @@ Run every channel's access check in parallel, in one go, before gathering:
 - WhatsApp, on the MacBook Pro only: `whatsapp.py chats --limit 1` (whatsapp skill, Setup).
 - Calendar: `list_events` on both calendar IDs for the invite window, checking
   `accessRole` (calendar skill, Setup).
-- LinkedIn: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
+- LinkedIn, on the MacBook Pro only: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
   with the fix (open Chrome and check the Claude extension is connected) and carry on.
 
 Report failures in one block at the top, with each fix, and carry on with the channels
