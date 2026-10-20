@@ -15,6 +15,22 @@ and follows its Setup, Tools and Rules.
 
 ## Setup
 
+### Which machine
+
+WhatsApp is only read on the MacBook Pro, where the desktop app is set up. Check first,
+with the mail skill's "Which machine" command:
+
+```sh
+[ "$(uname -s)" = Darwin ] && system_profiler SPHardwareDataType 2>/dev/null \
+  | grep -q 'Model Name: MacBook Pro' && echo macbook-pro || echo other
+```
+
+On any other machine (klimt, the Linux box, among them; switched off there October
+2026), stop: say WhatsApp is only available on the MacBook Pro, and don't run the script
+or try to install WhatsApp. Everything below is for the MacBook Pro.
+
+### The desktop app's database
+
 WhatsApp has no connector and Meta has no API for personal accounts. This skill reads the
 **WhatsApp desktop app's own database** on this Mac instead, through
 `scripts/whatsapp.py` at the plugin root (`<base>/../../scripts/whatsapp.py`, where `<base>`

@@ -89,6 +89,11 @@ Everything in the channel skills' Rules, and in particular:
 - `unread`: `is:unread` for mail, `--unread` for WhatsApp, and the normal window for Slack
   (it has no unread state).
 
+WhatsApp is MacBook Pro only (whatsapp skill, "Which machine"). On any other machine, such
+as klimt, leave WA out of every scope, including `personal` and an explicit `whatsapp`,
+and don't load the whatsapp skill. Say once that it's off on this machine; that isn't a
+failed channel.
+
 Say up front which channels and windows the run covers.
 
 ### 2. Check access, all at once
@@ -99,7 +104,7 @@ Run every channel's access check in parallel, in one go, before gathering:
   no-op for each mailbox, through the work connector on the MacBook Pro or gog elsewhere,
   and gog for personal, plus `gog auth list` (mail skill, Setup).
 - Slack: `slack_read_user_profile` with no `user_id` (slack skill, Setup).
-- WhatsApp: `whatsapp.py chats --limit 1` (whatsapp skill, Setup).
+- WhatsApp, on the MacBook Pro only: `whatsapp.py chats --limit 1` (whatsapp skill, Setup).
 - Calendar: `list_events` on both calendar IDs for the invite window, checking
   `accessRole` (calendar skill, Setup).
 - LinkedIn: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
