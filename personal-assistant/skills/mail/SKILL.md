@@ -15,7 +15,19 @@ and follows its Setup, Tools and Rules.
 
 ## Setup
 
-Each mailbox is reached a different way:
+### Which machine
+
+How the work mailbox is reached depends on the machine. Check once per run:
+
+```sh
+[ "$(uname -s)" = Darwin ] && system_profiler SPHardwareDataType 2>/dev/null \
+  | grep -q 'Model Name: MacBook Pro' && echo macbook-pro || echo other
+```
+
+(`hw.model` doesn't work for this: Apple Silicon reports `Mac14,9` and the
+like, not `MacBookPro…`.)
+
+**On a MacBook Pro**, each mailbox is reached a different way:
 
 1. **Work** (`ian.miell@container-solutions.com`): the Gmail connector on
    claude.ai, with tools named `mcp__claude_ai_Gmail__*`.
@@ -25,6 +37,14 @@ Each mailbox is reached a different way:
    a paid plan in the personal Chrome profile. So in October 2026 Ian chose
    gog. If a Gmail connector for the personal account turns up later (the
    sent-mail check proves it), prefer it over gog.
+
+**On any other machine** (e.g. `klimt`, Ian's Linux desktop), both mailboxes
+go through **gog**, one gog account per mailbox. Don't use the claude.ai
+Gmail connector there even if it's loaded. Wherever this skill says
+"connector" for the work mailbox, use the gog command from the table under
+"Mailboxes via gog" with `-a ian.miell@container-solutions.com` instead
+(e.g. `unlabel_thread` → `gmail thread modify --remove`, `create_draft` →
+`gmail drafts reply`, the thread's `viewUrl` → `gog gmail url`).
 
 ### gog setup for the personal mailbox (one-off, done October 2026)
 
@@ -42,13 +62,29 @@ Each mailbox is reached a different way:
    (it opens a browser for consent). This grants gmail.modify and settings
    scopes.
 
-Check it's working with `gog auth list` (it should show
-`ian.miell@gmail.com`). If a command fails with `invalid_grant` or a token
-error, the login has expired. Ask Ian to run `! gog auth add
-ian.miell@gmail.com --services gmail --force-consent`. Never run the browser
-consent yourself.
+### gog setup off the MacBook Pro (klimt, October 2026)
 
-### Gmail connector setup for the work mailbox
+1. `brew install gogcli` (Linuxbrew works).
+2. Reuse the **same Desktop app OAuth client** from `ianmiell-gog-personal`:
+   copy its JSON from the MacBook Pro, or download it again from Cloud
+   Console → APIs & Services → Credentials. Then
+   `gog auth credentials set <client_secret….json>`.
+3. `ian.miell@container-solutions.com` must be a test user on that
+   project's consent screen (or the app published). If Container Solutions'
+   Workspace blocks the unverified app, make a second client in a project
+   the work account owns and store it with `--client work`.
+4. Ian runs both consents in the prompt: `! gog auth add ian.miell@gmail.com
+   --services gmail` and `! gog auth add ian.miell@container-solutions.com
+   --services gmail`. On a headless box, add `--manual` and paste the
+   redirect URL back.
+
+Check it's working with `gog auth list` (it should show
+`ian.miell@gmail.com`, plus `ian.miell@container-solutions.com` off the
+MacBook Pro). If a command fails with `invalid_grant` or a token error, the
+login has expired. Ask Ian to run `! gog auth add <address> --services gmail
+--force-consent`. Never run the browser consent yourself.
+
+### Gmail connector setup for the work mailbox (MacBook Pro only)
 
 Each connector needs **full Gmail permissions**. On Google's consent screen,
 tick every box, including the one to read, compose and change email.
@@ -90,23 +126,27 @@ of tools named `mcp__*Gmail*__search_threads`, etc.), run `search_threads`
 with `in:sent`, `pageSize: 1`, `view: THREAD_VIEW_METADATA_ONLY` and read the
 sender address. That tells you which mailbox the connector reaches. As of
 October 2026, `mcp__claude_ai_Gmail__*` is the **work** account. The personal
-mailbox has no connector and goes through gog (see below).
+mailbox has no connector and goes through gog (see below). Off the MacBook
+Pro, skip the connector check: both mailboxes go through gog.
 
 If either mailbox is unreachable, say so at the start. Never silently skip a
 mailbox, and never present one mailbox's results as if they covered both.
 
-### Personal mailbox via gog
+### Mailboxes via gog
 
-Always call gog as
-`gog -a ian.miell@gmail.com --gmail-no-send --no-input …`.
+The personal mailbox always goes through gog; the work mailbox does too off
+the MacBook Pro. Always call gog as
+`gog -a <mailbox address> --gmail-no-send --no-input …`, with the address of
+the mailbox the thread belongs to.
 `--gmail-no-send` blocks every send path at runtime, so drafts are the only
 way out. Never drop it. Add `--json --results-only` for anything you parse.
-In zsh, keep the prefix in an array (`G=(gog -a … --no-input); "${G[@]}" …`),
-not a string.
+In zsh, keep one prefix array per mailbox (`P=(gog -a ian.miell@gmail.com
+--gmail-no-send --no-input)`, `W=(gog -a ian.miell@container-solutions.com
+--gmail-no-send --no-input)`; then `"${P[@]}" …`), not a string.
 
 | Step | Command |
 |---|---|
-| Account check | `gmail search 'in:sent' --max 1`: the sender must be `ian.miell@gmail.com` |
+| Account check | `gmail search 'in:sent' --max 1`: the sender must be the `-a` address |
 | Write check (no-op) | `gmail thread modify <unstarred threadId> --remove STARRED` |
 | List | `gmail search '<query>' --max 25`, which returns thread `id`, from, subject, date and labels |
 | Read | `gmail thread get <threadId>` (add `--full` for whole bodies) |
@@ -127,7 +167,8 @@ connector or gog account for the mailbox the thread came from.
 
 ## Tools
 
-Use the Gmail connector(s). For each, load the schemas you need in one
+On the MacBook Pro, use the Gmail connector for work (off it, gog for both;
+skip this ToolSearch). For each connector, load the schemas you need in one
 ToolSearch call before starting, e.g. for `mcp__claude_ai_Gmail__*`:
 
 ```
@@ -360,15 +401,16 @@ thread's own mailbox:
   confirms.
 - **gtd task**: create it with the gtd skill. Subject `PREFIX: <what to do>`,
   in the house style of `voices/notes.md`.
-  Notes: the Gmail link on the line after `Task Number:` (work: the thread's
-  `viewUrl` from the connector; personal: `gog gmail url <threadId>`), then
+  Notes: the Gmail link on the line after `Task Number:` (work on the
+  MacBook Pro: the thread's `viewUrl` from the connector; otherwise:
+  `gog -a <address> gmail url <threadId>`), then
   a 2–5 line excerpt or summary of what's needed and by when. Report the
   task numbers.
   **Always label the thread `GTD-<N>`** with the new task's number, in the
   mailbox it came from, as part of creating the task (no separate approval):
-  - work: `list_labels`, `create_label` with display name `GTD-<N>` if it
-    doesn't exist, then `label_thread` with its label id;
-  - personal: `gmail labels create GTD-<N>` if needed, then
+  - work via the connector: `list_labels`, `create_label` with display name
+    `GTD-<N>` if it doesn't exist, then `label_thread` with its label id;
+  - via gog (personal, or work off the MacBook Pro): `gmail labels create GTD-<N>` if needed, then
     `gmail thread modify <id> --add GTD-<N>`.
   Then archive the thread if approved. The label is how closing the task later
   finds and tidies its mail (`rules/close-task-tidies-mail.md`).

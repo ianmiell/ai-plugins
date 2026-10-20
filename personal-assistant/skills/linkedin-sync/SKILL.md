@@ -28,7 +28,7 @@ invitation tried is logged to
   (work `ian.miell@container-solutions.com`, personal `ian.miell@gmail.com`),
   tool `mcp__claude_ai_Google_Calendar__list_events`. Read only.
 - **Mail** (step 6): the mail skill's Mailboxes setup (Gmail connector for
-  work, `gog` for personal). Search only.
+  work on the MacBook Pro, otherwise `gog`; `gog` for personal). Search only.
 
 ## Rules
 
