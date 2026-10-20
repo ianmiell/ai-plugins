@@ -11,6 +11,7 @@ what's different there, and where the two disagree the channel guide wins.
 |---|---|---|
 | An email (work or personal) | `email.md` | mail, calendar, meeting |
 | A Slack message | `slack.md` | slack, calendar, meeting |
+| A WhatsApp message | `whatsapp.md` | whatsapp |
 | A LinkedIn message, post, comment or connection note | `linkedin.md` | write |
 | A blog post, article, talk abstract or other long-form piece | `writing.md` | write |
 | A PR review comment or review summary | `review.md` | write (and any review skill drafting for Ian) |
@@ -56,13 +57,13 @@ Before showing Ian any draft, run it through the checker and fix what it
 flags (or say why a flag is fine):
 
 ```
-python3 <plugin root>/scripts/voice-check.py --channel email|slack|linkedin|writing|review|notes <<'EOF'
+python3 <plugin root>/scripts/voice-check.py --channel email|slack|whatsapp|linkedin|writing|review|notes <<'EOF'
 <the draft>
 EOF
 ```
 
 It flags em and en dashes, the never-list phrases, common American
 spellings, too many exclamation marks, emoji where the channel doesn't use
-them, greetings and sign-offs on Slack, and drafts much longer than the
+them, greetings and sign-offs on Slack and WhatsApp, and drafts much longer than the
 channel's norm. It exits 0 when clean, 1 with one line per problem. It
 checks mechanics only; the guides still decide tone.
