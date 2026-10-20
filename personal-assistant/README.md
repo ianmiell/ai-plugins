@@ -7,6 +7,7 @@ work and workflows to help me save time and be more effective in my job.
 
 ```
 README.md               - this readme file
+skills/comms/SKILL.md   - /comms: everything at once (both mailboxes, Slack, WhatsApp, LinkedIn, pending invites) in one list and one round of approvals; the usual starting point
 skills/mail/SKILL.md    - /mail: triage the Gmail inbox and decide what to do with each thread
 skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, invites, booking
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
