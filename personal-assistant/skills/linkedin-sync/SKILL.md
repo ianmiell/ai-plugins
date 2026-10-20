@@ -106,13 +106,14 @@ is the same person. It commits and pushes.
    ```bash
    STATE=~/.local/state/personal-assistant; mkdir -p "$STATE"; LOG="$STATE/linkedin-invites.log"; touch "$LOG"
    date -u +%FT%TZ                                                    # NOW
-   cat "$STATE/linkedin-sync-last" 2>/dev/null || date -u -v-7d +%FT%TZ   # LAST
+   cat "$STATE/linkedin-sync-last" 2>/dev/null || date -u -d "7 days ago" +%FT%TZ 2>/dev/null || date -u -v-7d +%FT%TZ   # LAST
    # DEFERRED: viewers held back by a previous run's cap, and not dealt with since
    awk -F'\t' '{s[$3]=$2; n[$3]=$4} END {for (u in s) if (s[u]=="deferred") print u "\t" n[u]}' "$LOG"
    ```
 
    The log has one tab-separated line per viewer tried: time, status, url,
    name. With no `linkedin-sync-last` (the first run), `LAST` is a week ago.
+   (`date` may be GNU coreutils or BSD, hence the two forms.)
 2. `tabs_create_mcp` for a new tab and navigate it to
    `https://www.linkedin.com/analytics/profile-views/`. Read
    `extract-viewers.js` (next to this file), replace `__SINCE__` with
@@ -125,6 +126,9 @@ is the same person. It commits and pushes.
      covers this week too.
    - `done: false`: run it again, up to 5 times. Still not done: as for
      `error`.
+   - `javascript_tool` gives up after 45 seconds, but the script carries on
+     in the page and may replace the list a moment later. After a timeout,
+     reload the page and start again rather than running it on top.
 3. `get_page_text`: one JSON object per line between `VIEWERS-BEGIN` and
    `VIEWERS-END <count>`, newest first, already without 1st-degree
    connections and anonymous viewers. Check the count. The list's degree

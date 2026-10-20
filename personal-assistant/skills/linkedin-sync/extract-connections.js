@@ -15,7 +15,7 @@
 // "Connected on" text in the card around them.
 await (async () => {
   const SINCE = new Date("__SINCE__T00:00:00");
-  const MAX_SCROLLS = 12;  // per call, ~10 cards each
+  const MAX_SCROLLS = 8;   // per call, ~10 cards each: javascript_tool gives up after 45s
   const MAX_CARDS = 400;   // past this, leave the rest to the monthly data export
   const main = document.querySelector("main");
   if (!/\/mynetwork\/invite-connect\/connections/.test(location.pathname) || !main) {

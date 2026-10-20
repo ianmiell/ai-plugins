@@ -17,7 +17,7 @@
 // holds "Viewed ".
 await (async () => {
   const SINCE = new Date("__SINCE__");
-  const MAX_SCROLLS = 15;  // per call, ~7 viewers each
+  const MAX_SCROLLS = 6;   // per call, ~7 viewers each: javascript_tool gives up after 45s
   const MAX_CARDS = 300;
   const UNITS = {m: 60e3, h: 3600e3, d: 86400e3, w: 7 * 86400e3, mo: 30 * 86400e3, y: 365 * 86400e3};
   const UPSELL = /Try Premium|Reactivate Premium|Get Premium|Unlock (all|the full list|who)|with Premium|Premium free|free trial/i;
@@ -26,6 +26,7 @@ await (async () => {
     return JSON.stringify({error: `not on the profile views page (${location.href}): signed out, or a security check?`});
   }
   if (isNaN(SINCE)) return JSON.stringify({error: "__SINCE__ was not replaced with an ISO date-time"});
+  if (main.innerText.startsWith("VIEWERS-BEGIN")) return JSON.stringify({error: "the list is already written: read it with get_page_text"});
   const upsell = (document.body.innerText.match(UPSELL) || [])[0];
   if (upsell) return JSON.stringify({premium: false, reason: `the page shows "${upsell}"`});
 
