@@ -77,7 +77,7 @@ def main():
           hit = True
         ok &= hit != neg
       if ok:
-        h = {x["name"]: x["value"] for x in t["messages"][0]["payload"]["headers"]}
+        h = {x.get("name"): x.get("value", "") for x in t["messages"][0]["payload"]["headers"]}
         res.append({"id": tid, "from": h.get("From"), "subject": h.get("Subject"), "labels": sorted(labs)})
     out = res[:max_n]
   elif cmd == "thread" and args[0] == "get":
