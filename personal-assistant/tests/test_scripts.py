@@ -366,6 +366,16 @@ class MailGather(Base):
     self.assertNotIn("WORK", out)
     self.assertIn("thread ", out)
 
+  def test_header_without_value(self):
+    # gog leaves "value" out of an empty header; that once crashed `list` and `read`
+    m = msg("p9", "Pat <pat@acme.example>", PERSONAL, "Empty header", ["INBOX"])
+    m["payload"]["headers"] += [{"name": "X-Empty"}, {"value": "no name"}]
+    self.set_mail({PERSONAL: {"0000000000000009": {"messages": [m]}}, WORK: {}})
+    out = self.run_script("mail-gather.py", "list", "--mailbox", "personal").stdout
+    self.assertIn("Empty header", out)
+    out = self.run_script("mail-gather.py", "read", "personal", "0000000000000009").stdout
+    self.assertIn("Hello", out)
+
   def test_read_strips_quotes(self):
     out = self.run_script("mail-gather.py", "read", "personal", "0000000000000003", check=0).stdout
     self.assertIn("Fancy dinner on the 24th?", out)

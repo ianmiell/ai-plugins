@@ -92,10 +92,14 @@ def search(mailbox, query, max_n=25):
 
 
 def headers(msg):
-  """A Gmail API message's headers as a dict (first value wins, names lower case)."""
+  """A Gmail API message's headers as a dict (first value wins, names lower case).
+
+  gog leaves "value" out of an empty header, so a missing value reads as "".
+  """
   h = {}
-  for x in msg.get("payload", {}).get("headers", []):
-    h.setdefault(x["name"].lower(), x["value"])
+  for x in (msg.get("payload") or {}).get("headers") or []:
+    if x.get("name"):
+      h.setdefault(x["name"].lower(), x.get("value") or "")
   return h
 
 
