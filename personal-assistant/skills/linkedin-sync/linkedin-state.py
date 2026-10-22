@@ -3,7 +3,9 @@
 the local evidence for new people's levels.
 
   linkedin-state.py window                    # NOW and LAST (step 4.1)
+  linkedin-state.py budget [--per-day 40]     # invitations sent in the last 24 hours, and LEFT
   linkedin-state.py queue < viewers.txt       # step 4.4: who to invite, in order
+  linkedin-state.py suggestions < page.txt    # step 5.3: suggested people to invite, in order
   linkedin-state.py log sent URL "Name"       # after each connect-profile.js result
   linkedin-state.py defer < rest.tsv          # everyone not yet tried, as deferred
   linkedin-state.py done NOW                  # write NOW to linkedin-sync-last
@@ -18,6 +20,14 @@ checks the count against `VIEWERS-END <count>`, and prints `url<TAB>name` lines:
 held back as deferred by an earlier run first, then the new viewers, leaving out anyone the
 log has as sent, pending or connected, at most --max (20) of them. The rest are printed after
 a `# over the cap` line for `defer`.
+
+`budget` counts the `sent` lines of the last 24 hours in the log and prints `SENT <n>` and
+`LEFT <per-day - n>` (at least 0): about 40 invitations a day with Premium, 10 without.
+
+`suggestions` reads the get_page_text output of the Grow page (SUGGESTIONS-BEGIN ...
+SUGGESTIONS-END <count>), checks the count, and prints `url<TAB>name<TAB>mutual` lines in the
+page's order (most mutual connections first), leaving out anyone the log has at all: a
+suggestion is tried once, and never deferred.
 
 `evidence` reads `gtd import-connections --auto` output (the `Created <file> | <name> | ...`
 and `Pending ...` lines) or one name per line, and for each person lists meeting transcripts
@@ -82,21 +92,45 @@ def cmd_window(args):
     print(note)
 
 
-def cmd_queue(args):
-  text = sys.stdin.read()
-  viewers, count = [], None
+def read_page(text, end):
+  """The JSON lines of a page, checked against its `<end> <count>` line."""
+  rows, count = [], None
   for line in text.splitlines():
     line = line.strip()
-    m = re.match(r"VIEWERS-END (\d+)", line)
+    m = re.match(rf"{end} (\d+)", line)
     if m:
       count = int(m.group(1))
     if line.startswith("{"):
       try:
-        viewers.append(json.loads(line))
+        rows.append(json.loads(line))
       except json.JSONDecodeError:
         pa.die(f"not JSON: {line[:80]}")
-  if count is not None and count != len(viewers):
-    pa.die(f"VIEWERS-END says {count} but there are {len(viewers)} lines: read the page again")
+  if count is not None and count != len(rows):
+    pa.die(f"{end} says {count} but there are {len(rows)} lines: read the page again")
+  return rows
+
+
+def cmd_budget(args):
+  since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
+  sent = 0
+  try:
+    with open(LOG, encoding="utf-8") as f:
+      for line in f:
+        parts = line.split("\t")
+        if len(parts) >= 2 and parts[1] == "sent":
+          try:
+            at = datetime.datetime.strptime(parts[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+          except ValueError:
+            continue
+          sent += at >= since
+  except OSError:
+    pass
+  print(f"SENT {sent}")
+  print(f"LEFT {max(0, args.per_day - sent)}")
+
+
+def cmd_queue(args):
+  viewers = read_page(sys.stdin.read(), "VIEWERS-END")
   log = read_log()
   queue, seen = [], set()
   for url, (status, name) in log.items():
@@ -115,6 +149,21 @@ def cmd_queue(args):
     if i == args.max:
       print("# over the cap: pass the lines below to `defer`")
     print(f"{url}\t{name}")
+
+
+def cmd_suggestions(args):
+  people = read_page(sys.stdin.read(), "SUGGESTIONS-END")
+  log = read_log()
+  queue, seen = [], set()
+  for p in people:
+    url = p.get("url")
+    if not url or url in seen or url in log:
+      continue
+    seen.add(url)
+    queue.append((url, p.get("name", ""), p.get("mutual", 0)))
+  print(f"# {len(people)} suggestion(s) on the page, {len(queue)} not tried before")
+  for url, name, mutual in queue:
+    print(f"{url}\t{name}\t{mutual}")
 
 
 def cmd_log(args):
@@ -188,6 +237,8 @@ def main():
   ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
   sub = ap.add_subparsers(dest="cmd", required=True)
   sub.add_parser("window")
+  p = sub.add_parser("budget")
+  p.add_argument("--per-day", type=int, default=40)
   p = sub.add_parser("queue")
   p.add_argument("--max", type=int, default=20)
   p = sub.add_parser("log")
@@ -195,13 +246,14 @@ def main():
                                     "limit", "unexpected", "error", "deferred"])
   p.add_argument("url")
   p.add_argument("name", nargs="?", default="")
+  sub.add_parser("suggestions")
   sub.add_parser("defer")
   p = sub.add_parser("done")
   p.add_argument("now")
   p = sub.add_parser("evidence")
   p.add_argument("--days", type=int, default=30)
   args = ap.parse_args()
-  {"window": cmd_window, "queue": cmd_queue, "log": cmd_log, "defer": cmd_defer,
+  {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
    "done": cmd_done, "evidence": cmd_evidence}[args.cmd](args)
 
 

@@ -70,8 +70,11 @@ Chrome, back to the newest connection already in `~/git/gtd/people`, adds
 the new people with `gtd import-connections --auto`, and suggests a level
 for each from the calendars, meeting transcripts and email. If the account
 has LinkedIn Premium, it also sends a connection request (no note) to each
-profile viewer since the last sync who isn't already a connection, at most
-20 a run, carrying the rest over to the next. The last sync time is in
+profile viewer since the last sync who isn't already a connection, carrying
+over to the next run anyone it doesn't get to. Then it invites the people
+LinkedIn suggests on the Grow page with the most mutual connections. All
+invitations share a budget of about 40 in any 24 hours with Premium
+(viewers first), or 10 without (suggestions only). The last sync time is in
 `~/.local/state/personal-assistant/linkedin-sync-last` and every invitation
 tried is logged in `~/.local/state/personal-assistant/linkedin-invites.log`.
 Run it now with

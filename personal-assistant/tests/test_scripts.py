@@ -661,6 +661,32 @@ class LinkedInState(Base):
     p = self.li("queue", stdin=page.replace("VIEWERS-END 5", "VIEWERS-END 6"))
     self.assertNotEqual(p.returncode, 0)
 
+  def test_budget(self):
+    log = os.path.join(self.env["PA_LINKEDIN_STATE"], "linkedin-invites.log")
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    with open(log, "w") as f:
+      f.write("2020-01-01T00:00:00Z\tsent\thttps://www.linkedin.com/in/old\tOld Person\n")
+    self.li("log", "sent", "https://www.linkedin.com/in/a", "A Person", check=0)
+    self.li("log", "no-connect", "https://www.linkedin.com/in/n", "N Person", check=0)
+    # Only `sent` lines of the last 24 hours count
+    self.assertEqual(self.li("budget", check=0).stdout, "SENT 1\nLEFT 39\n")
+    self.assertEqual(self.li("budget", "--per-day", "1", check=0).stdout, "SENT 1\nLEFT 0\n")
+
+  def test_suggestions(self):
+    self.li("log", "no-connect", "https://www.linkedin.com/in/b", "B Person", check=0)
+    self.li("log", "deferred", "https://www.linkedin.com/in/d", "D Person", check=0)
+    page = ("Title: Grow\nSUGGESTIONS-BEGIN\n" +
+            "\n".join(json.dumps({"url": f"https://www.linkedin.com/in/{x}", "name": f"{x.upper()} Person",
+                                  "headline": "Eng", "mutual": m})
+                      for x, m in (("a", 40), ("b", 9), ("c", 3), ("a", 40))) + "\nSUGGESTIONS-END 4\n")
+    out = self.li("suggestions", stdin=page, check=0).stdout.splitlines()
+    # Anyone in the log is left out (tried once, never deferred), duplicates once, page order kept
+    self.assertEqual(out[1:], ["https://www.linkedin.com/in/a\tA Person\t40",
+                               "https://www.linkedin.com/in/c\tC Person\t3"])
+    self.assertNotIn("/in/d", "\n".join(out))
+    p = self.li("suggestions", stdin=page.replace("SUGGESTIONS-END 4", "SUGGESTIONS-END 5"))
+    self.assertNotEqual(p.returncode, 0)
+
   def test_evidence(self):
     with open(os.path.join(self.gtd, "meetings", "20261016_1508_Acme.txt"), "w") as f:
       f.write("Speaker 1: thanks Dana Lee for joining\n")
