@@ -11,7 +11,9 @@
 //   error       not a profile page (signed out, or a security check?): stop
 // It only ever clicks Connect in the profile's top card (directly or in its More menu), and Send in
 // the invitation dialog that opens. The sidebar ("People also viewed") has Connect buttons of its
-// own, so everything is looked up inside the top card, the first <section> holding the <h1>.
+// own, so everything is looked up inside the top card, the innermost <section> holding the name: the
+// <h1>, or since the October 2026 layout the first <h2> in <main> (an outer <section> holds the
+// activity feed too).
 await (async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const label = e => ((e.innerText || "").trim().split("\n")[0] || e.getAttribute("aria-label") || "").trim();
@@ -21,7 +23,8 @@ await (async () => {
   // Pace: a few seconds on each profile before doing anything, as a person would
   await sleep(6000 + Math.random() * 4000);
   const main = document.querySelector("main");
-  const top = main && [...main.querySelectorAll("section")].find(s => s.querySelector("h1"));
+  const name = main && (main.querySelector("h1") || main.querySelector("h2"));
+  const top = name && [...main.querySelectorAll("section")].filter(s => s.contains(name)).pop();
   if (!/^\/in\//.test(location.pathname) || !top) return done("error", `not a profile page (${location.href})`);
   const degree = (top.innerText.match(/·\s*(1st|2nd|3rd\+?)/) || [])[1] || "";
   if (degree === "1st") return done("connected");
