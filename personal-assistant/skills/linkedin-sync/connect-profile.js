@@ -61,7 +61,13 @@ await (async () => {
   connect.click();
   await sleep(2000 + Math.random() * 1000);
 
-  const dialog = inPage('[role="dialog"], [role="alertdialog"]').find(d => d.offsetParent !== null);
+  // An open chat window is a dialog too (with a Send button of its own), so take the one about the
+  // invitation: it offers Send without a note, asks for an email address or says the limit is reached
+  const dialogs = inPage('[role="dialog"], [role="alertdialog"]').filter(d => d.offsetParent !== null);
+  const dialog = dialogs.find(d => [...d.querySelectorAll("button")].some(b => /^Send without a note$/.test(b.getAttribute("aria-label") || label(b)))
+      || d.querySelector('input[type="email"]') || LIMIT.test(d.innerText || ""))
+    || dialogs.find(d => /invitation/i.test(d.innerText || ""))
+    || dialogs[0];
   const dismiss = () => {
     const x = dialog && [...dialog.querySelectorAll("button")].find(b => /^(Dismiss|Close|Cancel)$/.test(b.getAttribute("aria-label") || label(b)));
     if (x) x.click();
