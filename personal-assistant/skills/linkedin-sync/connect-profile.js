@@ -19,6 +19,9 @@ await (async () => {
   const label = e => ((e.innerText || "").trim().split("\n")[0] || e.getAttribute("aria-label") || "").trim();
   const done = (status, detail) => JSON.stringify(detail ? {status, detail} : {status});
   const LIMIT = /invitation limit|reached the (weekly|maximum)|too many (pending )?invitations/i;
+  // Dialogs and menus can be drawn in a shadow root (since October 2026, the one on #interop-outlet)
+  const inPage = sel => [document, ...[...document.querySelectorAll("*")].filter(e => e.shadowRoot).map(e => e.shadowRoot)]
+    .flatMap(root => [...root.querySelectorAll(sel)]);
 
   // Pace: a few seconds on each profile before doing anything, as a person would
   await sleep(6000 + Math.random() * 4000);
@@ -40,7 +43,7 @@ await (async () => {
     if (!more) return done("no-connect", "no Connect or More in the top card");
     more.click();
     await sleep(1200 + Math.random() * 800);
-    const items = [...document.querySelectorAll('[role="menuitem"]')].filter(e => e.offsetParent !== null);
+    const items = inPage('[role="menuitem"]').filter(e => e.offsetParent !== null);
     if (items.some(e => /^(Pending|Withdraw)/.test(label(e)))) {
       more.click();
       return done("pending");
@@ -58,7 +61,7 @@ await (async () => {
   connect.click();
   await sleep(2000 + Math.random() * 1000);
 
-  const dialog = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].find(d => d.offsetParent !== null);
+  const dialog = inPage('[role="dialog"], [role="alertdialog"]').find(d => d.offsetParent !== null);
   const dismiss = () => {
     const x = dialog && [...dialog.querySelectorAll("button")].find(b => /^(Dismiss|Close|Cancel)$/.test(b.getAttribute("aria-label") || label(b)));
     if (x) x.click();
@@ -87,10 +90,10 @@ await (async () => {
   send.click();
   await sleep(2500 + Math.random() * 1000);
 
-  const after = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"], [role="alert"], .artdeco-toast-item')]
+  const after = inPage('[role="dialog"], [role="alertdialog"], [role="alert"], .artdeco-toast-item')
     .filter(d => d.offsetParent !== null).map(d => d.innerText || "").join("\n");
   if (LIMIT.test(after)) return done("limit", after.split("\n").find(s => LIMIT.test(s)));
-  if ([...document.querySelectorAll('[role="dialog"]')].some(d => d.offsetParent !== null && d.contains(send))) {
+  if (inPage('[role="dialog"]').some(d => d.offsetParent !== null && d.contains(send))) {
     return done("unexpected", "the invitation dialog is still open after Send");
   }
   return done("sent");
