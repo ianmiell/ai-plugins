@@ -146,10 +146,13 @@ know (reactions, polls, edits).
 
 - **1:1 chats** where the last message isn't Ian's (`waiting`), or that are unread: read
   them (`read CHAT --since <window>`, or `--limit 30` for enough context).
-- **Groups**: skip muted groups unless Ian is named or @-mentioned in the window
-  (`search Ian --chat CHAT --since <window>`). For unmuted groups with unread messages,
-  read the window and keep only messages that ask Ian or everyone something, plans that
-  involve him, and dates.
+- **Groups**: read every group with messages in the window, muted ones included
+  (`read CHAT --since <window>`, or `--limit 60` for a busy group). Pick out messages that
+  ask Ian or everyone something, plans that involve him, and dates, as for 1:1 chats. Then
+  **summarise what the group talked about** in one or two plain sentences (the topics, any
+  decisions or plans, anything notable), even when nothing is aimed at Ian, so he knows
+  what he missed without opening it. Keep the summary to topics, not quotes, and don't
+  name who said what unless it matters.
 - Drop chats where Ian had the last word and nothing is asked of him, status updates, and
   system messages.
 - Note `unsent draft` chats: Ian started a reply there and didn't send it.
@@ -179,7 +182,7 @@ date, time or deadline, and whether someone else in a group has already answered
 | **Waiting on Ian** | Ian said he'd do something and hasn't | Draft a short update, or a gtd task |
 | **Schedule** | Plans and dates not in the calendar | Add to calendar, and draft a confirmation |
 | **FYI** | News, photos, links, things others have answered | Nothing (shown so Ian knows) |
-| **Groups** | Unread group traffic with nothing for Ian | One line per group: "12 messages, nothing for you" |
+| **Groups** | Group traffic with nothing for Ian | One entry per group: message count and muted flag, then a one or two sentence summary of the discussion |
 | **Suspicious** | Possible scam or phishing | Say why; suggest blocking or reporting in the app |
 
 Use judgement: family and close friends outrank everything else, and a short "?" chasing
@@ -203,7 +206,9 @@ SCHEDULE
     📅 not in calendar → Add to P?
 
 GROUPS
- 4. Street group (muted) — 126 unread, nothing for you
+ 4. Street group (muted) — 126 messages, nothing for you
+    Mostly about the planning application at no. 12 (objections due Fri) and a lost
+    cat, since found. A new neighbour introduced themselves.
 ```
 
 If Act now is empty, say so first. Then ask how to proceed; take shorthand ("go", "draft 1,
