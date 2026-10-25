@@ -8,6 +8,11 @@
       "name": "personal-assistant",
       "source": "./personal-assistant",
       "description": "Ian Miell's personal assistant"
+    },
+    {
+      "name": "ian-voice",
+      "source": "./ian-voice",
+      "description": "Ian Miell's public technical writing voice, for drafting and reviewing blog posts, articles and book prose as him"
     }
   ]
 }
