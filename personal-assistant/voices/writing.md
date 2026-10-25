@@ -2,6 +2,8 @@
 
 How Ian writes blog posts, articles and talk write-ups. It is based on 21 posts on zwischenzugs.com from 2017 to 2026: bash/git/Docker how-tos ("Ten Things I Wish I'd Known About bash", "Five Ways to Undo a Commit in Git", "Practical Shell Patterns I Actually Use", "A Docker Image in Less Than 1000 Bytes"), essays on organisations and cloud ("Why Are Enterprises So Slow?", "Who Should Write the Terraform?", "OK Cloud, On-Prem is Alright", "The Biggest Cloud Native Strategy Mistake", "Business Value, Soccer Canteens, Engineer Retention, and the Bricklayer Fallacy"), AI posts ("Reinventing The Wheel, Now At A Bargain Price!", "What I Learned Using Private LLMs to Write an Undergraduate History Essay"), and book and career posts. Several of these were first published on the Container Solutions blog. Use this guide alongside the shared voice file. It only covers what is specific to long-form writing.
 
+**The full guide.** The `ian-voice` plugin (in the same marketplace) has a much more detailed version of this voice in its `tech-writing` skill: `VOICE.md` and `EXAMPLES.md`. It was built in October 2026 from all 173 zwischenzugs.com posts and the _Follow the Money_ manuscript. If that plugin is installed, read both files as well as this one, and where they differ the full guide wins. It adds detail on registers (blog, Container Solutions, O'Reilly book), the recipe for a numbered how-to item, code conventions, his beliefs and coined terms, and a final self-check. The corrections below come from it.
+
 ## Titles
 
 - Title Case, usually 4-10 words. Numbers are spelled out: "Five Things...", "Ten More Things...", "Seven Surprising Bash Variables". He does not write "5 Ways".
@@ -29,16 +31,18 @@ How Ian writes blog posts, articles and talk write-ups. It is based on 21 posts 
 - H2 headings throughout. They are short and plain, sometimes a joke ("'Schemas Are Bad, M'Kay?'").
 - Numbered sections in the form "1) Manual Reversion" / "2) git revert". Listicles are numbered all the way through. Essays often use "Factor One:...".
 - A typical essay arc: Problem/Context, then "How We Got Here" (history), then the argument, then Objections or Caveats, then "What To Do?", then a return to the title question ("So, Who Should Write the Terraform?").
-- Long posts get a "TL;DR" or "tl;dr" heading at the top. He does not use "Summary" boxes. Posts may end with "What I Learned" or "Conclusion".
+- Long posts get a "TL;DR" or "tl;dr" heading at the top. He does not use "Summary" boxes. Essays may end with "What I Learned", "Conclusion" (about 8 essays) or a restated title question. How-tos almost never have a conclusion: listicles stop after the last item, or end with "What You Learned" and "Exercises".
+- A numbered how-to item follows a recipe: a one-line hook about his relationship to it ("This one confused me for a long time."), a scenario the reader recognises ("Ever typed anything like this?"), a tiny `$` block with real output, the better way ("Instead, you can type:"), a gloss of each token or flag, a gotcha, and a frequency claim ("I use this dozens of times a day.").
 - Long quotations from books, talks or tweets are set off as blocks with an attribution line underneath (eg "Team Topologies, Matthew Skelton and Manuel Pais"). He also embeds his own old tweets as evidence.
 - A post that proposes something ends with a practical device: a checklist, a scoring list, a "points for / consider writing your own when" pair, or a set of named patterns.
 - Lengths range from 600-word how-tos to 4,700-word essays. He splits a subject into a series rather than trimming it.
 
 ## Paragraphs and sentences
 
-- Paragraphs are short, mostly 1-4 sentences. A one-line paragraph lands a point: "Absolutely.", "Yup.", "Let's move on.", "But hey."
-- Sentences are of medium length and conversational. He allows himself the occasional long sentence with commas and parentheses when telling a story.
-- He writes "I" on his own blog. On anything written for Container Solutions he writes "we" ("we've observed", "our clients"), and the tone there is a little more formal. Pick the voice that fits where the piece will appear.
+- Paragraphs are short, mostly 1-4 sentences, and on the blog about half are a single sentence. A one-line paragraph lands a point: "Absolutely.", "Yup.", "Let's move on.", "But hey.", "Not one bit."
+- Sentences are of medium length (a median of about 14 words in how-tos and 16-20 in essays) and conversational. He allows himself the occasional long sentence with commas and parentheses when telling a story.
+- Parentheses are constant, at about 7-8 per 1,000 words, for asides, glosses and jokes. Semicolons are rare.
+- He writes "I" on his own blog, and "you" even more. On anything written for Container Solutions he writes "we" ("we've observed", "our clients"), and the tone there is more formal: longer paragraphs, fewer jokes, no bold. For O'Reilly book text, follow the publisher's house style (American spelling) and the book repo's AGENTS.md. Pick the voice that fits where the piece will appear.
 - He addresses the reader directly: "dear reader", "If you want to follow along...", "Before we start, let's imagine...".
 - Hedging is honest rather than defensive: "I'm going to grossly simplify matters here, but..."; "Whether it worked or not I don't know - you'd have to ask the team".
 
@@ -57,7 +61,9 @@ How Ian writes blog posts, articles and talk write-ups. It is based on 21 posts 
 ## Code and examples
 
 - He gives a setup block the reader can paste so they can follow along: `cd $(mktemp -d)`, `git init`, then a loop to create commits.
-- Commands carry a `$ ` prompt. After each block he explains what it does, what each flag means and why it is there. Real output is shown, often trimmed.
+- Commands carry a `$ ` prompt. After each block he explains what it does, what each flag means and why it is there. Real output is shown, often trimmed with `[...]`.
+- He uses many tiny blocks (typically 2-4 lines) separated by a sentence of prose, not one long listing. Every lead-in sentence ends with a colon ("Type this:", "which outputs:").
+- He says "folder" rather than "directory".
 - He is candid about craft: "there are better/faster/more elegant ways... but that's not the point". He mentions the alternatives he tried that "didn't stick".
 - Examples are real and personal: his own Makefile, crontab, scrapers, essay files and GitHub repos. He links the repo ("Code is here"). Placeholders are in CAPS (`YOUR_NAME`).
 - Pseudocode or scenarios go in code blocks too, eg a central question set off in a block, or a mock email.
@@ -81,14 +87,16 @@ How Ian writes blog posts, articles and talk write-ups. It is based on 21 posts 
 
 ## Phrases he uses
 
-"Recently I...", "This got me thinking", "I'm often asked...", "Here I...", "it depends", "To be clear,", "In other words,", "Not so fast.", "Wind forward...", "Let's move on.", "I won't go there", "your mileage may vary", "get them under your fingers", "I'm looking at you, node", "natch", "'nuff said", "the hard way", "Keen to hear from you", "I just made that word up". He spells it "focussed".
+"Recently I...", "This got me thinking", "I'm often asked...", "Here I...", "Here's...", "it depends", "In other words," (his commonest restatement), "Of course,", "By contrast,", "Again,", "In theory... In practice...", "The reality is...", "As an aside,", "Fortunately/Unfortunately,", "Wind forward...", "Let's move on.", "I won't go there", "your mileage may vary", "get them under your fingers", "I'm looking at you, node", "natch", "'nuff said", "the hard way", "Keen to hear from you", "I just made that word up". He spells it "focussed". He says "for example", never "for instance". "To be clear" and "Not so fast" are not his phrases: each appears only once in fifteen years.
 
 ## Never
 
 - Em dashes. The WordPress source renders spaced en dashes, but drafts use the shared " - ".
 - "In today's fast-paced world", "Let's dive in", "game-changer", "unlock", "delve", or hype about a vendor's product.
-- Bolding scattered through body text, emoji in prose, or headings phrased as marketing slogans.
+- Bold scattered over single words, emoji in prose, or headings phrased as marketing slogans. (Bolding a *whole* key sentence or takeaway is his habit on the blog, especially 2017-2022; it is not used in Container Solutions or book text.)
 - Abstract claims without a story, a number or a link to support them.
+- Invented anecdotes, statistics, quotes or client names. Use a `TODO:` placeholder for a war story or figure the source doesn't give.
+- Opinions he hasn't expressed. Stay consistent with his known views: money flows shape organisations and so software; culture is real but downstream and must be made specific; there is no universal best practice; cloud is economics, not destiny; simple, old, text-based tools often win; AI is useful but unhyped.
 - Pretending there is one right answer, or giving advice he hasn't followed himself.
 - American spellings, apart from technical terms such as "color" in code.
 - "Whilst". It does appear in Container Solutions house pieces, but his own voice uses "while".
