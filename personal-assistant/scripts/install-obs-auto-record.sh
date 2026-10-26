@@ -1,6 +1,6 @@
 #!/bin/bash
 # install-obs-auto-record.sh: install (or with --uninstall, remove) the launchd agent that starts
-# an OBS recording whenever a Zoom, Google Meet, Teams or similar call is live (see
+# an OBS recording whenever a Zoom, Google Meet, Teams, WhatsApp or similar call is live (see
 # obs-auto-record.py).
 #
 # The agent runs obs-auto-record.py from this checkout, not from the installed plugin, whose

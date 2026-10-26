@@ -6,6 +6,8 @@ If a call is live and OBS isn't recording, start recording: through obs-websocke
 (localhost:4455, no auth) when OBS is running, or by launching OBS with --startrecording when it
 isn't. A call is live when
   - Zoom's meeting process (CptHost) is running, or
+  - the WhatsApp desktop app has had the microphone open for WHATSAPP_AFTER checks in a row (so a
+    voice note doesn't start a recording; asked of CoreAudio, which needs macOS 14 or later), or
   - a browser tab (Chrome, Safari, Arc, Edge, Brave) is on a meeting URL: a Google Meet code
     (meet.google.com/abc-defg-hij, or the meet.google.com/meet/abc-defg-hij Meet redirects to),
     the Zoom web client, a Teams meeting, a Slack huddle, Whereby, Jitsi or Webex.
@@ -17,6 +19,8 @@ control of each browser; allow it.
 """
 
 import base64
+import ctypes
+import ctypes.util
 import json
 import os
 import re
@@ -30,6 +34,7 @@ STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/
                          "personal-assistant")
 STATE = os.path.join(STATE_DIR, "obs-auto-record.json")
 STOP_AFTER = 3   # checks with no call before stopping a recording this script started
+WHATSAPP_AFTER = 2   # checks with WhatsApp on the microphone before it counts as a call
 
 MEETING_URL = re.compile(
     r"meet\.google\.com/(meet/)?[a-z]{3}-[a-z]{4}-[a-z]{3}"
@@ -69,9 +74,54 @@ def browser_urls(app):
     return [u.strip() for u in out.stdout.split(",")]
 
 
-def live_call():
+class _Address(ctypes.Structure):
+    _fields_ = [("selector", ctypes.c_uint32), ("scope", ctypes.c_uint32),
+                ("element", ctypes.c_uint32)]
+
+
+def _fourcc(code):
+    return int.from_bytes(code.encode(), "big")
+
+
+def mic_pids():
+    """PIDs of the processes with the microphone open (what lights macOS's orange dot), from
+    CoreAudio's process objects. Empty if CoreAudio can't say (before macOS 14)."""
+    try:
+        ca = ctypes.CDLL(ctypes.util.find_library("CoreAudio"))
+    except OSError:
+        return set()
+
+    def get(obj, selector, ctype):
+        addr = _Address(_fourcc(selector), _fourcc("glob"), 0)
+        size = ctypes.c_uint32(0)
+        if ca.AudioObjectGetPropertyDataSize(obj, ctypes.byref(addr), 0, None, ctypes.byref(size)):
+            return []
+        buf = (ctype * (size.value // ctypes.sizeof(ctype)))()
+        if ca.AudioObjectGetPropertyData(obj, ctypes.byref(addr), 0, None, ctypes.byref(size), buf):
+            return []
+        return list(buf)
+
+    pids = set()
+    for proc in get(1, "prs#", ctypes.c_uint32):   # the system object's audio processes
+        if any(get(proc, "piri", ctypes.c_uint32)):   # is running input
+            pids.update(get(proc, "ppid", ctypes.c_int32))
+    return pids
+
+
+def whatsapp_on_mic():
+    out = subprocess.run(["/usr/bin/pgrep", "-f", "/WhatsApp.app/"], capture_output=True, text=True)
+    return bool({int(p) for p in out.stdout.split()} & mic_pids())
+
+
+def live_call(state):
     if running("CptHost"):
         return "Zoom"
+    if whatsapp_on_mic():
+        state["whatsapp"] = state.get("whatsapp", 0) + 1
+        if state["whatsapp"] >= WHATSAPP_AFTER:
+            return "WhatsApp"
+    else:
+        state.pop("whatsapp", None)
     for proc, app in BROWSERS.items():
         if not running(proc):
             continue   # telling a closed browser anything would launch it
@@ -150,7 +200,7 @@ def save_state(state):
 
 def main():
     state = load_state()
-    call = live_call()
+    call = live_call(state)
 
     if call:
         state["missed"] = 0
