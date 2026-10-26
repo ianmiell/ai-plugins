@@ -172,11 +172,19 @@ the rest").
 
 Only after Ian approves, and only what he approved:
 
-- **Move a file**: the Drive connector's `update_file` with `fileId` and
-  the destination folder's ID as `parentId` (from the inventory: use
-  `drive-inventory.py find` or the cache). Moves between shared drives
-  need Ian to be a manager of both. If a move fails, list it for Ian
-  to do by hand.
+- **Move a file or folder**: within a shared drive, the Drive connector's
+  `update_file` with `fileId` and the destination folder's ID as
+  `parentId` (IDs from `drive-inventory.py find` or the cache). Between
+  shared drives the connector fails with "The caller does not have
+  permission" even when Ian may move it (October 2026), so use gog
+  without `--readonly`: dry-run first with
+  `gog -a ian.miell@container-solutions.com -n drive move <id> --parent <folderId>`,
+  then run it without `-n`. Moves keep the file's ID, so catalog links
+  still work. If a move is refused, check
+  `gog drive get <id> --fields "capabilities(canMoveItemOutOfDrive)"`.
+  Files in someone else's My Drive can only be moved by their owner:
+  copy them into a shared drive instead (`copy_file` with `parentId`)
+  and repoint the catalog.
 - **Add to the catalog**: the scripts are read-only and the connector
   can't write cells. Give Ian the rows to paste, as tab-separated lines
   in the catalog's columns for that tab, with the tab name above each
