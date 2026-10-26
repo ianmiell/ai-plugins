@@ -181,9 +181,11 @@ internal Slack FYI.
 One list, **numbered continuously across all channels** so a number means one item.
 Grouped by bucket, most important first; within a bucket, people waiting longest first.
 Each line: the channel tag(s), who, a one-line summary, the recommendation and any tags.
-Act now items get the question or decision on a second line. Keep FYI / done, Junk and
-group chatter compact: one line per item, or one line per channel when there are many
-("W✉ 14–22: notifications and receipts → archive"). Example (made-up names):
+Act now items get the question or decision on a second line. Keep FYI / done and Junk
+compact: one line per item, or one line per channel when there are many
+("W✉ 14–22: notifications and receipts → archive"). WhatsApp groups are the exception:
+each gets a one or two sentence summary of what was discussed, as the whatsapp skill's
+Gather step says, even when nothing is for Ian. Example (made-up names):
 
 ```
 ━━ COMMS — W✉ 18 · P✉ 6 · S since Mon 17:00 · WA since Mon 18:00 · LI 10 · 📅 2 invites ━━
@@ -207,7 +209,8 @@ READ LATER
 
 FYI / DONE
  7–14. W✉  GitHub, Calendly and receipt notifications  → Archive
-15.   WA  Street group (muted) — 40 unread, nothing for you
+15.   WA  Street group (muted) — 40 messages, nothing for you. Mostly the parking
+          scheme consultation and someone selling a bike.
 
 JUNK
 16.   LI  3 cold pitches (recruiter, agency, Premium offer)  → No reply
