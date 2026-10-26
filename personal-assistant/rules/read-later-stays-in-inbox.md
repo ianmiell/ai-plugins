@@ -20,6 +20,7 @@ Always READ LATER (keep + star), never junk or archive by default. They're the
 - Prof G Markets (`profgmedia+markets-newsletter@substack.com`), by Scott Galloway & Ed Elson.
   Not the Prof G Pod, which goes to the trash (see newsletters-to-trash.md)
 - Benedict Evans (`list@ben-evans.com`), "Benedict's Newsletter"
+- Unsupervised Learning by Daniel Miessler (`unsupervised-learning@mail.beehiiv.com`)
 
 When Ian says he reads another newsletter, add a `read-later` line for it to
 `senders.tsv` (that's what the scripts read), and to this list.
