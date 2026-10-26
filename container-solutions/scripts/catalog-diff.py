@@ -22,7 +22,8 @@ Files inside a folder the catalog links to count as covered. Files Ian has decid
 (drive-decide.py, check "catalog") are left out. Everything also goes to
 drive-cache/catalog-diff.tsv.
 
-`blog` compares the Blogs tab with the blog's sitemap and lists posts that aren't on it.
+`blog` compares the Blogs tab with the blog's sitemap and lists posts that aren't on it. The
+sitemap's lastmod is the last edit, not the publish date (many old posts share one bulk date).
 """
 
 import argparse
@@ -39,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cs_drive as cs  # noqa: E402
 
 CATALOG = os.path.join(cs.CACHE, "catalog.json")
+STOP = {"a", "an", "the", "of", "and", "to", "in", "on", "is", "for", "with", "we", "our", "your", "s"}
 SITEMAP = os.environ.get("CS_BLOG_SITEMAP", "https://blog.container-solutions.com/sitemap.xml")
 
 
@@ -259,15 +261,15 @@ def blog(args):
   blog_rows = [e for e in cat["entries"] if e["tab"].lower().startswith("blog")]
   slugs = {re.sub(r"^https?://[^/]+/?", "", u).strip("/") for e in blog_rows for u in e["urls"]}
   slugs |= {re.sub(r"^https?://[^/]+/?", "", e["title"]).strip("/") for e in blog_rows if cs.urls(e["title"])}
-  titles = {cs.norm_title(e["title"]) for e in blog_rows}
+  # Slugs are often a cut-down title ("how-company-culture-impacts-code-quality" for "A Conway's
+  # Law Variant: How Company Culture Impacts Code Quality"), so match on words, not strings.
+  titles = [set(cs.norm_title(e["title"]).split()) - STOP for e in blog_rows]
   missing = []
   for mod, u, path in posts:
     if args.since and mod and mod < args.since:
       continue
-    words = path.replace("-", " ")
-    if path in slugs or words in titles or any(t.startswith(words) or words.startswith(t) for t in titles if len(t) > 15):
-      continue
-    if any(difflib.SequenceMatcher(None, t, words).ratio() > 0.85 for t in titles if t):
+    words = set(path.replace("-", " ").split()) - STOP
+    if path in slugs or any(words and (words <= t or len(words & t) >= max(3, int(0.8 * len(words)))) for t in titles):
       continue
     missing.append((mod, u))
   print(f"sitemap: {len(posts)} posts; Blogs tab: {len(blog_rows)} rows; not on the tab: {len(missing)}")
