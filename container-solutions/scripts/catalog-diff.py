@@ -215,7 +215,7 @@ def diff(args):
     candidates.append(i)
     emit("candidate", i["folder"], i["name"], f"{k} {i['modified']} {close}".strip(), i["id"])
 
-  out = os.path.join(cs.CACHE, "catalog-diff.tsv")
+  out = os.path.join(cs.CACHE, "catalog-diff.tsv" if not args.drive else "catalog-diff-partial.tsv")
   with open(out, "w") as f:
     f.write(cs.line("check", "where", "title", "detail", "id") + "\n")
     for r in rows:

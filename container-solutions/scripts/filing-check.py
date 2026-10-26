@@ -17,7 +17,7 @@ judge, not a verdict. Signals:
               (only if My Drive was fetched with refresh --my-drive)
   stray       "Copy of ..." and "Untitled ..." files
 Files Ian has decided on (drive-decide.py, check "filing") are left out. Everything also goes
-to drive-cache/filing-check.tsv.
+to drive-cache/filing-check.tsv (filing-check-partial.tsv when --signal or --drive narrows the run).
 
 `customers` prints the customer names the customer signal uses, so wrong ones can go in the
 config's customers.not_customers.
@@ -125,7 +125,9 @@ def check(args):
       why = (hit[0] if hit else "customer " + ", ".join(cust))
       emit("mydrive", i, f"{why}: belongs in {' or '.join(where)}")
 
-  out = os.path.join(cs.CACHE, "filing-check.tsv")
+  # A run narrowed by --signal or --drive gets its own file, so it doesn't replace the full list.
+  name = "filing-check.tsv" if not (args.signal or args.drive) else "filing-check-partial.tsv"
+  out = os.path.join(cs.CACHE, name)
   with open(out, "w") as f:
     f.write(cs.line("signal", "path", "why", "kind", "modified", "id") + "\n")
     for r in rows:
