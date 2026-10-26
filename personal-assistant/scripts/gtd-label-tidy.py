@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.dont_write_bytecode = True  # no __pycache__ in the plugin from importing pa_common
 import pa_common as pa  # noqa: E402
 
+SEARCH_LIMIT = 100
 LABEL_RE = re.compile(r"^GTD-(\d+)$")
 
 
@@ -64,18 +65,22 @@ def tidy_mailbox(mailbox, only_task, dry_run):
       if only_task is not None:
         lines.append(f"{mailbox}: task {n} is {status}, not closed; left alone")
       continue
-    threads = []
+    threads, capped = [], False
     if label:
-      found = pa.search(mailbox, f"label:{label[0]}", 100)
+      found = pa.search(mailbox, f"label:{label[0]}", SEARCH_LIMIT)
       threads = [t["id"] for t in found]
+      capped = len(found) >= SEARCH_LIMIT  # may be more; keep the label so a rerun finds the rest
     threads += [t for t in linked_threads(n, address) if t not in threads]
     remove = "INBOX,STARRED" + (f",{label[1]}" if label else "")
     for t in threads:
       pa.gog(mailbox, "gmail", "thread", "modify", t, "--remove", remove, dry_run=dry_run)
-    if label:
+    if label and not capped:
       pa.gog(mailbox, "gmail", "labels", "delete", label[1], dry_run=dry_run)
     verb = "would archive" if dry_run else "archived"
-    tail = (f", {'would remove' if dry_run else 'removed'} {label[0]}" if label else ", no label")
+    if capped:
+      tail = f", kept {label[0]}: search hit the {SEARCH_LIMIT}-thread cap, rerun to tidy the rest"
+    else:
+      tail = (f", {'would remove' if dry_run else 'removed'} {label[0]}" if label else ", no label")
     lines.append(f"{mailbox}: task {n} closed: {verb} {len(threads)} thread(s){tail}")
   return lines, len(gtd_labels), open_n
 
