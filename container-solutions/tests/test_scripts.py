@@ -33,9 +33,9 @@ def item(fid, path, mime=DOC, modified="2025-06-01T10:00:00Z"):
 
 
 STATE = {
-  "drives": [{"id": "d-" + n.lower().replace(" ", "-"), "name": n} for n in
+  "drives": [{"id": "d-" + n.strip().lower().replace(" ", "-"), "name": n} for n in
              ["CS Engineering", "CS Customers", "CS Marketing", "All Hands Recordings", "Content",
-              "CS Operations", "CS Sales", "Some Other Drive"]],
+              "CS Operations", "CS Sales ", "Some Other Drive"]],
   "inventories": {
     "d-cs-customers": [
       item("fo-acme", "Acme Widgets Ltd", FOLDER),

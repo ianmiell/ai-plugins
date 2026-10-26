@@ -57,7 +57,7 @@ def drive_ids(cfg, names):
   known = dict(cfg.get("drive_ids") or {})
   if any(n not in known for n in names):
     for d in cs.listing(cs.gog("drive", "drives", "--all"), "drives"):
-      known[d["name"]] = d["id"]
+      known[d["name"].strip()] = d["id"]  # "CS Sales " has a trailing space
     cs.save_local_config({"drive_ids": {n: known[n] for n in cfg["drives"] if n in known}})
   missing = [n for n in names if n not in known]
   if missing:
