@@ -122,8 +122,8 @@ def load_catalog():
     return json.load(f)
 
 
-def where(fid):
-  """Where a Drive file is, for one the inventory doesn't have."""
+def where(fid, drives=None):
+  """Where a Drive file is, for one the inventory doesn't have. `drives` names shared drive IDs."""
   try:
     res = cs.gog("drive", "get", fid, "--fields", "id,name,trashed,driveId,owners(emailAddress)")
   except cs.GogError as e:
@@ -134,7 +134,8 @@ def where(fid):
     return f"trashed: {name}"
   owners = [o.get("emailAddress", o) if isinstance(o, dict) else o for o in f.get("owners") or []]
   if f.get("driveId"):
-    return f"in another shared drive ({f['driveId']}): {name}"
+    d = (drives or {}).get(f["driveId"])
+    return f"in shared drive {d}: {name}" if d else f"in a shared drive Ian isn't a member of ({f['driveId']}): {name}"
   return f"in {', '.join(owners) or 'someone'}'s My Drive: {name}"
 
 
@@ -159,8 +160,11 @@ def diff(args):
     for fid in e["ids"]:
       linked[fid].append(e)
   outside = [fid for fid in linked if fid not in by_id and fid not in decided]
+  drives = {}
+  if outside:
+    drives = {d["id"]: d["name"].strip() for d in cs.listing(cs.gog("drive", "drives", "--all"), "drives")}
   with concurrent.futures.ThreadPoolExecutor(8) as pool:
-    found = dict(zip(outside, pool.map(where, outside)))
+    found = dict(zip(outside, pool.map(lambda fid: where(fid, drives), outside)))
   for fid in outside:
     for e in linked[fid]:
       emit("missing", ref(e), e["title"], found[fid], fid)

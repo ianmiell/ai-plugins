@@ -40,22 +40,28 @@ def customers(cfg, inv):
   """{normalized name: folder path} for each customer folder in the customers drive."""
   c = cfg["customers"]
   skip = {n.lower() for n in c["not_customers"]}
+  strip = re.compile(c.get("name_strip") or r"$^")
   out = {}
   for i in inv:
     if i["drive"] != c["drive"] or i["mime"] != cs.FOLDER or i["depth"] != c["depth"]:
       continue
-    name = SUFFIX.sub("", i["name"]).strip()
+    name = strip.sub("", SUFFIX.sub("", i["name"])).strip()
     n = cs.norm_title(name)
-    if len(n) >= 4 and n not in skip:
-      out[n] = i["path"]
+    if len(n) >= 3 and n not in skip and name.lower() not in skip:
+      out[n] = (i["path"], name)
   return out
 
 
-def name_re(names):
-  if not names:
+def name_re(custs):
+  """One regex for all customer names. An all-caps name (an acronym like EPO) only matches
+  in capitals, so a customer called INFORM doesn't match every file with "inform" in it."""
+  if not custs:
     return None
-  alts = sorted((re.escape(n).replace(r"\ ", r"[\s_.-]*") for n in names), key=len, reverse=True)
-  return re.compile(r"(?<![a-z0-9])(" + "|".join(alts) + r")(?![a-z0-9])", re.I)
+  alts = []
+  for n, (_, raw) in sorted(custs.items(), key=lambda kv: -len(kv[0])):
+    pat = re.escape(n).replace(r"\ ", r"[\s_.-]*")
+    alts.append(pat if not (raw.isupper() and len(raw) > 1) else "(?-i:" + re.escape(raw) + ")")
+  return re.compile(r"(?<![A-Za-z0-9])(" + "|".join(alts) + r")(?![A-Za-z0-9])", re.I)
 
 
 def check(args):
@@ -65,6 +71,7 @@ def check(args):
   signals = args.signal or SIGNALS
   custs = customers(cfg, cs.load_inventory([cfg["customers"]["drive"]]))
   cust_re = name_re(custs)
+  custs = {n: p for n, (p, _) in custs.items()}
   ok_drives = set(cfg["customers"]["ok_drives"])
   ah = cfg["all_hands"]
   ah_re, rec_re = re.compile(ah["pattern"]), re.compile(cfg["recording_pattern"])
@@ -147,7 +154,7 @@ def list_customers(args):
   cfg = cs.config()
   custs = customers(cfg, cs.load_inventory([cfg["customers"]["drive"]]))
   print(f"{len(custs)} customers from {cfg['customers']['drive']} folders at depth {cfg['customers']['depth']}")
-  for n, p in sorted(custs.items()):
+  for n, (p, _) in sorted(custs.items()):
     print(cs.line(n, p))
 
 

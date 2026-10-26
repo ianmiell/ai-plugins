@@ -14,6 +14,7 @@
     "drive": "CS Customers",
     "depth": 1,
     "ok_drives": ["CS Customers", "CS Sales"],
+    "name_strip": "(?i)\\s+(tech assessment|assessment|project|poc)$",
     "not_customers": ["archive", "archived", "old", "templates", "template", "internal", "general", "misc", "prospects", "partners", "shared", "admin", "other", "test", "tmp", "new", "projects"]
   },
   "all_hands": {
@@ -35,13 +36,18 @@
     },
     {
       "label": "finance/people",
-      "pattern": "(?i)\\b(invoices?|payroll|expenses|budget|forecast|p&l|salary|salaries|pension|appraisal|performance review|offer letter|employment contract)\\b",
+      "pattern": "(?i)\\b(invoices?|payroll|expenses|p&l|salary|salaries|pension|appraisal|performance review|offer letter|employment contract)\\b",
       "expect": ["CS Operations"]
+    },
+    {
+      "label": "budget/forecast",
+      "pattern": "(?i)\\b(budget|forecast)\\b",
+      "expect": ["CS Operations", "CS Sales", "CS Customers"]
     },
     {
       "label": "sales",
       "pattern": "(?i)\\b(proposal|quote|quotation|pricing|rfp|rfi|tender|account plan|battle ?card|pitch deck)\\b",
-      "expect": ["CS Sales", "CS Customers"]
+      "expect": ["CS Sales", "CS Customers", "CS Operations"]
     },
     {
       "label": "marketing",

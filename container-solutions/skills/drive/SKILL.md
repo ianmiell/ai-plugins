@@ -126,8 +126,12 @@ python3 $S/drive-inventory.py tree --drive "CS Sales" --depth 2
 The customer list is the top-level folders of CS Customers. On a first run,
 and whenever it looks wrong, run `customers` and add names that aren't
 customers (e.g. "Templates") to `customers.not_customers` in `drive.json`.
-If CS Customers groups customers one level down (e.g. "Active/…"), set
-`customers.depth`.
+If CS Customers groups customers one level down (e.g. "CS Projects/…"), set
+`customers.depth`. `customers.name_strip` cuts words off the end of folder
+names ("WCC Tech Assessment" → WCC). All-caps names (EPO, INFORM) only
+match in capitals, so INFORM doesn't catch every "inform" in a file name.
+A customer whose name is an everyday word (Shell) is better left in
+`not_customers` than matched.
 
 Signals (each is a lead, not a verdict):
 
