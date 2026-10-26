@@ -6,7 +6,8 @@ If a call is live and OBS isn't recording, start recording: through obs-websocke
 (localhost:4455, no auth) when OBS is running, or by launching OBS with --startrecording when it
 isn't. A call is live when
   - Zoom's meeting process (CptHost) is running, or
-  - a browser tab (Chrome, Safari, Arc, Edge, Brave) is on a meeting URL: a Google Meet code,
+  - a browser tab (Chrome, Safari, Arc, Edge, Brave) is on a meeting URL: a Google Meet code
+    (meet.google.com/abc-defg-hij, or the meet.google.com/meet/abc-defg-hij Meet redirects to),
     the Zoom web client, a Teams meeting, a Slack huddle, Whereby, Jitsi or Webex.
 A recording this script started is stopped once no call has been seen for STOP_AFTER checks in a
 row. A recording Ian started by hand is never stopped.
@@ -31,7 +32,7 @@ STATE = os.path.join(STATE_DIR, "obs-auto-record.json")
 STOP_AFTER = 3   # checks with no call before stopping a recording this script started
 
 MEETING_URL = re.compile(
-    r"meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}"
+    r"meet\.google\.com/(meet/)?[a-z]{3}-[a-z]{4}-[a-z]{3}"
     r"|zoom\.us/wc/"
     r"|teams\.(microsoft|live)\.com/.*(meetup-join|/meet/|light-meetings|/v2/\?meetingjoin)"
     r"|app\.slack\.com/huddle/"
