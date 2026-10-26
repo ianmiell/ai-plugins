@@ -1,7 +1,7 @@
 // connect-profile.js: run on a LinkedIn profile (https://www.linkedin.com/in/...) with Claude in
 // Chrome's javascript_tool, to send that person a connection request without a note (see SKILL.md
 // step 4). Returns JSON {status, detail?}, where status is one of:
-//   sent        the invitation went
+//   sent        the invitation went (LinkedIn said "Invitation sent")
 //   connected   already a 1st-degree connection: nothing done
 //   pending     an invitation is already waiting: nothing done
 //   no-connect  no Connect on the profile (some only offer Follow): nothing done
@@ -13,7 +13,8 @@
 // the invitation dialog that opens. The sidebar ("People also viewed") has Connect buttons of its
 // own, so everything is looked up inside the top card, the innermost <section> holding the name: the
 // <h1>, or since the October 2026 layout the first <h2> in <main> (an outer <section> holds the
-// activity feed too).
+// activity feed too). Dialogs and toasts are position: fixed, so have no offsetParent: visibility
+// is getClientRects().
 await (async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const label = e => ((e.innerText || "").trim().split("\n")[0] || e.getAttribute("aria-label") || "").trim();
@@ -22,6 +23,9 @@ await (async () => {
   // Dialogs and menus can be drawn in a shadow root (since October 2026, the one on #interop-outlet)
   const inPage = sel => [document, ...[...document.querySelectorAll("*")].filter(e => e.shadowRoot).map(e => e.shadowRoot)]
     .flatMap(root => [...root.querySelectorAll(sel)]);
+  const visible = e => e.isConnected && e.getClientRects().length > 0;
+  const toasts = () => inPage('[role="alert"], [role="status"], .artdeco-toast-item').filter(visible)
+    .map(e => e.innerText || "").join("\n");
 
   // Pace: a few seconds on each profile before doing anything, as a person would
   await sleep(6000 + Math.random() * 4000);
@@ -43,7 +47,7 @@ await (async () => {
     if (!more) return done("no-connect", "no Connect or More in the top card");
     more.click();
     await sleep(1200 + Math.random() * 800);
-    const items = inPage('[role="menuitem"]').filter(e => e.offsetParent !== null);
+    const items = inPage('[role="menuitem"]').filter(visible);
     if (items.some(e => /^(Pending|Withdraw)/.test(label(e)))) {
       more.click();
       return done("pending");
@@ -63,7 +67,7 @@ await (async () => {
 
   // An open chat window is a dialog too (with a Send button of its own), so take the one about the
   // invitation: it offers Send without a note, asks for an email address or says the limit is reached
-  const dialogs = inPage('[role="dialog"], [role="alertdialog"]').filter(d => d.offsetParent !== null);
+  const dialogs = inPage('[role="dialog"], [role="alertdialog"]').filter(visible);
   const dialog = dialogs.find(d => [...d.querySelectorAll("button")].some(b => /^Send without a note$/.test(b.getAttribute("aria-label") || label(b)))
       || d.querySelector('input[type="email"]') || LIMIT.test(d.innerText || ""))
     || dialogs.find(d => /invitation/i.test(d.innerText || ""))
@@ -74,8 +78,8 @@ await (async () => {
     return !!x;
   };
   if (!dialog) {
-    // Some profiles send straight away and show Pending
-    return buttons().some(b => /^Pending$/.test(label(b))) ? done("sent") : done("unexpected", "no invitation dialog opened");
+    // Some profiles send straight away, without a dialog
+    return /Invitation sent/i.test(toasts()) ? done("sent") : done("unexpected", "no invitation dialog opened");
   }
   const text = dialog.innerText || "";
   if (LIMIT.test(text)) {
@@ -96,11 +100,9 @@ await (async () => {
   send.click();
   await sleep(2500 + Math.random() * 1000);
 
-  const after = inPage('[role="dialog"], [role="alertdialog"], [role="alert"], .artdeco-toast-item')
-    .filter(d => d.offsetParent !== null).map(d => d.innerText || "").join("\n");
+  const after = toasts() + "\n" + (visible(dialog) ? dialog.innerText || "" : "");
   if (LIMIT.test(after)) return done("limit", after.split("\n").find(s => LIMIT.test(s)));
-  if (inPage('[role="dialog"]').some(d => d.offsetParent !== null && d.contains(send))) {
-    return done("unexpected", "the invitation dialog is still open after Send");
-  }
-  return done("sent");
+  if (visible(dialog) && dialog.contains(send)) return done("unexpected", "the invitation dialog is still open after Send");
+  if (/Invitation sent/i.test(after)) return done("sent");
+  return done("unexpected", "the dialog closed but LinkedIn didn't say \"Invitation sent\": check the profile");
 })()

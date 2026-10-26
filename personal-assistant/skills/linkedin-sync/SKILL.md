@@ -79,7 +79,10 @@ import skips anyone already in `people/`.
    - `error`: probably signed out or a security check. Take a screenshot,
      tell Ian what it shows, and stop.
    - `done: false`: run it again (it carries on from the cards loaded), up
-     to 5 times. Still not done: say so, and go on to step 4.
+     to 8 times. Still not done: say so, and go on to step 4.
+   - `javascript_tool` gives up after 45 seconds, but the script carries on
+     in the page. After a timeout, reload the page and start again rather
+     than running it on top.
    - `capped: true`: more than 400 new connections, so some are missing.
      The data export in step 6 fills the gap.
 3. `get_page_text` on the tab. The page now holds one JSON object per line
@@ -123,8 +126,11 @@ The bookkeeping is done by `linkedin-state.py` next to this file
    - `error`: take a screenshot, tell Ian what it shows, close the tab and
      go on to step 5 without touching `linkedin-sync-last`, so the next run
      covers this week too.
-   - `done: false`: run it again, up to 5 times. Still not done: as for
+   - `done: false`: run it again, up to 8 times. Still not done: as for
      `error`.
+   - `javascript_tool` gives up after 45 seconds, but the script carries on
+     in the page and may replace the list a moment later. After a timeout,
+     reload the page and start again rather than running it on top.
 3. `get_page_text`: one JSON object per line between `VIEWERS-BEGIN` and
    `VIEWERS-END <count>`, newest first, already without 1st-degree
    connections and anonymous viewers. Check the count. The list's degree
