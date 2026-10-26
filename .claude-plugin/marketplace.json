@@ -13,6 +13,11 @@
       "name": "ian-voice",
       "source": "./ian-voice",
       "description": "Ian Miell's public technical writing voice, for drafting and reviewing blog posts, articles and book prose as him"
+    },
+    {
+      "name": "container-solutions",
+      "source": "./container-solutions",
+      "description": "Ian Miell's Container Solutions work tools: keeping CS Google Drive and the marketing content catalog in order"
     }
   ]
 }

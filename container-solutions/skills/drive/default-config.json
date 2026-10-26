@@ -1,0 +1,57 @@
+{
+  "account": "ian.miell@container-solutions.com",
+  "catalog_id": null,
+  "drives": [
+    "CS Engineering",
+    "CS Customers",
+    "CS Marketing",
+    "All Hands Recordings",
+    "Content",
+    "CS Operations",
+    "CS Sales"
+  ],
+  "customers": {
+    "drive": "CS Customers",
+    "depth": 1,
+    "ok_drives": ["CS Customers", "CS Sales"],
+    "not_customers": ["archive", "archived", "old", "templates", "template", "internal", "general", "misc", "prospects", "partners", "shared", "admin", "other", "test", "tmp", "new", "projects"]
+  },
+  "all_hands": {
+    "drive": "All Hands Recordings",
+    "pattern": "(?i)all[ -]?hands|town ?hall|company (update|meeting)"
+  },
+  "recording_pattern": "(?i)recording|\\bGMT[+-]?\\d|\\(\\d{4}-\\d{2}-\\d{2} \\d{2}[:.]\\d{2}",
+  "content": {
+    "paths": "(?i)sales collateral|case stud|white ?papers?|e-?books?|webinars?|talks?|conferences?|presentations|blogs?|articles|marketing|podcasts?|videos|one[- ]pagers?|assessments?|brochures?|datasheets?|patterns|maturity matrix|best of",
+    "names": "(?i)assessment|case study|white ?paper|e-?book|webinar|one[- ]pager|best of|maturity matrix|talk|keynote|datasheet|brochure",
+    "exclude_paths": "(?i)(^|/)(archive|archived|old|trash|_old|deprecated)(/|$)",
+    "kinds": ["doc", "slides", "pdf", "video", "sheet"]
+  },
+  "rules": [
+    {
+      "label": "contract/legal",
+      "pattern": "(?i)\\b(contract|msa|sow|statement of work|nda|dpa|master services agreement|terms and conditions)\\b",
+      "expect": ["CS Customers", "CS Operations", "CS Sales"]
+    },
+    {
+      "label": "finance/people",
+      "pattern": "(?i)\\b(invoices?|payroll|expenses|budget|forecast|p&l|salary|salaries|pension|appraisal|performance review|offer letter|employment contract)\\b",
+      "expect": ["CS Operations"]
+    },
+    {
+      "label": "sales",
+      "pattern": "(?i)\\b(proposal|quote|quotation|pricing|rfp|rfi|tender|account plan|battle ?card|pitch deck)\\b",
+      "expect": ["CS Sales", "CS Customers"]
+    },
+    {
+      "label": "marketing",
+      "pattern": "(?i)\\b(blog post|webinar|white ?paper|e-?book|newsletter|podcast|case study|press release|social media|campaign|landing page|seo)\\b",
+      "expect": ["CS Marketing", "Content", "CS Sales"]
+    },
+    {
+      "label": "engineering",
+      "pattern": "(?i)\\b(runbook|post-?mortem|incident report|adr|architecture decision|design doc|terraform|helm chart)\\b",
+      "expect": ["CS Engineering", "CS Customers"]
+    }
+  ]
+}
