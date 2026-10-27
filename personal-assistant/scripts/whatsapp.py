@@ -97,8 +97,8 @@ def snapshot(path):
     src.backup(mem)
     src.close()
   except sqlite3.Error as e:
-    die(f"can't read {path} ({e}). If it's 'unable to open', give your "
-        "terminal Full Disk Access in System Settings > Privacy & Security.")
+    die(f"can't read {path} ({e}). If it's 'unable to open', give Ghostty "
+        "(your terminal) Full Disk Access in System Settings > Privacy & Security.")
   mem.row_factory = sqlite3.Row
   return mem
 

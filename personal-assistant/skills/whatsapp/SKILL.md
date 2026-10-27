@@ -47,9 +47,9 @@ is this skill's base directory). Set up October 2026:
 - The desktop app only holds what it has synced. If the newest message is hours old while
   Ian says the phone has newer ones, ask him to open WhatsApp on the Mac for a moment and
   run again.
-- If the script says it can't open the database, the terminal needs Full Disk Access:
-  System Settings → Privacy & Security → Full Disk Access, then restart the terminal and
-  Claude Code. Ian does this; don't try to change it.
+- If the script says it can't open the database, Ghostty (the terminal Claude Code runs
+  in) needs Full Disk Access: System Settings → Privacy & Security → Full Disk Access,
+  then quit and reopen Ghostty and Claude Code. Ian does this; don't try to change it.
 
 Check it's working with `python3 <script> chats --limit 3`: it should list recent chats.
 
