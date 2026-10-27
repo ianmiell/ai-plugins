@@ -21,6 +21,8 @@ Always READ LATER (keep + star), never junk or archive by default. They're the
   Not the Prof G Pod, which goes to the trash (see newsletters-to-trash.md)
 - Benedict Evans (`list@ben-evans.com`), "Benedict's Newsletter"
 - Unsupervised Learning by Daniel Miessler (`unsupervised-learning@mail.beehiiv.com`)
+- O'Reilly (`reply@et.oreilly.com`), e.g. "This Week in AI" event reminders. The address
+  sends O'Reilly's other marketing too, so all of it comes up read later
 - Zeihan on Geopolitics (`peterzeihan@creator.patreon.com`)
 
 When Ian says he reads another newsletter, add a `read-later` line for it to
