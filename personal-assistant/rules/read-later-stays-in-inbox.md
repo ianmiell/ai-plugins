@@ -23,6 +23,7 @@ Always READ LATER (keep + star), never junk or archive by default. They're the
 - Unsupervised Learning by Daniel Miessler (`unsupervised-learning@mail.beehiiv.com`)
 - O'Reilly (`reply@et.oreilly.com`), e.g. "This Week in AI" event reminders. The address
   sends O'Reilly's other marketing too, so all of it comes up read later
+- Zeihan on Geopolitics (`peterzeihan@creator.patreon.com`)
 
 When Ian says he reads another newsletter, add a `read-later` line for it to
 `senders.tsv` (that's what the scripts read), and to this list.

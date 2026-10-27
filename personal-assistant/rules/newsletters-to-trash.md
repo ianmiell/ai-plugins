@@ -8,6 +8,8 @@ Archive. As of October 2026:
 - The Prof G Pod (`profgmedia+prof-g@substack.com`). Not the Prof G Markets
   newsletter, which Ian reads (see read-later-stays-in-inbox.md).
 - FINOS community newsletter (`karl.moll@finos.org`), e.g. "TWAF: ..."
+- Scott Galloway's own newsletter (`profgmedia@substack.com`), e.g. "Signal-ing
+  Our Thanks". Not Prof G Markets, which Ian reads.
 
 `scripts/mail-gather.py` marks their threads `[trash]`.
 
