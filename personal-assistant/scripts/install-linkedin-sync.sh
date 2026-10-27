@@ -1,6 +1,7 @@
 #!/bin/bash
-# install-linkedin-sync.sh: install (or with --uninstall, remove) the launchd agent that opens
-# /personal-assistant:linkedin-sync in iTerm2 every Monday at 08:30. Run it now with
+# install-linkedin-sync.sh: install (or with --uninstall, remove) the launchd agent that starts
+# /personal-assistant:linkedin-sync as a background Claude Code session every Monday at 08:30.
+# Run it now with
 #   launchctl kickstart gui/$(id -u)/com.ianmiell.linkedin-sync
 #
 # The agent runs linkedin-sync.sh from this checkout, not from the installed plugin, whose folder
@@ -39,4 +40,4 @@ plutil -lint "${PLIST}"
 launchctl bootstrap "${DOMAIN}" "${PLIST}"
 
 echo "Installed ${LABEL}: Mondays at 08:30, logging to ${LOG}"
-echo "The first time it opens iTerm2, macOS asks to allow control of iTerm2. Allow it."
+echo "Each run starts a background session: list them with 'claude agents', open one with 'claude attach <id>'."
