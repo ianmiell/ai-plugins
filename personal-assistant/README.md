@@ -65,8 +65,10 @@ Whisper Transcription's Watch Folder transcribes it. Remove it with
 
 ## LinkedIn sync
 
-`scripts/install-linkedin-sync.sh` installs a launchd agent that opens an
-iTerm2 window running `claude '/personal-assistant:linkedin-sync'` every
+`scripts/install-linkedin-sync.sh` installs a launchd agent that starts a
+background Claude Code session running
+`claude --bg --chrome '/personal-assistant:linkedin-sync'` (listed in
+`claude agents` and the agent list in Claude Code) every
 Monday at 08:30 (on waking, if the Mac was asleep). The skill reads
 LinkedIn's Recently added connections page in Chrome, through Claude in
 Chrome, back to the newest connection already in `~/git/gtd/people`, adds
