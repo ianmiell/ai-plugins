@@ -50,8 +50,10 @@ settled() {
   return 1
 }
 
-# launchd's PATH doesn't include ~/.local/bin, where the claude installer puts it.
-export PATH="${HOME}/.local/bin:${PATH}"
+# launchd's PATH is minimal and ~/.zshrc isn't read, so add claude (~/.local/bin), Homebrew
+# (ffprobe for /meeting's .mkv check) and gtd (bin/gtd-push calls a bare `gtd`); the
+# background session inherits it.
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:${GTD_DIR}/bin:${PATH}"
 
 start_session() {
   (cd "${GTD_DIR}" && claude --bg --name "meeting $*" "/personal-assistant:meeting $*")
