@@ -2,9 +2,10 @@
 # meeting-watch.sh: run by launchd whenever the recordings inbox or ~/git/gtd/meetings changes
 # (see com.ianmiell.meeting-watch.plist and install-meeting-watch.sh).
 #
-# Opens one iTerm2 window running
-#   claude '/personal-assistant:meeting <stem> ...'
-# for each new item, once it has stopped growing:
+# Starts one background Claude Code session running
+#   claude --bg '/personal-assistant:meeting <stem> ...'
+# for the new items, once they have stopped growing. It shows up in `claude agents` (and the
+# agent list in Claude Code); `claude attach <id>` opens it. The items are:
 #   - a recording in the inbox: OBS records YYYYMMDD_HHMM.mkv there and remuxes it to
 #     YYYYMMDD_HHMM.mp4. /meeting names it and moves the .mp4 into the meetings folder, where
 #     Whisper Transcription's Watch Folder transcribes it under its final name.
@@ -49,17 +50,11 @@ settled() {
   return 1
 }
 
-open_iterm() {
-  local cmd="cd '${GTD_DIR}' && claude '/personal-assistant:meeting $*'"
-  osascript - "${cmd}" <<'EOF'
-on run argv
-  tell application "iTerm2"
-    activate
-    set newWindow to (create window with default profile)
-    tell current session of newWindow to write text (item 1 of argv)
-  end tell
-end run
-EOF
+# launchd's PATH doesn't include ~/.local/bin, where the claude installer puts it.
+export PATH="${HOME}/.local/bin:${PATH}"
+
+start_session() {
+  (cd "${GTD_DIR}" && claude --bg --name "meeting $*" "/personal-assistant:meeting $*")
 }
 
 shopt -s nullglob
@@ -82,4 +77,4 @@ done
 (( ${#new_stems[@]} == 0 )) && exit 0
 
 echo "$(date '+%F %T') new meeting(s): ${new_stems[*]}"
-open_iterm "${new_stems[@]}" || echo "$(date '+%F %T') failed to open iTerm2 (check Automation permission)" >&2
+start_session "${new_stems[@]}" || echo "$(date '+%F %T') failed to start a background claude session" >&2

@@ -1,14 +1,14 @@
 #!/bin/bash
-# install-meeting-watch.sh: install (or with --uninstall, remove) the launchd agent that opens
-# /personal-assistant:meeting in iTerm2 when a new recording lands in the inbox
-# (~/Movies/meetings-inbox, where OBS records) or a new bare-stem transcript lands in
+# install-meeting-watch.sh: install (or with --uninstall, remove) the launchd agent that starts
+# /personal-assistant:meeting as a background Claude Code session when a new recording lands in
+# the inbox (~/Movies/meetings-inbox, where OBS records) or a new bare-stem transcript lands in
 # ~/git/gtd/meetings.
 #
 # The agent runs meeting-watch.sh from this checkout, not from the installed plugin, whose
 # folder name changes with each version. Re-run after moving the checkout.
 #
 # Any inbox recordings and bare-stem transcripts already there are marked as seen so installing
-# doesn't open a window for each; process those with /personal-assistant:meeting.
+# doesn't start a session for each; process those with /personal-assistant:meeting.
 
 set -euo pipefail
 
@@ -60,4 +60,4 @@ launchctl bootstrap "${DOMAIN}" "${PLIST}"
 
 echo "Installed ${LABEL}: watching ${INBOX_DIR} and ${MEETINGS_DIR}, logging to ${LOG}"
 echo "Point OBS's recording path at ${INBOX_DIR}."
-echo "The first time it opens iTerm2, macOS asks to allow control of iTerm2. Allow it."
+echo "New meetings start background sessions: list them with 'claude agents', open one with 'claude attach <id>'."
