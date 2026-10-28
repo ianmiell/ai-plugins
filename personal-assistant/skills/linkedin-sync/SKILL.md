@@ -86,10 +86,11 @@ import skips anyone already in `people/`.
    - `capped: true`: more than 400 new connections, so some are missing.
      The data export in step 6 fills the gap.
 3. `get_page_text` on the tab. The page now holds one JSON object per line
-   between `GTD-SYNC-BEGIN` and `GTD-SYNC-END <count>`. Write those lines,
-   exactly as they are, to
-   `$TMPDIR/linkedin-connections-<YYYYMMDD>.json`. Check that the number of
-   `{` lines equals `<count>`.
+   between `GTD-SYNC-BEGIN` and `GTD-SYNC-END <count>`. Pass the page text
+   to `python3 $L connections` on stdin (`L=<base>/linkedin-state.py`). It
+   checks the number of lines against `<count>` and writes them, exactly as
+   they are, to `$TMPDIR/linkedin-connections-<YYYYMMDD>.json`, printing the
+   path. If it says the count is wrong, run `get_page_text` again.
 4. Close the tab.
 
 ### 3. Add the new people
@@ -199,14 +200,17 @@ sending at a `limit`, `unexpected` or `error`.
 The page can miss people (layout changes, more than 400 new, people hidden
 from the list). LinkedIn's data export catches them.
 
-- Newest export: `ls -t ~/Downloads/*LinkedInDataExport*.zip | head -1`.
-- If it's less than 7 days old, run step 3 on it too (with the zip in place
-  of the json; it's safe to repeat, as known people are skipped).
-- If there's none, or the newest is more than 30 days old, offer to open
+`python3 $L export` prints the newest export (`EXPORT <path> <age>d`, or
+`EXPORT none`) and what to do with it:
+
+- `ACTION import` (less than 7 days old): run step 3 on it too (with the zip
+  in place of the json; it's safe to repeat, as known people are skipped).
+- `ACTION request` (none, or more than 30 days old): offer to open
   `https://www.linkedin.com/mypreferences/d/download-my-data` in a new tab
   for Ian to request it ("Download larger data archive", or just
   Connections, which arrives in about 10 minutes). Ian requests and
   downloads it: LinkedIn may ask for the password, which you never type.
+- `ACTION none`: nothing to do.
 
 ### 7. Look for each new person
 
@@ -220,13 +224,8 @@ neither), so only the calendar and mail are left to search:
 - **Calendar:** `list_events` on both calendars from 30 days ago to today,
   once each. Match each person's full name against attendee display names,
   and against attendee emails (`first.last@`, `flast@`, `firstlast@`).
-- **Meetings:** `find ~/git/gtd/meetings -name '*.txt' -mtime -30` and grep
-  those transcripts and their file names for each full name.
 - **Mail:** search both mailboxes for the last 30 days in batches of about
   10 names: `newer_than:30d ("Name One" OR "Name Two" OR ...)`.
-- **People notes:** `grep -l -F "Full Name" ~/git/gtd/people/*.md`, leaving
-  out their own file, finds who mentions them (an introduction, a meeting
-  log).
 
 Suggest a level for each:
 
@@ -244,10 +243,13 @@ on a few lines, by name only, with "suggest forgotten". Take shorthand: "ok"
 accepts all, "Jane close", "Bob met", "leave the rest". Use the levels
 `close`, `met`, `in-touch`, `forgotten`.
 
-For each level Ian agrees, add a `- Level: <level>` line straight after the
-`- LinkedIn:` line of their people file. For a meeting, also offer a meeting
-log line, as the meeting skill writes them: under a `### Meeting log`
-heading, `- YYYY-MM-DD (meeting): <event title> [meetings/<file>.txt]`.
+For each level Ian agrees, run
+`python3 <base>/../../scripts/people-note.py level <File> <level>`. It puts
+`- Level: <level>` straight after the `- LinkedIn:` line (or replaces the
+one there) and, as `gtd people` does, tags someone set to `close` with no
+tags `techie`. For a meeting, also offer a meeting log line, as the meeting
+skill writes them:
+`people-note.py log <File> --kind meeting --date <YYYY-MM-DD> --ref meetings/<file>.txt "<event title>"`.
 Then `cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd push </dev/null`.
 
 ### 9. Report

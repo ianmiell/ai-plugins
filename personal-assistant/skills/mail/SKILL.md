@@ -166,6 +166,7 @@ on the MacBook Pro the work mailbox still goes through the connector.
 | Read a thread | `python3 $S/mail-gather.py read <mailbox> <threadId>`: plain-text bodies with quoted replies cut (a 56 KB `thread get` comes out at about 2 KB) |
 | Archive, keep + star, trash, spam, label, `GTD-N` | `python3 $S/mail-apply.py` with a plan on stdin (Execute, below) |
 | New gtd task from a thread | `python3 $S/gtd-new-task.py --mailbox M --thread ID …` (gtd skill) |
+| Note on an existing task from a thread | `python3 $S/gtd-note.py N --mailbox M --thread ID [--archive]` (gtd skill), note on stdin |
 | Closed tasks' `GTD-N` labels | `python3 $S/gtd-label-tidy.py` |
 
 The gog commands underneath, for anything the scripts don't cover:
@@ -483,10 +484,13 @@ with the connector.
     `gmail thread modify <id> --add GTD-<N>`.
   Then archive the thread if approved. The label is how closing the task later
   finds and tidies its mail (`rules/close-task-tidies-mail.md`).
-- **gtd note / close**: append to `tasks/N/notes.md` (with the link and a
-  dated one-liner), or `bin/gtd close N`. Always after approval. When a note
-  links a thread to an existing task, label that thread `GTD-<N>` too
-  (`<mailbox> gtd N <threadId>` in the `mail-apply.py` plan). When closing,
+- **gtd note / close**: a dated one-liner with the thread's link on task N,
+  or `bin/gtd close N`. Always after approval. When a note links a thread to
+  an existing task, label that thread `GTD-<N>` too. For a gog mailbox, one
+  call does both (and archives with `--archive`):
+  `python3 $S/gtd-note.py N --mailbox M --thread <id> [--archive]` with the
+  note on stdin. For the connector mailbox, `gtd-note.py N --link <viewUrl>`,
+  then label the thread with the connector as for a new task. When closing,
   tidy the task's mail with `gtd-label-tidy.py --task N`
   (`rules/close-task-tidies-mail.md`).
 - **People notes** (`rules/people-notes-from-email.md`):

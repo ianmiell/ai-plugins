@@ -230,7 +230,8 @@ Do only the approved actions:
   the message>` on the line after `Task Number:` (there's no link to a message), then a
   2–5 line summary of what's needed and by when
   (`gtd-new-task.py --subject "HOME: …" --link "WhatsApp: <chat name>, <date time>"`,
-  summary on stdin).
+  summary on stdin). A note on an existing task:
+  `gtd-note.py N --link "WhatsApp: <chat name>, <date time>"`, note on stdin.
 - **People notes**: per the rule above, with
   `people-note.py log <File> --kind whatsapp [--task N] "<summary>"`.
 

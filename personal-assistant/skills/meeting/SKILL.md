@@ -263,7 +263,9 @@ until Ian says done:
    meeting, and `voice-check.py --channel slack`.
 6. **The `MEETING:` task**: find the open gtd task for this event
    (`gtd-find.py <event id> "<title>"`, gtd skill). Offer to
-   add the transcript file name to its notes, and then to close it.
+   add the transcript file name to its notes
+   (`gtd-note.py N --ref meetings/<new stem>.txt`, a one-line note on stdin),
+   and then to close it.
 7. **Done.**
 
 Take shorthand ("1 2", "tasks but skip the last one") and confirm each write.

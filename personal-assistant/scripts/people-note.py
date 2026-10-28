@@ -16,6 +16,14 @@ if it isn't there. A new section goes before `## LinkedIn messages` (which `gtd
 import-messages` keeps at the end of the file), and never inside the
 `## managed by linkedin_tools` ... `### managed by linkedin_tools` block. A line that is
 already there isn't added again. It doesn't commit: run `bin/gtd push` once afterwards.
+
+  people-note.py level Jane_Doe met
+
+`level` sets the `- Level:` line the way `gtd people` does (bin/gtd-people's set_level): it
+replaces the first `- Level:` line, or adds one straight after the `- LinkedIn:` line, or
+else after the headings at the top. Setting `close` on someone with no `- Tags:` line also
+adds `- Tags: techie` after it, if techie is one of the tags in people/.tags. Levels: close,
+met, in-touch, forgotten. It doesn't commit either.
 """
 
 import argparse
@@ -33,6 +41,9 @@ PEOPLE = os.path.join(pa.GTD, "people")
 MANAGED_START = "## managed by linkedin_tools"
 MANAGED_END = "### managed by linkedin_tools"
 MESSAGES_HEADING = "## LinkedIn messages"
+LEVELS = ("close", "met", "in-touch", "forgotten")
+DEFAULT_TAG = {"close": "techie"}  # bin/gtd-people's default_tag
+DEFAULT_TAGS = ("colleague", "family", "friend", "recruiter", "techie")  # when there's no people/.tags
 LOG_LINE_RE = re.compile(r"^- \d{4}-\d{2}-\d{2} \((email|slack|whatsapp|linkedin|meeting)[^)]*\):")
 
 
@@ -138,6 +149,48 @@ def add_line(lines, heading, entry):
   return before + ["\n"] + block + ["\n"] + lines[at:], True
 
 
+def key_re(key):
+  return re.compile(r"^\s*-\s*" + re.escape(key) + r":", re.I)
+
+
+def set_key(lines, key, value, after=None):
+  """bin/gtd-people's set_tagged_line: replace the first `- KEY:` line, else add one after the
+  first `- AFTER:` line, else after any heading lines at the top."""
+  new = f"- {key}: {value}\n"
+  i = next((i for i, ln in enumerate(lines) if key_re(key).match(ln)), None)
+  if i is not None:
+    return lines[:i] + [new] + lines[i + 1:]
+  if after:
+    i = next((i for i, ln in enumerate(lines) if key_re(after).match(ln)), None)
+    if i is not None:
+      if not lines[i].endswith("\n"):
+        lines[i] += "\n"
+      return lines[:i + 1] + [new] + lines[i + 1:]
+  i = next((i for i, ln in enumerate(lines) if not ln.startswith("#")), None)
+  if i is None:
+    if lines and not lines[-1].endswith("\n"):
+      lines[-1] += "\n"
+    return lines + [new]
+  return lines[:i] + [new] + (["\n"] if lines[i].strip() else []) + lines[i:]
+
+
+def allowed_tags():
+  try:
+    with open(os.path.join(PEOPLE, ".tags"), encoding="utf-8") as f:
+      return {w for ln in f for w in re.split(r"[\s,]+", ln.split("#")[0].lower()) if w}
+  except OSError:
+    return set(DEFAULT_TAGS)
+
+
+def set_level(lines, level):
+  """Returns the new lines, and the tag added (or None)."""
+  lines = set_key(lines, "Level", level, after="LinkedIn")
+  tag = DEFAULT_TAG.get(level)
+  if tag and tag in allowed_tags() and not any(key_re("Tags").match(ln) for ln in lines):
+    return set_key(lines, "Tags", tag, after="Level"), tag
+  return lines, None
+
+
 def resolve(person):
   f = person if person.endswith(".md") else person + ".md"
   path = f if os.path.isabs(f) else os.path.join(PEOPLE, os.path.basename(f))
@@ -174,6 +227,10 @@ def main():
   p.add_argument("--ref", action="append", default=[], help="other reference, e.g. meetings/<file>.txt")
   p.add_argument("--date", default=datetime.date.today().isoformat())
   p.add_argument("--dry-run", action="store_true")
+  p = sub.add_parser("level", help="set a person's - Level: line")
+  p.add_argument("person", help="file name (Jane_Doe or Jane_Doe.md)")
+  p.add_argument("level", choices=LEVELS)
+  p.add_argument("--dry-run", action="store_true")
   sub.add_parser("check", help="list files with log lines outside their log section")
   args = ap.parse_args()
 
@@ -194,6 +251,25 @@ def main():
         n += 1
         print(f"{f}: {len(bad)} line(s) outside a log section, e.g. {pa.one_line(bad[0], 80)}")
     print(f"{n} file(s)")
+    return
+
+  if args.cmd == "level":
+    path = resolve(args.person)
+    name = os.path.basename(path)
+    with open(path, encoding="utf-8") as f:
+      lines = f.readlines()
+    old = next((ln.split(":", 1)[1].strip() for ln in lines if key_re("Level").match(ln)), "")
+    new, tagged = set_level(list(lines), args.level)
+    if new == lines:
+      print(f"{name}: level already {args.level}")
+      return
+    change = f"level {old or '(none)'} -> {args.level}" + (f", tagged {tagged}" if tagged else "")
+    if args.dry_run:
+      print(f"{name}: would set {change}")
+      return
+    with open(path, "w", encoding="utf-8") as f:
+      f.writelines(new)
+    print(f"{name}: {change}")
     return
 
   path = resolve(args.person)

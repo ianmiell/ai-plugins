@@ -9,7 +9,9 @@ the local evidence for new people's levels.
   linkedin-state.py log sent URL "Name"       # after each connect-profile.js result
   linkedin-state.py defer < rest.tsv          # everyone not yet tried, as deferred
   linkedin-state.py done NOW                  # write NOW to linkedin-sync-last
-  linkedin-state.py evidence < created.txt    # step 6: meetings and people notes per person
+  linkedin-state.py evidence < created.txt    # step 7: meetings and people notes per person
+  linkedin-state.py connections [OUT] < page.txt  # step 2.3: the connections JSON for the import
+  linkedin-state.py export                    # step 6: newest data export, and what to do
 
 State is in ~/.local/state/personal-assistant (PA_LINKEDIN_STATE overrides it):
 linkedin-sync-last (UTC time of the last sync) and linkedin-invites.log (one line per viewer
@@ -35,6 +37,16 @@ of the last 30 days whose name or text has their full name, and other people fil
 mention them. Calendar and mail are still the skill's to search. The suggested level is
 `met` with a transcript, `in-touch` with a mention, otherwise `forgotten?` (until the calendar
 and mail searches have been done).
+
+`connections` reads the get_page_text output of the connections page after
+extract-connections.js (GTD-SYNC-BEGIN ... GTD-SYNC-END <count>), checks the count, and writes
+the JSON lines, as they are, to OUT (default $TMPDIR/linkedin-connections-<YYYYMMDD>.json) for
+`gtd import-connections --auto`. It refuses without the GTD-SYNC-END line.
+
+`export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it)
+and prints `EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than
+7 days old, `ACTION request` when there's none or it's more than 30 days old, else
+`ACTION none`.
 """
 
 import argparse
@@ -52,6 +64,7 @@ import pa_common as pa  # noqa: E402
 STATE = os.path.expanduser(os.environ.get("PA_LINKEDIN_STATE", "~/.local/state/personal-assistant"))
 LAST = os.path.join(STATE, "linkedin-sync-last")
 LOG = os.path.join(STATE, "linkedin-invites.log")
+DOWNLOADS = os.path.expanduser(os.environ.get("PA_DOWNLOADS", "~/Downloads"))
 DONE = {"sent", "pending", "connected"}
 
 
@@ -166,6 +179,32 @@ def cmd_suggestions(args):
     print(f"{url}\t{name}\t{mutual}")
 
 
+def cmd_connections(args):
+  text = sys.stdin.read()
+  if not re.search(r"^\s*GTD-SYNC-END \d+", text, re.M):
+    pa.die("no `GTD-SYNC-END <count>` line: pass the whole get_page_text output, after extract-connections.js")
+  read_page(text, "GTD-SYNC-END")
+  lines = [l.strip() for l in text.splitlines() if l.strip().startswith("{")]
+  out = args.out or os.path.join(os.environ.get("TMPDIR", "/tmp"),
+                                 f"linkedin-connections-{datetime.date.today():%Y%m%d}.json")
+  with open(out, "w", encoding="utf-8") as f:
+    f.writelines(l + "\n" for l in lines)
+  print(f"{len(lines)} connection(s) -> {out}")
+
+
+def cmd_export(args):
+  zips = [os.path.join(DOWNLOADS, f) for f in os.listdir(DOWNLOADS)
+          if "LinkedInDataExport" in f and f.endswith(".zip")] if os.path.isdir(DOWNLOADS) else []
+  if not zips:
+    print("EXPORT none")
+    print("ACTION request")
+    return
+  newest = max(zips, key=os.path.getmtime)
+  age = int((time.time() - os.path.getmtime(newest)) // 86400)
+  print(f"EXPORT {newest} {age}d")
+  print("ACTION " + ("import" if age < 7 else "request" if age > 30 else "none"))
+
+
 def cmd_log(args):
   append_log(args.status, args.url, args.name)
   print(f"logged {args.status} {args.url}")
@@ -247,6 +286,9 @@ def main():
   p.add_argument("url")
   p.add_argument("name", nargs="?", default="")
   sub.add_parser("suggestions")
+  p = sub.add_parser("connections")
+  p.add_argument("out", nargs="?", help="default $TMPDIR/linkedin-connections-<YYYYMMDD>.json")
+  sub.add_parser("export")
   sub.add_parser("defer")
   p = sub.add_parser("done")
   p.add_argument("now")
@@ -254,7 +296,7 @@ def main():
   p.add_argument("--days", type=int, default=30)
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
-   "done": cmd_done, "evidence": cmd_evidence}[args.cmd](args)
+   "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export}[args.cmd](args)
 
 
 if __name__ == "__main__":

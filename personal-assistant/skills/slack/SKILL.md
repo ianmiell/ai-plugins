@@ -200,7 +200,8 @@ Do only the approved actions:
   send time in the report (it can't be edited afterwards except in Slack).
 - **gtd task / note**: with the gtd skill. Notes: the Slack link on the line after
   `Task Number:`, then a 2–5 line summary of what's needed and by when
-  (`gtd-new-task.py --subject "CS: …" --link <Slack link>`, summary on stdin).
+  (`gtd-new-task.py --subject "CS: …" --link <Slack link>`, summary on stdin). A note
+  on an existing task: `gtd-note.py N --link <Slack link>`, note on stdin.
 - **People notes**: per the rule above, with
   `people-note.py log <File> --kind slack [--task N] "<summary>"`.
 

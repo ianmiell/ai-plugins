@@ -4,8 +4,9 @@
   python3 -m unittest discover -s personal-assistant/tests -v
 
 Nothing here touches Ian's mail, gtd repo or state files: GTD_DIR, PA_STATE, PA_GOG,
-MEETINGS_INBOX and PA_LINKEDIN_STATE all point into a temporary folder. The names are made
-up (the repo is public).
+MEETINGS_INBOX, PA_LINKEDIN_STATE and PA_DOWNLOADS all point into a temporary folder, and
+PA_MACHINE=other makes the tests behave the same on the MacBook Pro as elsewhere. The names
+are made up (the repo is public).
 """
 
 import base64
@@ -76,7 +77,8 @@ class Base(unittest.TestCase):
     self.env = dict(os.environ, GTD_DIR=self.gtd, PA_STATE=os.path.join(self.tmp, "state"),
                     PA_GOG=os.path.join(HERE, "fake_gog.py"), FAKE_GOG_STATE=self.state_file,
                     FAKE_GOG_LOG=self.log_file, MEETINGS_INBOX=os.path.join(self.tmp, "inbox"),
-                    PA_LINKEDIN_STATE=os.path.join(self.tmp, "li"))
+                    PA_LINKEDIN_STATE=os.path.join(self.tmp, "li"), PA_MACHINE="other",
+                    PA_DOWNLOADS=os.path.join(self.tmp, "dl"))
 
   def tearDown(self):
     shutil.rmtree(self.tmp)
@@ -261,6 +263,35 @@ class PeopleNote(Base):
     out = self.run_script("people-note.py", "check", check=0).stdout
     self.assertIn("Jane_Doe.md: 1 line(s)", out)
     self.assertIn("1 file(s)", out)
+
+  def test_level_replaces_or_goes_after_linkedin(self):
+    out = self.run_script("people-note.py", "level", "Jane_Doe", "forgotten", check=0).stdout
+    self.assertIn("level met -> forgotten", out)
+    self.assertIn("- Company: Acme\n- Level: forgotten\n\nMet", self.read("Jane_Doe.md"))
+    with open(os.path.join(self.gtd, "people", "New_One.md"), "w") as f:
+      f.write("## New One\n- LinkedIn: https://www.linkedin.com/in/new\n- Connected on: 01 Oct 2026\n")
+    self.run_script("people-note.py", "level", "New_One", "met", check=0)
+    self.assertEqual(self.read("New_One.md"), "## New One\n- LinkedIn: https://www.linkedin.com/in/new\n"
+                                              "- Level: met\n- Connected on: 01 Oct 2026\n")
+    self.assertIn("already met", self.run_script("people-note.py", "level", "New_One", "met", check=0).stdout)
+    self.run_script("people-note.py", "level", "New_One", "best-friend", check=2)
+
+  def test_level_close_tags_techie_and_heading_fallback(self):
+    out = self.run_script("people-note.py", "level", "Plain_Person", "close", check=0).stdout
+    self.assertIn("tagged techie", out)
+    # After the heading, with a blank line before the next line, as bin/gtd-people's insert_line
+    self.assertEqual(self.read("Plain_Person.md"), "## Plain Person\n- Level: close\n- Tags: techie\n\n- Company: X\n")
+    # Not when they already have tags, nor when techie isn't an allowed tag
+    with open(os.path.join(self.gtd, "people", "Chris_P.md"), "w") as f:
+      f.write("## Chris P\n- Tags: family\n")
+    self.run_script("people-note.py", "level", "Chris_P", "close", check=0)
+    self.assertEqual(self.read("Chris_P.md"), "## Chris P\n- Level: close\n\n- Tags: family\n")
+    with open(os.path.join(self.gtd, "people", ".tags"), "w") as f:
+      f.write("family\nfriend  # no techie\n")
+    before = self.read("Louise_Cox.md")
+    out = self.run_script("people-note.py", "level", "Louise_Cox", "close", "--dry-run", check=0).stdout
+    self.assertIn("would set level (none) -> close\n", out)
+    self.assertEqual(self.read("Louise_Cox.md"), before)
 
 
 class LabelTidy(Base):
@@ -499,6 +530,104 @@ class NewTask(Base):
     self.run_script("gtd-new-task.py", "--subject", "CS: x", "--link", "l", "--defer", "1", "--status", "todo", check=2)
 
 
+class GtdNote(NewTask):
+  def setUp(self):
+    super().setUp()
+    self.task(55, "waiting", "# HOME: Clinic forms\nTask Number: 55\nhttps://mail.example/1\n\nFill them in.\n")
+    self.task(56, "closed", "# HOME: Old\nTask Number: 56\n")
+
+  def test_note_with_mail_label_and_archive(self):
+    out = self.run_script("gtd-note.py", "55", "--mailbox", "personal", "--thread", "aaaaaaaaaaaaaaaa", "--archive",
+                          "--date", "2026-10-28", stdin="Deadline moved to Fri.\nThey'll post the forms.\n",
+                          check=0).stdout
+    self.assertIn("ok    note + gtd push", out)
+    self.assertEqual(self.notes(55),
+                     "# HOME: Clinic forms\nTask Number: 55\nhttps://mail.example/1\n\nFill them in.\n\n"
+                     "2026-10-28: Deadline moved to Fri.\nThey'll post the forms.\n"
+                     "https://mail.google.com/mail/?authuser=ian.miell%40gmail.com#all/aaaaaaaaaaaaaaaa\n")
+    self.assertIn("push", self.calls())
+    gtd = next(l["id"] for l in self.mail()[PERSONAL]["labels"] if l["name"] == "GTD-55")
+    self.assertEqual(self.labels_of(PERSONAL, "aaaaaaaaaaaaaaaa"), {gtd})
+
+  def test_note_is_idempotent_and_refusals(self):
+    args = ("gtd-note.py", "55", "--link", "https://slack.example/p2", "--date", "2026-10-28")
+    self.run_script(*args, stdin="Bob confirmed.\n", check=0)
+    out = self.run_script(*args, stdin="Bob confirmed.\n", check=0).stdout
+    self.assertIn("already there", out)
+    self.assertEqual(self.notes(55).count("Bob confirmed."), 1)
+    self.assertIn("FAIL  check task: task 56 is closed",
+                  self.run_script("gtd-note.py", "56", "--link", "l", stdin="x\n", check=1).stdout)
+    self.run_script("gtd-note.py", "99", "--link", "l", stdin="x\n", check=1)
+    self.run_script("gtd-note.py", "55", "--link", "l", check=2)
+    self.run_script("gtd-note.py", "55", "--link", "l", "--ref", "r", stdin="x\n", check=2)
+    self.run_script("gtd-note.py", "55", "--archive", "--link", "l", stdin="x\n", check=2)
+
+  def test_dry_run(self):
+    before = self.notes(55)
+    out = self.run_script("gtd-note.py", "55", "--mailbox", "personal", "--thread", "aaaaaaaaaaaaaaaa", "--dry-run",
+                          "--date", "2026-10-28", stdin="x\n", check=0).stdout
+    self.assertIn("would add:\n  2026-10-28: x\n  <Gmail link for personal thread aaaaaaaaaaaaaaaa>", out)
+    self.assertEqual(self.notes(55), before)
+    self.assertEqual(self.gog_calls(), [])
+
+
+class GtdList(Base):
+  NOW = "2026-10-28T12:00"
+
+  def setUp(self):
+    super().setUp()
+    for p in ("high", "medium", "low"):
+      os.makedirs(os.path.join(self.gtd, "priority", p))
+    self.task(10, "todo", "# CS: Write proposal\nTask Number: 10\n")
+    self.task(11, "todo", "# HOME: Renew passport\nTask Number: 11\n")
+    self.task(12, "todo", "# MEETING: Acme sync starting at Tue 20 Oct, 10:00, id: abc123\nTask Number: 12\n")
+    self.task(13, "todo", "# Fix the bike\nTask Number: 13\n")
+    self.task(14, "waiting", "# CS: Invoice from Acme\nTask Number: 14\n")
+    self.task(15, "waiting", "# MEETING: Board starting at Fri 30 Oct, 09:00, id: def\nTask Number: 15\n")
+    self.task(16, "closed", "# CS: Done thing\nTask Number: 16\n")
+    os.symlink("../../tasks/10", os.path.join(self.gtd, "priority", "high", "10"))
+    self.remind(11, "2026-10-20T09:00")
+    self.remind(14, "2026-10-30T09:00")
+    self.remind(15, "2026-10-30T08:00")
+    self.remind(16, "2026-10-30T08:00")
+    old = time.mktime(time.strptime("2026-01-01", "%Y-%m-%d"))
+    for name in os.listdir(os.path.join(self.gtd, "tasks", "13")):
+      os.utime(os.path.join(self.gtd, "tasks", "13", name), (old, old))
+
+  def remind(self, n, when):
+    with open(os.path.join(self.gtd, "tasks", str(n), ".remindme"), "w") as f:
+      f.write(str(int(time.mktime(time.strptime(when, "%Y-%m-%dT%H:%M")))))
+
+  def test_list_groups_and_flags(self):
+    out = self.run_script("gtd-list.py", "--now", self.NOW, check=0).stdout
+    self.assertIn("4 task(s) in todo", out)
+    groups = [l for l in out.splitlines() if l and not l.startswith(" ")]
+    self.assertEqual(groups[1:], ["CS (1)", "HOME (1)", "MEETING (1)", "(no prefix) (1)", "FLAGS (3)"])
+    self.assertIn("     10 (high) CS: Write proposal\n", out)
+    flags = out.split("FLAGS (3)\n")[1].splitlines()
+    self.assertEqual([l.split()[0] for l in flags[:3]], ["11", "12", "13"])
+    self.assertIn("remind 2026-10-20 ⚑ OVERDUE", flags[0])
+    self.assertIn("⚑ past meeting", flags[1])
+    self.assertRegex(flags[2], r"⚑ untouched \d+d$")
+    self.assertIn("bin/gtd clear-meetings", flags[3])
+
+  def test_waiting_and_open(self):
+    out = self.run_script("gtd-list.py", "waiting", "--now", self.NOW, "--stale", "0", check=0).stdout
+    self.assertIn("14 CS: Invoice from Acme remind 2026-10-30 ⚑ due in 2d", out)
+    self.assertNotIn("past meeting", out)
+    out = self.run_script("gtd-list.py", "open", "--now", self.NOW, check=0).stdout
+    self.assertIn("6 task(s) in todo, waiting", out)
+    self.assertIn("14 [waiting] CS: Invoice", out)
+    self.assertNotIn("Done thing", out)
+
+  def test_reminders_window(self):
+    out = self.run_script("gtd-list.py", "reminders", "2026-10-29", "2026-11-01", check=0).stdout
+    self.assertEqual(out, "Fri 2026-10-30 09:00  14 [waiting] CS: Invoice from Acme\n")
+    self.assertIn("no reminders 2026-10-01",
+                  self.run_script("gtd-list.py", "reminders", "2026-10-01", check=0).stdout)
+    self.run_script("gtd-list.py", "reminders", "tomorrow", check=2)
+
+
 class PaEnv(Base):
   def setUp(self):
     super().setUp()
@@ -702,6 +831,32 @@ class LinkedInState(Base):
     self.assertEqual(out, ["Dana Lee\tmet\tmeetings/20261016_1508_Acme.txt",
                            "Eli Moss\tin-touch\tpeople/Other.md",
                            "Fay Ng\tforgotten?\t-"])
+
+  def test_connections(self):
+    rows = [json.dumps({"name": f"P{i}", "url": f"https://www.linkedin.com/in/p{i}"}) for i in range(3)]
+    page = "Title: Connections\nGTD-SYNC-BEGIN\n" + "\n".join(rows) + "\nGTD-SYNC-END 3\nfooter\n"
+    out = os.path.join(self.tmp, "c.json")
+    self.assertIn("3 connection(s) -> " + out, self.li("connections", out, stdin=page, check=0).stdout)
+    with open(out) as f:
+      self.assertEqual(f.read(), "\n".join(rows) + "\n")
+    self.assertNotEqual(self.li("connections", out, stdin=page.replace("END 3", "END 4")).returncode, 0)
+    self.assertNotEqual(self.li("connections", out, stdin="\n".join(rows)).returncode, 0)
+
+  def test_export(self):
+    dl = os.path.join(self.tmp, "dl")
+    os.makedirs(dl)
+    self.env["PA_DOWNLOADS"] = dl
+    self.assertEqual(self.li("export", check=0).stdout, "EXPORT none\nACTION request\n")
+    old, new = os.path.join(dl, "Basic_LinkedInDataExport_01.zip"), os.path.join(dl, "Basic_LinkedInDataExport_02.zip")
+    for path, days in ((old, 40), (new, 10)):
+      open(path, "w").close()
+      t = time.time() - days * 86400
+      os.utime(path, (t, t))
+    self.assertEqual(self.li("export", check=0).stdout, f"EXPORT {new} 10d\nACTION none\n")
+    os.utime(new, None)
+    self.assertEqual(self.li("export", check=0).stdout, f"EXPORT {new} 0d\nACTION import\n")
+    os.remove(new)
+    self.assertEqual(self.li("export", check=0).stdout, f"EXPORT {old} 40d\nACTION request\n")
 
 
 class RulesMatchSenders(unittest.TestCase):
