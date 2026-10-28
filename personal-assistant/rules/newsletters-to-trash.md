@@ -10,6 +10,8 @@ Archive. As of October 2026:
 - FINOS community newsletter (`karl.moll@finos.org`), e.g. "TWAF: ..."
 - Scott Galloway's own newsletter (`profgmedia@substack.com`), e.g. "Signal-ing
   Our Thanks". Not Prof G Markets, which Ian reads.
+- Prof G Research Team's "Extra Credit" (`profgmedia+extra-credit@substack.com`).
+  Not Prof G Markets, which Ian reads.
 
 `scripts/mail-gather.py` marks their threads `[trash]`.
 
