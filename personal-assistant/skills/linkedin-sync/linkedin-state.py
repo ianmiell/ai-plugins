@@ -7,6 +7,8 @@ the local evidence for new people's levels.
   linkedin-state.py queue < viewers.txt       # step 4.4: who to invite, in order
   linkedin-state.py suggestions < page.txt    # step 5.3: suggested people to invite, in order
   linkedin-state.py log sent URL "Name"       # after each connect-profile.js result
+  linkedin-state.py follows < page.txt        # step 5b: followers to follow back, in order
+  linkedin-state.py log --follows followed URL "Name"  # after each follow-follower.js result
   linkedin-state.py defer < rest.tsv          # everyone not yet tried, as deferred
   linkedin-state.py done NOW                  # write NOW to linkedin-sync-last
   linkedin-state.py evidence < created.txt    # step 7: meetings and people notes per person
@@ -14,8 +16,17 @@ the local evidence for new people's levels.
   linkedin-state.py export                    # step 6: newest data export, and what to do
 
 State is in ~/.local/state/personal-assistant (PA_LINKEDIN_STATE overrides it):
-linkedin-sync-last (UTC time of the last sync) and linkedin-invites.log (one line per viewer
-tried: time, status, url, name; tab-separated).
+linkedin-sync-last (UTC time of the last sync), linkedin-invites.log (one line per viewer
+tried: time, status, url, name; tab-separated) and linkedin-follows.log (the same, one line per
+follower followed back or tried). The follows have their own log so that following someone never
+changes whether they're invited.
+
+`follows` reads the get_page_text output of the followers page after extract-followers.js
+(FOLLOWERS-BEGIN ... FOLLOWERS-END <count>), checks the count, and prints `url<TAB>name` lines
+newest first, leaving out anyone the follows log has as followed, already or not-followed
+(LinkedIn wouldn't let Ian follow them: tried once, then left to Ian). After --per-day
+(25) less the follows of the last 24 hours, it prints `# over the cap` and the rest, which the
+next run picks up from the page again.
 
 `queue` reads the get_page_text output of the profile views page (or just its JSON lines),
 checks the count against `VIEWERS-END <count>`, and prints `url<TAB>name` lines: viewers
@@ -64,19 +75,22 @@ import pa_common as pa  # noqa: E402
 STATE = os.path.expanduser(os.environ.get("PA_LINKEDIN_STATE", "~/.local/state/personal-assistant"))
 LAST = os.path.join(STATE, "linkedin-sync-last")
 LOG = os.path.join(STATE, "linkedin-invites.log")
+FOLLOWS_LOG = os.path.join(STATE, "linkedin-follows.log")
 DOWNLOADS = os.path.expanduser(os.environ.get("PA_DOWNLOADS", "~/Downloads"))
 DONE = {"sent", "pending", "connected"}
+INVITE_STATUSES = ["sent", "connected", "pending", "no-connect", "needs-email", "limit", "unexpected", "error",
+                   "deferred"]
 
 
 def utc_now():
   return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def read_log():
+def read_log(path=LOG):
   """url -> (latest status, name)."""
   latest = {}
   try:
-    with open(LOG, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
       for line in f:
         parts = line.rstrip("\n").split("\t")
         if len(parts) >= 3:
@@ -86,10 +100,29 @@ def read_log():
   return latest
 
 
-def append_log(status, url, name):
+def append_log(status, url, name, path=LOG):
   os.makedirs(STATE, exist_ok=True)
-  with open(LOG, "a", encoding="utf-8") as f:
+  with open(path, "a", encoding="utf-8") as f:
     f.write(f"{utc_now()}\t{status}\t{url}\t{' '.join(name.split())}\n")
+
+
+def count_recent(status, path, hours=24):
+  """How many `status` lines the log has from the last `hours`."""
+  since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)
+  n = 0
+  try:
+    with open(path, encoding="utf-8") as f:
+      for line in f:
+        parts = line.split("\t")
+        if len(parts) >= 2 and parts[1] == status:
+          try:
+            at = datetime.datetime.strptime(parts[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+          except ValueError:
+            continue
+          n += at >= since
+  except OSError:
+    pass
+  return n
 
 
 def cmd_window(args):
@@ -124,22 +157,29 @@ def read_page(text, end):
 
 
 def cmd_budget(args):
-  since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
-  sent = 0
-  try:
-    with open(LOG, encoding="utf-8") as f:
-      for line in f:
-        parts = line.split("\t")
-        if len(parts) >= 2 and parts[1] == "sent":
-          try:
-            at = datetime.datetime.strptime(parts[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-          except ValueError:
-            continue
-          sent += at >= since
-  except OSError:
-    pass
+  sent = count_recent("sent", LOG)
   print(f"SENT {sent}")
   print(f"LEFT {max(0, args.per_day - sent)}")
+
+
+def cmd_follows(args):
+  people = read_page(sys.stdin.read(), "FOLLOWERS-END")
+  log = read_log(FOLLOWS_LOG)
+  followed = count_recent("followed", FOLLOWS_LOG)
+  left = max(0, args.per_day - followed)
+  queue, seen = [], set()
+  for p in people:
+    url = p.get("url")
+    if not url or url in seen or log.get(url, ("",))[0] in FOLLOW_DONE:
+      continue
+    seen.add(url)
+    queue.append((url, p.get("name", "")))
+  print(f"# {len(people)} follower(s) not followed back on the page, {len(queue)} to follow; "
+        f"FOLLOWED {followed} in the last 24 hours, LEFT {left}")
+  for i, (url, name) in enumerate(queue):
+    if i == left:
+      print("# over the cap: the next run picks these up")
+    print(f"{url}\t{name}")
 
 
 def cmd_queue(args):
@@ -205,9 +245,20 @@ def cmd_export(args):
   print("ACTION " + ("import" if age < 7 else "request" if age > 30 else "none"))
 
 
+FOLLOW_STATUSES = ["followed", "already", "not-followed", "missing", "limit", "unexpected", "error"]
+FOLLOW_DONE = ("followed", "already", "not-followed")  # tried once: never queued again
+
+
 def cmd_log(args):
-  append_log(args.status, args.url, args.name)
-  print(f"logged {args.status} {args.url}")
+  if args.follows:
+    if args.status not in FOLLOW_STATUSES:
+      pa.die(f"--follows status must be one of {', '.join(FOLLOW_STATUSES)}", 2)
+    append_log(args.status, args.url, args.name, FOLLOWS_LOG)
+  else:
+    if args.status not in INVITE_STATUSES:
+      pa.die(f"status must be one of {', '.join(INVITE_STATUSES)}", 2)
+    append_log(args.status, args.url, args.name)
+  print(f"logged {args.status} {args.url}" + (" (follows)" if args.follows else ""))
 
 
 def cmd_defer(args):
@@ -281,11 +332,13 @@ def main():
   p = sub.add_parser("queue")
   p.add_argument("--max", type=int, default=20)
   p = sub.add_parser("log")
-  p.add_argument("status", choices=["sent", "connected", "pending", "no-connect", "needs-email",
-                                    "limit", "unexpected", "error", "deferred"])
+  p.add_argument("--follows", action="store_true", help="a follow-follower.js result, to the follows log")
+  p.add_argument("status")
   p.add_argument("url")
   p.add_argument("name", nargs="?", default="")
   sub.add_parser("suggestions")
+  p = sub.add_parser("follows")
+  p.add_argument("--per-day", type=int, default=25)
   p = sub.add_parser("connections")
   p.add_argument("out", nargs="?", help="default $TMPDIR/linkedin-connections-<YYYYMMDD>.json")
   sub.add_parser("export")
@@ -296,7 +349,8 @@ def main():
   p.add_argument("--days", type=int, default=30)
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
-   "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export}[args.cmd](args)
+   "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export,
+   "follows": cmd_follows}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -832,6 +832,27 @@ class LinkedInState(Base):
                            "Eli Moss\tin-touch\tpeople/Other.md",
                            "Fay Ng\tforgotten?\t-"])
 
+  def test_follows_queue_cap_and_own_log(self):
+    self.li("log", "sent", "https://www.linkedin.com/in/a", "A Person", check=0)
+    self.li("log", "--follows", "followed", "https://www.linkedin.com/in/a", "A Person", check=0)
+    self.li("log", "--follows", "missing", "https://www.linkedin.com/in/c", "C Person", check=0)
+    self.li("log", "--follows", "not-followed", "https://www.linkedin.com/in/e", "E Person", check=0)
+    page = ("FOLLOWERS-BEGIN\n" +
+            "\n".join(json.dumps({"url": f"https://www.linkedin.com/in/{x}", "name": f"{x.upper()} Person",
+                                  "headline": "Eng"}) for x in ("a", "b", "c", "e", "d")) + "\nFOLLOWERS-END 5\nJane Doe\n")
+    out = self.li("follows", "--per-day", "3", stdin=page, check=0).stdout.splitlines()
+    # a is followed already and e was tried; c was only missing, so it's tried again; 1 followed
+    # today leaves 2
+    self.assertIn("FOLLOWED 1 in the last 24 hours, LEFT 2", out[0])
+    self.assertEqual(out[1:], ["https://www.linkedin.com/in/b\tB Person", "https://www.linkedin.com/in/c\tC Person",
+                               "# over the cap: the next run picks these up", "https://www.linkedin.com/in/d\tD Person"])
+    # Following doesn't touch the invitations: a is still `sent` there, so not queued as a viewer
+    viewers = "VIEWERS-BEGIN\n" + json.dumps({"url": "https://www.linkedin.com/in/a", "name": "A"}) + "\nVIEWERS-END 1\n"
+    self.assertNotIn("/in/a", self.li("queue", stdin=viewers, check=0).stdout.split("\n", 1)[1])
+    self.assertNotEqual(self.li("follows", stdin=page.replace("END 5", "END 6")).returncode, 0)
+    self.li("log", "--follows", "sent", "https://www.linkedin.com/in/b", check=2)
+    self.li("log", "followed", "https://www.linkedin.com/in/b", check=2)
+
   def test_connections(self):
     rows = [json.dumps({"name": f"P{i}", "url": f"https://www.linkedin.com/in/p{i}"}) for i in range(3)]
     page = "Title: Connections\nGTD-SYNC-BEGIN\n" + "\n".join(rows) + "\nGTD-SYNC-END 3\nfooter\n"
