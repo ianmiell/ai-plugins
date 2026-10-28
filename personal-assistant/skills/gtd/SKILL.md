@@ -60,7 +60,9 @@ cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd <command> … </dev/
 
 | Need | Command |
 |---|---|
-| Open tasks | `bin/gtd todo` (also `waiting [DAYS]`, `background`, `someday`, `new`) |
+| Open tasks, for review | `python3 $S/gtd-list.py [todo\|waiting\|background\|someday\|new\|open]`: grouped by prefix, with priority, reminder and flags (OVERDUE, due within 7 days, untouched 90+ days, past meeting), then a FLAGS block |
+| Reminders firing on some days | `python3 $S/gtd-list.py reminders FROM [TO]` (dates; leaves out `MEETING:` tasks) |
+| Open tasks, gtd's own view | `bin/gtd todo` (also `waiting [DAYS]`, `background`, `someday`, `new`) |
 | One task | `bin/gtd show N` |
 | Tasks with reminders not in waiting | `bin/gtd reminders` |
 | Open tasks with TODO lines | `bin/gtd todos` |
@@ -95,7 +97,7 @@ EOF
 | Action | Command |
 |---|---|
 | New task | `python3 $S/gtd-new-task.py --subject "PREFIX: Subject" (--link SOURCE \| --mailbox M --thread ID [--archive]) [--defer DAYS \| --status S] [--priority P]`, notes on stdin. It runs `GO_TO_TASK=N bin/gtd nt`, writes the source line and notes, pushes, sets priority and status, and for an email labels the thread `GTD-<N>` (and archives it with `--archive`). It prints `task <N>`. By hand: `GO_TO_TASK=N bin/gtd nt "PREFIX: Subject"`, then read the number from `.metadata/lasttask`. |
-| Add notes | Append to `tasks/N/notes.md` (keep lines 1–2 intact), then `bin/gtd push` so gtd records it |
+| Add notes | `python3 $S/gtd-note.py N (--link SOURCE \| --ref meetings/<file>.txt \| --mailbox M --thread ID [--archive])`, note on stdin. It appends `YYYY-MM-DD: <note>` and the source line, pushes, and for an email labels the thread `GTD-<N>` (and archives it with `--archive`). It refuses a closed task, and adds the same note only once. By hand: append to `tasks/N/notes.md` (keep lines 1–2 intact), then `bin/gtd push`. |
 | Status | `bin/gtd ms <todo\|waiting\|background\|someday\|t\|w\|b\|s> N` |
 | Priority | `bin/gtd mp <high\|medium\|low\|h\|m\|l> N` |
 | Reminder | `bin/gtd defer N DAYS` sets a reminder DAYS from now and moves the task to waiting. For a repeating reminder, ask Ian to run `! ~/git/gtd/bin/gtd remind N` (it's interactive). |
@@ -128,11 +130,14 @@ invariants in `AGENTS.md`).
 ## Process (when invoked directly)
 
 1. **Scope:** no argument shows `todo` grouped by prefix, with reminders due
-   in the next 7 days marked. `waiting` adds when each reminder fires. A
+   in the next 7 days marked: `python3 $S/gtd-list.py`. `waiting` (or any
+   status, or `open` for todo and waiting) is `gtd-list.py waiting`. A
    number means `show N`. `add …` means create a task (confirm first).
-2. **Present** compactly: number, subject, and reminder date if any. Flag:
+2. **Present** what `gtd-list.py` printed, compactly: number, subject, and
+   reminder date if any. Lead with its FLAGS block:
    - overdue reminders
-   - tasks with no change in a long time (via `.created_date` or `info`)
+   - tasks with no change in a long time (`untouched Nd`; `bin/gtd info N`
+     gives the history if Ian asks)
    - `MEETING:` tasks for meetings that have passed (offer
      `bin/gtd clear-meetings`)
 3. **Act** on Ian's shorthand ("close 4646", "defer 4630 7", "4642 high"),

@@ -195,11 +195,11 @@ mailbox for the related email (by title, organiser or date) and add a
 reschedule, a ticket or agenda attachment. Keep it to one line per event.
 Skip this for routine internal meetings.
 
-**gtd reminders on these days.** Check open gtd tasks whose reminder
-(`.remindme`) falls in the window, from `bin/gtd waiting` and
-`bin/gtd reminders`, and list them under the day as `🗂 4630 CS: Leonardo next
-demo prep (reminder)`. Leave out `MEETING:` tasks; they mirror calendar
-events. Number
+**gtd reminders on these days.** `python3 <base>/../../scripts/gtd-list.py
+reminders <first day> <last day>` lists the open gtd tasks whose reminder
+falls in the window (it already leaves out `MEETING:` tasks, which mirror
+calendar events). List them under the day as `🗂 4630 CS: Leonardo next
+demo prep (reminder)`. Number
 anything Ian might act on, and take shorthand replies ("accept 1 2",
 "decline 2 with note: clash").
 

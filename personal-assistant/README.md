@@ -24,12 +24,14 @@ scripts/mail-gather.py  - inbox threads via gog, compactly, with a first-pass hi
 scripts/mail-apply.py   - approved archive/keep/trash/spam/label/GTD-N actions via gog, with the star rules built in
 scripts/gtd-find.py     - open gtd tasks mentioning names, thread ids or subject words (`--batch` for a whole triage run)
 scripts/gtd-new-task.py - new gtd task with its source link and notes; for email, labels the thread GTD-<N> and archives it
+scripts/gtd-note.py     - dated note with its source on an existing gtd task, pushed; for email, labels the thread GTD-<N>
+scripts/gtd-list.py     - gtd tasks by prefix with review flags (overdue, due soon, untouched, past meeting); `reminders FROM TO` for the calendar
 scripts/gtd-label-tidy.py - archive the mail of closed tasks and remove their GTD-<N> labels (rules/close-task-tidies-mail.md)
-scripts/people-note.py  - find a person's gtd people file and add an email/slack/whatsapp/meeting log line in the right place
+scripts/people-note.py  - find a person's gtd people file, add an email/slack/whatsapp/meeting log line in the right place, set their level
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
-skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, local evidence for levels
+skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, connections file, data export check, local evidence for levels
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
 tests/                  - `python3 -m unittest discover -s personal-assistant/tests`: the scripts against made-up fixtures and a fake gog
@@ -41,8 +43,10 @@ The scripts do the deterministic parts of the skills (gog calls, gtd file
 lookups, house-rule bookkeeping, file moves), so the model reads a few compact
 lines instead of raw API JSON and repeated greps. gog always runs with
 `--gmail-no-send`. They read Ian's real mail and gtd repo by default;
-`GTD_DIR`, `PA_STATE`, `PA_GOG`, `MEETINGS_INBOX` and `PA_LINKEDIN_STATE`
-point them elsewhere, which is what the tests do. Run the tests with:
+`GTD_DIR`, `PA_STATE`, `PA_GOG`, `MEETINGS_INBOX`, `PA_LINKEDIN_STATE` and
+`PA_DOWNLOADS` point them elsewhere, and `PA_MACHINE` (`macbook-pro` or
+`other`) skips the machine check, which is what the tests do. Run the tests
+with:
 
 ```
 python3 -m unittest discover -s personal-assistant/tests -v

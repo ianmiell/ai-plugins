@@ -240,7 +240,8 @@ skill's Execute step:
   to archive the related email.
 - **gtd** (gtd skill): new tasks with `gtd-new-task.py` (`--mailbox/--thread` for gog
   mail, which adds the `GTD-<N>` label; `--link` with the Slack link, `WhatsApp: <chat>,
-  <time>` or the connector's `viewUrl` otherwise), notes on existing tasks, closes.
+  <time>` or the connector's `viewUrl` otherwise), notes on existing tasks with
+  `gtd-note.py N` (the same source options), closes.
 - **People notes**: per `rules/people-notes-from-email.md`, with
   `people-note.py log <File> --kind <channel> [--task N] "<summary>"` (`email, work`,
   `email, personal`, `slack`, `whatsapp`, `linkedin`), then one `bin/gtd push`.

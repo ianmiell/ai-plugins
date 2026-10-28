@@ -48,7 +48,10 @@ def mailbox_name(address):
 
 
 def machine():
-  """'macbook-pro' or 'other', as the mail skill's "Which machine" check."""
+  """'macbook-pro' or 'other', as the mail skill's "Which machine" check. PA_MACHINE overrides it
+  (the tests set it, so they behave the same on every machine)."""
+  if os.environ.get("PA_MACHINE"):
+    return os.environ["PA_MACHINE"]
   if platform.system() != "Darwin":
     return "other"
   try:
