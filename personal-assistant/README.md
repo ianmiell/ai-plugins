@@ -15,7 +15,7 @@ skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; draft
 skills/whatsapp/SKILL.md - /whatsapp: triage WhatsApp from the desktop app's local database (read only); drafts open in the app for Ian to send
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
 skills/write/SKILL.md    - /write: draft LinkedIn posts and messages, blog posts and articles, PR review comments in Ian's voice; /write check reviews a draft
-skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; with Premium, invite recent profile viewers to connect; follow back followers
+skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); with Premium, invite recent profile viewers to connect; follow back followers
 voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
 scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
 scripts/voice-check.py  - mechanical check of a draft against the voices (em dashes, banned phrases, US spelling, emoji, length)
@@ -31,7 +31,7 @@ scripts/people-note.py  - find a person's gtd people file, add an email/slack/wh
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
-skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, connections file, data export check, local evidence for levels
+skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
 tests/                  - `python3 -m unittest discover -s personal-assistant/tests`: the scripts against made-up fixtures and a fake gog
@@ -88,6 +88,7 @@ everyone among the newest 200 followers whom Ian doesn't follow yet, at most
 25 a day. The last sync time is in
 `~/.local/state/personal-assistant/linkedin-sync-last`, every invitation
 tried is logged in `~/.local/state/personal-assistant/linkedin-invites.log`,
+every correspondent looked up in `linkedin-correspondents.log`,
 and every follow-back in `linkedin-follows.log` next to it.
 Run it now with
 `launchctl kickstart gui/$(id -u)/com.ianmiell.linkedin-sync`, remove it
