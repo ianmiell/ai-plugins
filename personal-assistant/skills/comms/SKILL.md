@@ -180,43 +180,58 @@ internal Slack FYI.
 
 ### 7. Present
 
-One list, **numbered continuously across all channels** so a number means one item.
-Grouped by bucket, most important first; within a bucket, people waiting longest first.
-Each line: the channel tag(s), who, a one-line summary, the recommendation and any tags.
-Act now items get the question or decision on a second line. Keep FYI / done and Junk
-compact: one line per item, or one line per channel when there are many
-("W✉ 14–22: notifications and receipts → archive"). WhatsApp groups are the exception:
-each gets a one or two sentence summary of what was discussed, as the whatsapp skill's
-Gather step says, even when nothing is for Ian. Example (made-up names):
+Show the list as **markdown tables**, one per bucket, not a fixed-width text block (Ian
+finds the text form hard to read, October 2026). Start with a one-line header in bold
+giving the counts and windows, then a `####` heading per bucket, most important first.
 
-```
-━━ COMMS — W✉ 18 · P✉ 6 · S since Mon 17:00 · WA since Mon 18:00 · LI 10 · 📅 2 invites ━━
-ACT NOW
- 1. W✉+S  Jane Doe (Acme) — Contract renewal       Wants sign-off on the revised terms by Fri;
-          pinged on Slack too.  🗂 → new task "CS: Sign off Acme renewal"
-          → Draft email reply asking for the redline; 👀 on the Slack ping
- 2. WA    Sam — 1:1, 15:53                          Pint on Thu 29th?  📅 free after 18:00
-          → Draft "yup, pencilled in" and add to P 19:00
- 3. S     Bob — DM, 11:02                           Needs your view on the bench offer.
-          → Draft reply
- 4. LI    Chris — Oct 19                             Can't do Fri; offers Wed or Mon.
-          📅 Mon 10:00 free  → Draft "Monday works - 10am?" for you to paste
+Number items **continuously across all channels** so a number means one item. Within a
+bucket, people waiting longest first. Columns:
 
-SCHEDULE
- 5. 📅 W  Q4 planning Tue 14:00 (Bob)              📅 pending response  ⚠ clashes with P dentist
-          → Decline with note, or move the dentist?
+| Column | What goes in it |
+|---|---|
+| # | The item number (a range such as `7–14` for a grouped row) |
+| Ch | The channel tag(s): `W✉`, `P✉`, `S`, `WA`, `LI`, `📅 W`, `📅 P`, joined with `+` |
+| Who | The person or sender, with where and when (`DM, 11:02`, `#beach, Thu`) |
+| What | A one-line summary; for Act now, the question or decision Ian has to answer |
+| Tags | `📅 …`, `⚠ …`, `🗂 …` from the cross-checks, or empty |
+| → | The recommendation, with any draft text in quotes |
 
-READ LATER
- 6. P✉    Newsletter you read — Weekly issue         → Keep, star
+Keep cells short (no line breaks inside a cell). Keep FYI / done and Junk compact: one row
+per item, or one row per channel when there are many ("W✉ 14–22: notifications and
+receipts → archive"). WhatsApp groups are the exception: each gets its own row whose What
+is a one or two sentence summary of what was discussed, as the whatsapp skill's Gather step
+says, even when nothing is for Ian. Example (made-up names):
 
-FYI / DONE
- 7–14. W✉  GitHub, Calendly and receipt notifications  → Archive
-15.   WA  Street group (muted) — 40 messages, nothing for you. Mostly the parking
-          scheme consultation and someone selling a bike.
+**COMMS — W✉ 18 · P✉ 6 · S since Mon 17:00 · WA since Mon 18:00 · LI 10 · 📅 2 invites**
 
-JUNK
-16.   LI  3 cold pitches (recruiter, agency, Premium offer)  → No reply
-```
+#### Act now
+
+| # | Ch | Who | What | Tags | → |
+|---|---|---|---|---|---|
+| 1 | W✉+S | Jane Doe (Acme), Contract renewal | Wants sign-off on the revised terms by Fri; pinged on Slack too | 🗂 → new task "CS: Sign off Acme renewal" | Draft email asking for the redline; 👀 on the Slack ping |
+| 2 | WA | Sam, 1:1, 15:53 | Pint on Thu 29th? | 📅 free after 18:00 | Draft "yup, pencilled in", add to P 19:00 |
+| 3 | S | Bob, DM, 11:02 | Needs your view on the bench offer | | Draft reply |
+| 4 | LI | Chris, Oct 19 | Can't do Fri; offers Wed or Mon | 📅 Mon 10:00 free | Draft "Monday works - 10am?" to paste |
+
+#### Schedule
+
+| # | Ch | Who | What | Tags | → |
+|---|---|---|---|---|---|
+| 5 | 📅 W | Bob, Q4 planning Tue 14:00 | Invite | 📅 pending · ⚠ clashes with P dentist | Decline with note, or move the dentist? |
+
+#### Read later / FYI / Junk
+
+| # | Ch | Who | What | Tags | → |
+|---|---|---|---|---|---|
+| 6 | P✉ | Newsletter you read | Weekly issue | | Keep, star |
+| 7–14 | W✉ | GitHub, Calendly, receipts | Notifications | | Archive |
+| 15 | WA | Street group (muted), 40 messages | Nothing for you. Mostly the parking scheme consultation and someone selling a bike | | — |
+| 16 | LI | 3 cold pitches | Recruiter, agency, Premium offer | | No reply |
+
+Small buckets can share a table, as Read later, FYI and Junk do above; keep Act now,
+Waiting on Ian and Schedule in tables of their own. Use the same tables in the Execute
+report (step 9) where they help, eg drafts with their text, or calendar changes and who was
+notified.
 
 Instructions from Ian, if any, come first, above Act now. If Act now is empty across
 every channel, say so first. Then ask how to proceed, taking
