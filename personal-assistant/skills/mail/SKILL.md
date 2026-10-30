@@ -368,6 +368,10 @@ Put each thread in one bucket:
 | **Unsubscribe / junk** | Marketing, newsletters Ian never opens, cold sales | Trash, and note the unsubscribe link if there is one |
 | **Suspicious** | Possible phishing or spam | Mark spam (after confirmation) |
 
+Toggl's "Your timesheet ... is unsubmitted" email (`support@track.toggl.com`) is Act now
+with the action `→ /timesheet` (the timesheet skill fills it in and submits it); keep it
+starred until the week is submitted, then archive.
+
 Use judgement over rules: a newsletter from a client is not junk; a
 notification about a failed payment is Act now. The mailbox is a hint about
 context, not a rule: personal mail can still be urgent (bank, school, health),

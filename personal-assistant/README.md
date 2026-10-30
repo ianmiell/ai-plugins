@@ -15,6 +15,7 @@ skills/slack/SKILL.md    - /slack: triage Slack DMs, mentions and threads; draft
 skills/whatsapp/SKILL.md - /whatsapp: triage WhatsApp from the desktop app's local database (read only); drafts open in the app for Ian to send
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
 skills/write/SKILL.md    - /write: draft LinkedIn posts and messages, blog posts and articles, PR review comments in Ian's voice; /write check reviews a draft
+skills/timesheet/SKILL.md - /timesheet: fill in the weekly Toggl Track timesheet in Chrome (8 h a weekday across CCF, pre-sales and holiday) and submit it for approval after Ian's yes
 skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); with Premium, invite recent profile viewers to connect; follow back followers
 voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
 scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
