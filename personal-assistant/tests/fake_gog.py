@@ -80,6 +80,15 @@ def main():
         h = {x.get("name"): x.get("value", "") for x in t["messages"][0]["payload"]["headers"]}
         res.append({"id": tid, "from": h.get("From"), "subject": h.get("Subject"), "labels": sorted(labs)})
     out = res[:max_n]
+  elif cmd == "messages" and args[0] == "search":
+    # Only in:sent is understood (after: is ignored): every message with the SENT label
+    out = [{"id": m["id"], "threadId": tid, "labels": m["labelIds"]}
+           for tid, t in box["threads"].items() for m in t["messages"] if "SENT" in m["labelIds"]]
+  elif cmd == "get":
+    m = next((m for t in box["threads"].values() for m in t["messages"] if m["id"] == args[0]), None)
+    m or fail(f"fake gog: no message {args[0]}")
+    h = {x["name"].lower().replace("-", "_"): x.get("value", "") for x in m["payload"]["headers"]}
+    out = {"headers": {k: h.get(k, "") for k in ("from", "to", "cc", "subject", "date")}, "message": m}
   elif cmd == "thread" and args[0] == "get":
     t = box["threads"].get(args[1]) or fail(f"fake gog: no thread {args[1]}")
     out = {"thread": dict(t, id=args[1]), "downloaded": None}

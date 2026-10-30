@@ -535,7 +535,7 @@ Hand of Public Markets") that summarises and points to the next chapter.
 | Dash | Spaced hyphen " - " (renders " – ") | **Never an em dash.** Also used in titles: "git log - the Good Parts" |
 | Scare quotes | Single: 'the business', 'just work', 'journey' | About 9 per 1,000 words. Double quotes are for speech and quotations |
 | Parentheses | Constant: asides, glosses, jokes, whole parenthetical sentences | "(Team `vim`, for the record)", "(yes, kids, this used to happen)" |
-| Colon | Before every code block, list or punchline | "So there is the answer: ..." |
+| Colon | Before every code block, list or punchline | "So there is the answer: ...". Use sparingly in normal text, as it can sound like an LLM wrote it. |
 | Ellipsis | Trailing irony or a cliffhanger | "Now that's a bad release..." / "If you thought that was complicated, buckle up..." |
 | Exclamation mark | About 1 per 1,000 words | For interjections ("Oops!", "Argh!"), irony ("Long live the monolith!") or a cheerful sign-off ("Enjoy!") |
 | Semicolon | Rare | About 0.4 per 1,000 words; don't reach for them |

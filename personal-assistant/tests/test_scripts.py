@@ -907,3 +907,71 @@ class VoiceCheckStillRuns(Base):
 
 if __name__ == "__main__":
   unittest.main()
+
+
+class LinkedInCorrespondents(Base):
+  def li(self, *args, stdin="", check=None):
+    return self.run_script(None, *args, stdin=stdin, script=LINKEDIN, check=check)
+
+  def test_correspondents_from_gog_and_stdin(self):
+    with open(os.path.join(self.gtd, "people", "Known_Person.md"), "w") as f:
+      f.write("## Known Person\n- Email: other@known.com\n")
+    with open(os.path.join(self.gtd, "people", "Noted_Elsewhere.md"), "w") as f:
+      f.write("## Noted Elsewhere\n- Email: noted@x.io\n")
+    many = ", ".join(f"p{i}.q{i}@big.com" for i in range(9))
+    self.set_mail({PERSONAL: {
+      "t1": {"messages": [
+        msg("m1", "Jane Doe <jane@acme.co.uk>", PERSONAL, "Hi", ["INBOX"]),
+        msg("m2", PERSONAL, '"Doe, Jane" <jane@acme.co.uk>', "Re: Hi", ["SENT"],
+            cc="Known Person <kp@known.com>, info@acme.co.uk, Bot <noreply@acme.co.uk>")]},
+      "t2": {"messages": [msg("m3", PERSONAL, f"Bob <bob.smith@gmail.com>, {many}", "Party", ["SENT"])]},
+      "t3": {"messages": [msg("m4", PERSONAL, "Noted <noted@x.io>, sam@solo.com, Al Pha <al@beta.io>, "
+                                           "Acme Shop Ltd <orders@acmeshop.com>, Big Store Group <b@store.com>", "x", ["SENT"])]},
+      "t4": {"messages": [msg("m5", PERSONAL, "Dee Ell <dee@clinic.org>", "x", ["SENT"])]},
+    }, WORK: {}})
+    self.li("log", "--email", "al@beta.io", "no-match", "", "Al Pha", check=0)
+    out = self.li("correspondents", "--gog", "personal",
+                  stdin="To: Kim Lee <kim.lee@corp.com.au>\nCc: Jane Doe <jane@acme.co.uk>\n", check=0).stdout
+    rows = [l.split("\t") for l in out.splitlines() if not l.startswith("#")]
+    self.assertEqual([r[:4] for r in rows], [["jane@acme.co.uk", "Jane Doe", "acme", "work"],
+                                             ["dee@clinic.org", "Dee Ell", "clinic", "personal"],
+                                             ["kim.lee@corp.com.au", "Kim Lee", "corp", "work"]])
+    self.assertEqual(rows[0][4], "https://www.linkedin.com/search/results/people/?keywords=Jane%20Doe%20acme")
+    self.assertIn("1 mailout", out)          # the party invitation to 10 people
+    self.assertIn("2 no name", out)          # sam@solo.com, Big Store Group (Acme Shop Ltd is a role address)
+    self.assertIn("2 in people/", out)       # Known Person by name, noted@x.io by address
+    self.assertIn("1 tried before", out)     # al@beta.io
+
+  def test_correspondents_defer_and_cap(self):
+    stdin = "Ann One <ann@a.com>\nBen Two <ben@b.com>\nCat Three <cat@c.com>\n"
+    out = self.li("correspondents", "--max", "1", stdin=stdin, check=0).stdout.splitlines()
+    self.assertEqual(out[2], "# over the cap: pass the lines below to `defer --email`")
+    self.li("defer", "--email", stdin="\n".join(out[3:]) + "\n", check=0)
+    out = self.li("correspondents", stdin=stdin, check=0).stdout.splitlines()
+    self.assertEqual([l.split("\t")[0] for l in out[1:]], ["ben@b.com", "cat@c.com", "ann@a.com"])
+
+  def test_log_email_feeds_the_budget(self):
+    self.li("log", "--email", "ann@a.com", "sent", "https://www.linkedin.com/in/ann", "Ann One", check=0)
+    self.li("log", "--email", "ben@b.com", "ambiguous", "", "Ben Two", check=0)
+    self.assertIn("SENT 1\n", self.li("budget", check=0).stdout)
+    self.li("log", "--email", "x@y.com", "followed", "", "X", check=2)
+    out = self.li("correspondents", stdin="Ann One <ann@a.com>\nBen Two <ben@b.com>\n", check=0).stdout
+    self.assertIn("2 tried before", out)
+
+  def test_match(self):
+    def match(name, results, company=""):
+      args = ["match", name] + (["--company", company] if company else [])
+      return self.li(*args, stdin=json.dumps({"results": results}), check=0).stdout
+
+    r = lambda slug, name, headline="", degree="2nd": {"url": f"https://www.linkedin.com/in/{slug}", "name": name,
+                                                       "headline": headline, "degree": degree}
+    self.assertEqual(match("Jane Doe", [r("jd", "Jane A. Doe, PhD", "CTO at Acme")], "acme"),
+                     "MATCH 2nd https://www.linkedin.com/in/jd Jane A. Doe, PhD\n")
+    two = [r("jd1", "Jane Doe", "Engineer at Initech"), r("jd2", "Jane Doe", "CTO at Acme", "1st")]
+    self.assertTrue(match("Jane Doe", two, "acme").startswith("MATCH 1st https://www.linkedin.com/in/jd2"))
+    self.assertTrue(match("Jane Doe", two).startswith("AMBIGUOUS 2\n"))
+    # Without a company, one result with their name among others isn't enough
+    self.assertTrue(match("Jane Doe", [r("jd", "Jane Doe"), r("jx", "Janet Doer")]).startswith("AMBIGUOUS 1"))
+    self.assertTrue(match("Jane Doe", [r("jd", "Jane Doe")]).startswith("MATCH"))
+    self.assertEqual(match("Jane Doe", [r("x", "John Doe")], "acme"), "NONE\n")
+    self.li("match", "Jane Doe", stdin=json.dumps({"error": "signed out"}), check=1)
