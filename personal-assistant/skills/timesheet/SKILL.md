@@ -1,6 +1,6 @@
 ---
 name: timesheet
-description: Fill in and submit Ian's weekly Toggl Track timesheet (Container Solutions workspace) in his own signed-in Chrome at https://track.toggl.com/timer. Proposes 8 hours a weekday split across his projects (CCF, Pre sales work, Holiday (vacation)) from last week's split, both calendars and bank holidays, fills the grid once Ian agrees, and submits it for approval only after his yes. Use when Ian asks to do, fill in or submit his timesheet, when Toggl's "Your timesheet ... is unsubmitted" email turns up in triage, or he invokes /timesheet. Optional argument picks the week, e.g. "/timesheet", "/timesheet last week", "/timesheet 2026-10-26".
+description: Fill in and submit Ian's weekly Toggl Track timesheet (Container Solutions workspace) in his own signed-in Chrome at https://track.toggl.com/timer. Proposes 8 hours a weekday split across his projects (CCF, Pre sales work, Holiday (vacation)) from last week's split, both calendars and bank holidays, fills the grid once Ian agrees, and submits it for approval only when Ian explicitly says to submit that week, after seeing the filled grid. Use when Ian asks to do, fill in or submit his timesheet, when Toggl's "Your timesheet ... is unsubmitted" email turns up in triage, or he invokes /timesheet. Optional argument picks the week, e.g. "/timesheet", "/timesheet last week", "/timesheet 2026-10-26".
 ---
 
 # Toggl timesheet
@@ -42,8 +42,12 @@ one go. Use it to read; use `find` to get the refs of cells and buttons before c
 
 ## Rules
 
-- **Submitting goes to Ian's approver.** Only click **Submit for approval** after Ian has
-  seen the final grid in this conversation and said yes to submitting that week.
+- **Never submit without Ian's say-so.** Submitting goes to Ian's approver and can't be
+  quietly undone. Click **Submit for approval** only when Ian, in this conversation, has
+  seen the filled grid (step 5) and then explicitly said to submit that week ("submit",
+  "submit W44"). "go", "ok", "looks good", approval of the proposal, approval of a
+  comms or mail batch, or this skill being run on a schedule never count. If in doubt,
+  don't submit: leave it filled and ask.
 - **Never touch an approved or submitted week.** Its cells are locked. Don't click
   **Withdraw** unless Ian asks for that week by name.
 - **Only the timesheet grid.** Don't start or stop the timer, edit projects, clients,
@@ -98,8 +102,9 @@ A small table, the status and the total:
 | Holiday (vacation) | | | | | | 0 h |
 
 `W44 (26 Oct – 1 Nov): NOT SUBMITTED, grid already matches this` (or `needs 3 cells
-changed`). Then the hints, and ask: "Fill and submit, or change something?" Ian may answer
-"go", "Thu pre-sales", "fill but don't submit", "Fri holiday".
+changed`). Then the hints, and ask: "Fill it in like this, or change something?" Ian may answer
+"go", "Thu pre-sales", "Fri holiday". A yes here is only to fill the grid, never to
+submit it.
 
 ### 5. Fill
 
@@ -119,7 +124,8 @@ holidays Ian doesn't book). Fix anything that didn't take before going on.
 
 ### 6. Submit
 
-Only after Ian's yes (step 4's "go" counts if he didn't say "don't submit"): click
+Show Ian the filled grid as read back in step 5 and ask: "Submit W44 for approval?"
+Then stop and wait. Only on an explicit "submit" (see Rules) click
 **Submit for approval**, confirm any dialog it opens, then read the page again and report
 the new status. If it asks for anything else (a comment, a different approver), stop and
 show Ian.
