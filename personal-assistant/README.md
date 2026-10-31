@@ -31,7 +31,7 @@ scripts/gtd-label-tidy.py - archive the mail of closed tasks and remove their GT
 scripts/people-note.py  - find a person's gtd people file, add an email/slack/whatsapp/meeting log line in the right place, set their level
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
-scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday
+scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every weekday morning
 skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
@@ -95,3 +95,34 @@ Run it now with
 `launchctl kickstart gui/$(id -u)/com.ianmiell.linkedin-sync`, remove it
 with `scripts/install-linkedin-sync.sh --uninstall`. The log is
 `~/Library/Logs/com.ianmiell.linkedin-sync.log`.
+
+## Morning comms
+
+`scripts/install-comms-morning.sh` installs a launchd agent that starts a
+background Claude Code session running
+`claude --bg --chrome '/personal-assistant:comms morning'` every weekday at
+07:45 (or another time: `scripts/install-comms-morning.sh 08:15`). The
+session is named for the day (`comms-Mon-02-Nov`). It gathers every channel
+and does the cross-checks, then stops at the numbered list, with proposed
+replies, and waits. Because of `morning`, it then sends a notification
+(PushNotification, which reaches the phone when Remote Control is connected,
+plus a macOS Notification Centre alert) such as "Comms ready (Mon 02 Nov):
+3 act now ... Top: ...". Nothing is drafted, sent, archived or marked until
+Ian attaches with `claude attach <id>` and approves. The Slack and WhatsApp
+last-run files only move after he has seen the list, so a morning session
+he never opens loses nothing: the next `/comms` still covers that window.
+The list is as of when it ran, so when attaching later, ask it to pick up
+anything newer. Sessions nobody opens stay in `claude agents` until
+stopped.
+
+When the Mac is asleep at 07:45, launchd runs the agent on waking (missed
+mornings collapse into one run). When it's shut down, that morning is
+skipped. On waking, the script waits up to 5 minutes for the network
+before starting the session. It keeps the Mac from idle-sleeping while it
+waits and for 20 minutes afterwards (`caffeinate -i`), but closing the lid
+on battery still sleeps it. To have the list ready before opening the
+laptop, `sudo pmset repeat wake MTWRF 07:40:00` may help when the laptop
+is on power; test it before relying on it. Run it now with
+`launchctl kickstart gui/$(id -u)/com.ianmiell.comms-morning`, remove it
+with `scripts/install-comms-morning.sh --uninstall`. The log is
+`~/Library/Logs/com.ianmiell.comms-morning.log`.
