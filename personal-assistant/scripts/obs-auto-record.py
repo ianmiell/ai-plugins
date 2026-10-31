@@ -10,9 +10,13 @@ isn't. A call is live when
     voice note doesn't start a recording; asked of CoreAudio, which needs macOS 14 or later), or
   - a browser tab (Chrome, Safari, Arc, Edge, Brave) is on a meeting URL: a Google Meet code
     (meet.google.com/abc-defg-hij, or the meet.google.com/meet/abc-defg-hij Meet redirects to),
-    the Zoom web client, a Teams meeting, a Slack huddle, Whereby, Jitsi or Webex.
+    the Zoom web client, a Teams meeting, a Slack huddle, Whereby, Jitsi or Webex, and that browser
+    has the microphone open. The URL alone isn't enough: Meet and Teams leave the tab on the
+    meeting URL after the call ends, which kept recordings running (and restarted them after Ian
+    stopped them by hand) until the tab was closed. Muting in Meet or Teams keeps the mic open.
 A recording this script started is stopped once no call has been seen for STOP_AFTER checks in a
-row. A recording Ian started by hand is never stopped.
+row. A recording Ian started by hand is never stopped. If Ian stops a recording this script started
+while the call is still live, it isn't started again until that call ends.
 
 Must be quick and safe to run repeatedly. The first browser check makes macOS ask to allow
 control of each browser; allow it.
@@ -45,12 +49,12 @@ MEETING_URL = re.compile(
     r"|meet\.jit\.si/[^/?#]+"
     r"|\.webex\.com/(meet|wbxmjs|webappng)",
     re.I)
-BROWSERS = {   # process name -> AppleScript application name
-    "Google Chrome": "Google Chrome",
-    "Safari": "Safari",
-    "Arc": "Arc",
-    "Microsoft Edge": "Microsoft Edge",
-    "Brave Browser": "Brave Browser",
+BROWSERS = {   # process name -> (AppleScript application name, path of its processes that use the mic)
+    "Google Chrome": ("Google Chrome", "/Google Chrome.app/"),
+    "Safari": ("Safari", "/com.apple.WebKit.GPU"),
+    "Arc": ("Arc", "/Arc.app/"),
+    "Microsoft Edge": ("Microsoft Edge", "/Microsoft Edge.app/"),
+    "Brave Browser": ("Brave Browser", "/Brave Browser.app/"),
 }
 
 
@@ -108,23 +112,27 @@ def mic_pids():
     return pids
 
 
-def whatsapp_on_mic():
-    out = subprocess.run(["/usr/bin/pgrep", "-f", "/WhatsApp.app/"], capture_output=True, text=True)
-    return bool({int(p) for p in out.stdout.split()} & mic_pids())
+def on_mic(path, mic):
+    """Whether any process whose command line contains path is among the mic PIDs."""
+    out = subprocess.run(["/usr/bin/pgrep", "-f", path], capture_output=True, text=True)
+    return bool({int(p) for p in out.stdout.split()} & mic)
 
 
 def live_call(state):
     if running("CptHost"):
         return "Zoom"
-    if whatsapp_on_mic():
+    mic = mic_pids()
+    if on_mic("/WhatsApp.app/", mic):
         state["whatsapp"] = state.get("whatsapp", 0) + 1
         if state["whatsapp"] >= WHATSAPP_AFTER:
             return "WhatsApp"
     else:
         state.pop("whatsapp", None)
-    for proc, app in BROWSERS.items():
+    for proc, (app, mic_path) in BROWSERS.items():
         if not running(proc):
             continue   # telling a closed browser anything would launch it
+        if not on_mic(mic_path, mic):
+            continue   # a meeting tab left open after the call has ended
         for url in browser_urls(app):
             if MEETING_URL.search(url):
                 return f"{app}: {url}"
@@ -204,16 +212,27 @@ def main():
 
     if call:
         state["missed"] = 0
-        if not running("OBS"):
-            log(f"Call live ({call}); launching OBS to record")
-            subprocess.run(["/usr/bin/open", "-a", "OBS", "--args", "--startrecording"])
-            state["started_by_us"] = True
+        if state.get("stopped_by_hand"):
+            pass   # Ian stopped this call's recording; leave it stopped until the call ends
+        elif not running("OBS"):
+            if state.get("started_by_us"):
+                log(f"OBS quit during the call ({call}); not relaunching it for this call")
+                state["stopped_by_hand"] = True
+            else:
+                log(f"Call live ({call}); launching OBS to record")
+                subprocess.run(["/usr/bin/open", "-a", "OBS", "--args", "--startrecording"])
+                state["started_by_us"] = True
+                state["launched_at"] = time.time()
         else:
             obs = OBS()
             if not obs.request("GetRecordStatus").get("outputActive"):
-                log(f"Call live ({call}); starting recording")
-                obs.request("StartRecord")
-                state["started_by_us"] = True
+                if not state.get("started_by_us"):
+                    log(f"Call live ({call}); starting recording")
+                    obs.request("StartRecord")
+                    state["started_by_us"] = True
+                elif time.time() - state.get("launched_at", 0) > 60:
+                    log(f"Recording stopped by hand during the call ({call}); not restarting it")
+                    state["stopped_by_hand"] = True
     elif state.get("started_by_us"):
         state["missed"] = state.get("missed", 0) + 1
         if state["missed"] >= STOP_AFTER:
