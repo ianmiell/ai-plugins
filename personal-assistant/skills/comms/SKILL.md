@@ -1,6 +1,6 @@
 ---
 name: comms
-description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages and invitations, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread".
+description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages and invitations, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread", "/comms morning" (the unattended weekday run, which notifies Ian when the list is ready).
 ---
 
 # Comms: every channel at once
@@ -90,6 +90,9 @@ Everything in the channel skills' Rules, and in particular:
   only those, in any combination.
 - `unread`: `is:unread` for mail, `--unread` for WhatsApp, and the normal window for Slack
   (it has no unread state).
+- `morning`: the unattended weekday run started by `scripts/comms-morning.sh` (launchd).
+  Same scope as no argument. Ian isn't watching, so notify him when the list is ready
+  (end of step 7). It can combine with the others, e.g. `morning work`.
 
 WhatsApp and LinkedIn are MacBook Pro only (the mail skill's "Which machine" check). On
 any other machine, such as klimt, leave WA and LI out of every scope, including `work`,
@@ -238,6 +241,20 @@ every channel, say so first. Then ask how to proceed, taking
 shorthand that spans channels: "go", "go except 5", "draft 1 2 3 4, archive 7–14", "2: say
 I'll call tonight", "task 1". Use AskUserQuestion only for a single decision that needs
 options.
+
+**Morning run only** (`morning` in the argument): once the list is shown, tell Ian it's
+ready in two ways, since he may be away from the Mac or not at a terminal. Use one message,
+under 200 characters, one line, no markdown and no double quotes. Lead with what needs him:
+`Comms ready (Mon 02 Nov): 3 act now, 1 to schedule, 12 FYI/junk. Top: Jane Doe wants
+sign-off by Fri. Slack failed.` Name any channel that failed. With nothing in Act now, say
+`nothing urgent`.
+- `PushNotification` with `status: "proactive"`. It reaches his phone when Remote Control
+  is connected. A "not sent" result is fine.
+- A macOS notification, which stays in Notification Centre:
+  `osascript -e 'display notification "<message>" with title "Comms ready" sound name "Glass"'`
+  (the first one may need notifications allowed for Script Editor in System Settings).
+
+Then wait for Ian as usual. Never go on to step 8 without him.
 
 ### 8. Execute
 
