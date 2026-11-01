@@ -68,7 +68,7 @@ def check_mailbox(mb):
   except pa.GogError as e:
     res["account"] = f"error: {e}"
     if "invalid_grant" in str(e) or "token" in str(e).lower():
-      res["fix"] = f"! gog auth add {addr} --services gmail --force-consent"
+      res["fix"] = f"! gog auth add {addr} --services gmail,calendar,drive,sheets,docs,slides,contacts,people --force-consent"
     return res
   try:
     unstarred = pa.search(mb, "-is:starred", 1)

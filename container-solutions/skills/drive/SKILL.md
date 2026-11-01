@@ -32,11 +32,11 @@ One-off setup, done October 2026 apart from step 2:
 
 1. The Drive and Sheets APIs are on in gog's Cloud project
    (`ianmiell-gog-personal`, see the personal-assistant mail skill).
-2. Ian logs the work account in to gog with Drive and Sheets in the
-   prompt: `! gog auth add ian.miell@container-solutions.com --services drive,sheets`
-   (add `gmail` to the list on machines where gog also serves work mail,
-   so it doesn't drop that scope). Never run the browser consent
-   yourself.
+2. Ian logs the work account in to gog in the prompt, with the full
+   service list from the personal-assistant mail skill ("Which gog services
+   to authorise"), since a consent replaces the scopes it doesn't list:
+   `! gog auth add ian.miell@container-solutions.com --services gmail,calendar,drive,sheets,docs,slides,contacts,people --force-consent`.
+   Never run the browser consent yourself.
 
 The scripts name the fix when the login is missing or expired: pass it on
 to Ian as given. If gog can't be used at all, fall back to the Drive

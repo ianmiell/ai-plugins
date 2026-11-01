@@ -83,16 +83,51 @@ Gmail connector there even if it's loaded. Wherever this skill says
    project's consent screen (or the app published). If Container Solutions'
    Workspace blocks the unverified app, make a second client in a project
    the work account owns and store it with `--client work`.
-4. Ian runs both consents in the prompt: `! gog auth add ian.miell@gmail.com
-   --services gmail` and `! gog auth add ian.miell@container-solutions.com
-   --services gmail`. On a headless box, add `--manual` and paste the
-   redirect URL back.
+4. Ian runs both consents in the prompt, with the services listed below:
+   `! gog auth add ian.miell@gmail.com --services gmail,calendar,drive,sheets,docs,slides,contacts,people --force-consent`,
+   then the same for `ian.miell@container-solutions.com`. On a headless box,
+   add `--manual` and paste the redirect URL back.
 
-Check it's working with `gog auth list` (it should show
-`ian.miell@gmail.com`, plus `ian.miell@container-solutions.com` off the
-MacBook Pro). If a command fails with `invalid_grant` or a token error, the
-login has expired. Ask Ian to run `! gog auth add <address> --services gmail
---force-consent`. Never run the browser consent yourself.
+### Which gog services to authorise
+
+A consent replaces the account's scopes rather than adding to them, so any
+service left off the list is lost. Always ask for the whole set, on both
+accounts:
+
+```
+gmail,calendar,drive,sheets,docs,slides,contacts,people
+```
+
+- `gmail`, `calendar`: mail triage and the calendar fallback.
+- `drive`, `sheets`: the container-solutions Drive scripts (work account).
+- `docs`, `slides`: read Google Docs and Slides in structure and edit them in
+  place. With only `drive` they can only be exported.
+- `contacts`: contacts, Gmail's "other contacts" (everyone Ian has emailed)
+  and, on the work account, the CS staff directory. Useful for linkedin-sync
+  and for matching senders to people notes.
+- `people`: Ian's own profile, so `gog me` works.
+
+Each needs its API enabled in the Cloud project (`ianmiell-gog-personal`):
+`gcloud services enable gmail.googleapis.com calendar-json.googleapis.com
+drive.googleapis.com sheets.googleapis.com docs.googleapis.com
+slides.googleapis.com people.googleapis.com --project ianmiell-gog-personal
+--account=ian.miell@gmail.com`.
+
+Optional, only if a need turns up: `meet` (Meet spaces and records, if
+colleagues record in Meet), `tasks` (Google Tasks; Ian uses gtd instead),
+`driveactivity` (read-only log of Drive changes), and `searchconsole` or
+`analytics` on the personal account for a site. Not worth adding: `chat` (CS
+uses Slack), `photos` (Google only lets apps see photos they uploaded),
+`classroom`, `ads`, `appscript`, `forms`, `sites`. `keep`, `admin` and
+`groups` need a Workspace service account, so they can't come through this
+login. If CS's Workspace refuses consent for the work account, try again
+without `contacts` (its directory scope is the likeliest to be blocked).
+
+Check it's working with `gog auth list`: both addresses (only
+`ian.miell@gmail.com` on the MacBook Pro) with the services above. If a
+command fails with `invalid_grant` or a token error, the login has expired.
+Ask Ian to run `! gog auth add <address> --services gmail,calendar,drive,sheets,docs,slides,contacts,people --force-consent`.
+Never run the browser consent yourself.
 
 ### Gmail connector setup for the work mailbox (MacBook Pro only)
 
