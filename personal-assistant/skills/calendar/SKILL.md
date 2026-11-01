@@ -46,10 +46,11 @@ every box on Google's consent screen), then restart Claude Code. Until then,
 list the changes for Ian to make by hand rather than attempting them.
 
 **Fallback:** gog (see the mail skill) can reach the personal calendar
-directly. Its login currently only has Gmail scopes. The Calendar API is
-already enabled in the `ianmiell-gog-personal` project, so Ian would need to
-run `! gog auth add ian.miell@gmail.com --services gmail,calendar
---force-consent` once. Only suggest this if the sharing route stops working.
+directly: `gog calendar … -a ian.miell@gmail.com`. Its login includes the
+`calendar` scope (November 2026). If it's missing from `gog auth list`, ask
+Ian to re-run the consent with the full service list in the mail skill
+("Which gog services to authorise"). Only use this if the sharing route
+stops working.
 
 Other calendars the connector lists (CS Engineering, CS Events, colleagues'
 calendars, UK holidays, bob-timeoff) are read-only context. Read them when

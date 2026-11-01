@@ -19,10 +19,12 @@ tests/                         - `python3 -m unittest discover -s container-solu
 ## Setup
 
 The scripts need gog (`brew install gogcli`) logged in to the work account
-with Drive and Sheets:
+with Drive and Sheets. A consent replaces the account's scopes, so log in
+with the full list the personal-assistant mail skill uses ("Which gog
+services to authorise"), not just these two:
 
 ```
-gog auth add ian.miell@container-solutions.com --services drive,sheets
+gog auth add ian.miell@container-solutions.com --services gmail,calendar,drive,sheets,docs,slides,contacts,people --force-consent
 ```
 
 They always run gog with `--readonly`. Moves happen through the claude.ai

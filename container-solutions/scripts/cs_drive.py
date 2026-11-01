@@ -83,7 +83,7 @@ class GogError(Exception):
 
 
 def auth_hint(text, account):
-  fix = f"! gog auth add {account} --services drive,sheets --force-consent"
+  fix = f"! gog auth add {account} --services gmail,calendar,drive,sheets,docs,slides,contacts,people --force-consent"
   if re.search(r"invalid_grant|token (has been )?expired|revoked", text, re.I):
     return f"gog's login for {account} has expired. Ask Ian to run: {fix}"
   if re.search(r"no (stored )?(refresh )?token|not authenticated|unknown account|no auth|missing.*token", text, re.I):
