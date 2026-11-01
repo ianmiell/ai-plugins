@@ -26,6 +26,7 @@ Always READ LATER (keep + star), never junk or archive by default. They're the
 - Zeihan on Geopolitics (`peterzeihan@creator.patreon.com`)
 - London Centric by Jim Waterson (`londoncentric@substack.com`)
 - Dan Davies' "Back of Mind" (`backofmind@substack.com`)
+- Gresham College (`@gresham.ac.uk`): all of it, newsletters and event registrations alike
 
 When Ian says he reads another newsletter, add a `read-later` line for it to
 `senders.tsv` (that's what the scripts read), and to this list.
