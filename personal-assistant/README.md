@@ -83,8 +83,9 @@ has LinkedIn Premium, it also sends a connection request (no note) to each
 profile viewer since the last sync who isn't already a connection, carrying
 over to the next run anyone it doesn't get to. Then it invites the people
 LinkedIn suggests on the Grow page with the most mutual connections. All
-invitations share a budget of about 40 in any 24 hours with Premium
-(viewers first), or 10 without (suggestions only). Then it follows back
+invitations share a budget of about 20 in any 24 hours with Premium
+(viewers first), or 10 without (suggestions only), and at most 100 in any
+7 days to stay under LinkedIn's weekly invitation limit. Then it follows back
 everyone among the newest 200 followers whom Ian doesn't follow yet, at most
 25 a day. The last sync time is in
 `~/.local/state/personal-assistant/linkedin-sync-last`, every invitation
