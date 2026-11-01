@@ -30,7 +30,8 @@ What the page looks like (checked October 2026):
 - A week picker: "This week · W44", with "Select previous period" / "Select following
   period" arrows either side.
 - A status chip: `NOT SUBMITTED` (with a **Submit for approval** button on the right),
-  or `APPROVED` with a padlock (and **Withdraw**), or pending once submitted.
+  `BEING REVIEWED` with a padlock once submitted (the button then reads **Submitted**
+  and the cells lock), or `APPROVED` with a padlock (and **Withdraw**).
 - The grid: one row per project, `PROJECT • CLIENT`, then MON–SUN cells holding `8:00`
   or empty, and a TOTAL column. Below: **+ Add row**, **Copy last week**, and a TOTAL
   line per day plus the week (40 h).
@@ -126,8 +127,10 @@ holidays Ian doesn't book). Fix anything that didn't take before going on.
 
 Show Ian the filled grid as read back in step 5 and ask: "Submit W44 for approval?"
 Then stop and wait. Only on an explicit "submit" (see Rules) click
-**Submit for approval**, confirm any dialog it opens, then read the page again and report
-the new status. If it asks for anything else (a comment, a different approver), stop and
+**Submit for approval**. There's no confirmation dialog (October 2026): the button shows a
+spinner for a second or two, then reads **Submitted** and the chip changes to
+`BEING REVIEWED` with a padlock. Wait a few seconds, read the page again, and report
+the new status; if it's still `NOT SUBMITTED`, say so rather than clicking again. If it asks for anything else (a comment, a different approver), stop and
 show Ian.
 
 ### 7. Tidy
