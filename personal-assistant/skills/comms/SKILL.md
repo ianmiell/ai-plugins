@@ -1,6 +1,6 @@
 ---
 name: comms
-description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages and invitations, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread", "/comms morning" (the unattended weekday run, which notifies Ian when the list is ready).
+description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages and invitations, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread", "/comms morning" (the unattended daily run, which notifies Ian when the list is ready).
 ---
 
 # Comms: every channel at once
@@ -90,7 +90,7 @@ Everything in the channel skills' Rules, and in particular:
   only those, in any combination.
 - `unread`: `is:unread` for mail, `--unread` for WhatsApp, and the normal window for Slack
   (it has no unread state).
-- `morning`: the unattended weekday run started by `scripts/comms-morning.sh` (launchd).
+- `morning`: the unattended daily run started by `scripts/comms-morning.sh` (launchd).
   Same scope as no argument. Ian isn't watching, so notify him when the list is ready
   (end of step 7). It can combine with the others, e.g. `morning work`.
 

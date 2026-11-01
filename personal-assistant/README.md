@@ -31,7 +31,7 @@ scripts/gtd-label-tidy.py - archive the mail of closed tasks and remove their GT
 scripts/people-note.py  - find a person's gtd people file, add an email/slack/whatsapp/meeting log line in the right place, set their level
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
-scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every weekday morning
+scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning
 skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
@@ -100,7 +100,7 @@ with `scripts/install-linkedin-sync.sh --uninstall`. The log is
 
 `scripts/install-comms-morning.sh` installs a launchd agent that starts a
 background Claude Code session running
-`claude --bg --chrome '/personal-assistant:comms morning'` every weekday at
+`claude --bg --chrome '/personal-assistant:comms morning'` every day at
 07:45 (or another time: `scripts/install-comms-morning.sh 08:15`). The
 session is named for the day (`comms-Mon-02-Nov`). It gathers every channel
 and does the cross-checks, then stops at the numbered list, with proposed
