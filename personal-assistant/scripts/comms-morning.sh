@@ -1,5 +1,5 @@
 #!/bin/bash
-# comms-morning.sh: run by launchd every weekday morning (see com.ianmiell.comms-morning.plist and
+# comms-morning.sh: run by launchd every morning (see com.ianmiell.comms-morning.plist and
 # install-comms-morning.sh). Starts a background Claude Code session running
 #   claude --bg --chrome '/personal-assistant:comms morning'
 # The session gathers every channel and cross-checks, then stops at the numbered list, notifies

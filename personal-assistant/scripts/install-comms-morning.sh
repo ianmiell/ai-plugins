@@ -1,9 +1,9 @@
 #!/bin/bash
 # install-comms-morning.sh: install (or with --uninstall, remove) the launchd agent that starts
-# /personal-assistant:comms as a background Claude Code session every weekday morning, so the
+# /personal-assistant:comms as a background Claude Code session every morning, so the
 # triage list and drafts are waiting when Ian sits down.
-#   install-comms-morning.sh            # weekdays at 07:45
-#   install-comms-morning.sh 08:15      # weekdays at another time
+#   install-comms-morning.sh            # every day at 07:45
+#   install-comms-morning.sh 08:15      # every day at another time
 #   install-comms-morning.sh --uninstall
 # Run it now with
 #   launchctl kickstart gui/$(id -u)/com.ianmiell.comms-morning
@@ -54,5 +54,5 @@ sed -e "s|__SCRIPT__|${HERE}/comms-morning.sh|" \
 plutil -lint "${PLIST}"
 launchctl bootstrap "${DOMAIN}" "${PLIST}"
 
-printf 'Installed %s: weekdays at %02d:%02d, logging to %s\n' "${LABEL}" "${HOUR}" "${MINUTE}" "${LOG}"
+printf 'Installed %s: every day at %02d:%02d, logging to %s\n' "${LABEL}" "${HOUR}" "${MINUTE}" "${LOG}"
 echo "Each run starts a background session: list them with 'claude agents', open one with 'claude attach <id>'."
