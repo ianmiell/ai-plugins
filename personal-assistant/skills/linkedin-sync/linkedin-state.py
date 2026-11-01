@@ -3,7 +3,7 @@
 the local evidence for new people's levels.
 
   linkedin-state.py window                    # NOW and LAST (step 4.1)
-  linkedin-state.py budget [--per-day 40]     # invitations sent in the last 24 hours, and LEFT
+  linkedin-state.py budget [--per-day 20] [--per-week 100]  # invitations sent lately, and LEFT
   linkedin-state.py queue < viewers.txt       # step 4.4: who to invite, in order
   linkedin-state.py suggestions < page.txt    # step 5.3: suggested people to invite, in order
   linkedin-state.py log sent URL "Name"       # after each connect-profile.js result
@@ -37,8 +37,10 @@ held back as deferred by an earlier run first, then the new viewers, leaving out
 log has as sent, pending or connected, at most --max (20) of them. The rest are printed after
 a `# over the cap` line for `defer`.
 
-`budget` counts the `sent` lines of the last 24 hours in the log and prints `SENT <n>` and
-`LEFT <per-day - n>` (at least 0): about 40 invitations a day with Premium, 10 without.
+`budget` counts the `sent` lines of the last 24 hours and of the last 7 days in the log and
+prints `SENT <n>`, `WEEK <w>` and `LEFT <the smaller of per-day - n and per-week - w>` (at
+least 0): about 20 invitations a day with Premium, 10 without, and never more than 100 in any
+7 days, which keeps under LinkedIn's own weekly invitation limit.
 
 `suggestions` reads the get_page_text output of the Grow page (SUGGESTIONS-BEGIN ...
 SUGGESTIONS-END <count>), checks the count, and prints `url<TAB>name<TAB>mutual` lines in the
@@ -190,8 +192,10 @@ def read_page(text, end):
 
 def cmd_budget(args):
   sent = count_recent("sent", LOG)
+  week = count_recent("sent", LOG, hours=7 * 24)
   print(f"SENT {sent}")
-  print(f"LEFT {max(0, args.per_day - sent)}")
+  print(f"WEEK {week}")
+  print(f"LEFT {max(0, min(args.per_day - sent, args.per_week - week))}")
 
 
 def cmd_follows(args):
@@ -556,7 +560,8 @@ def main():
   sub = ap.add_subparsers(dest="cmd", required=True)
   sub.add_parser("window")
   p = sub.add_parser("budget")
-  p.add_argument("--per-day", type=int, default=40)
+  p.add_argument("--per-day", type=int, default=20)
+  p.add_argument("--per-week", type=int, default=100)
   p = sub.add_parser("queue")
   p.add_argument("--max", type=int, default=20)
   p = sub.add_parser("log")

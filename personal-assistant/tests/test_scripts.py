@@ -816,12 +816,16 @@ class LinkedInState(Base):
     log = os.path.join(self.env["PA_LINKEDIN_STATE"], "linkedin-invites.log")
     os.makedirs(os.path.dirname(log), exist_ok=True)
     with open(log, "w") as f:
-      f.write("2020-01-01T00:00:00Z\tsent\thttps://www.linkedin.com/in/old\tOld Person\n")
+      three_days_ago = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 3 * 86400))
+      f.write("2020-01-01T00:00:00Z\tsent\thttps://www.linkedin.com/in/old\tOld Person\n"
+              f"{three_days_ago}\tsent\thttps://www.linkedin.com/in/w\tW Person\n")
     self.li("log", "sent", "https://www.linkedin.com/in/a", "A Person", check=0)
     self.li("log", "no-connect", "https://www.linkedin.com/in/n", "N Person", check=0)
-    # Only `sent` lines of the last 24 hours count
-    self.assertEqual(self.li("budget", check=0).stdout, "SENT 1\nLEFT 39\n")
-    self.assertEqual(self.li("budget", "--per-day", "1", check=0).stdout, "SENT 1\nLEFT 0\n")
+    # Only `sent` lines count: of the last 24 hours for the day, of the last 7 days for the week
+    self.assertEqual(self.li("budget", check=0).stdout, "SENT 1\nWEEK 2\nLEFT 19\n")
+    self.assertEqual(self.li("budget", "--per-day", "1", check=0).stdout, "SENT 1\nWEEK 2\nLEFT 0\n")
+    # The weekly cap wins when it is the tighter one
+    self.assertEqual(self.li("budget", "--per-week", "5", check=0).stdout, "SENT 1\nWEEK 2\nLEFT 3\n")
 
   def test_suggestions(self):
     self.li("log", "no-connect", "https://www.linkedin.com/in/b", "B Person", check=0)
