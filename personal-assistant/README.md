@@ -16,6 +16,7 @@ skills/whatsapp/SKILL.md - /whatsapp: triage WhatsApp from the desktop app's loc
 skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar event, move it in for transcription, delete the .mkv, act on the transcript
 skills/write/SKILL.md    - /write: draft LinkedIn posts and messages, blog posts and articles, PR review comments in Ian's voice; /write check reviews a draft
 skills/timesheet/SKILL.md - /timesheet: fill in the weekly Toggl Track timesheet in Chrome (8 h a weekday across CCF, pre-sales and holiday) and submit it for approval after Ian's yes
+skills/weekly-plan/SKILL.md - /weekly-plan: plan the coming Mon-Fri from both calendars and open gtd tasks, and email it to Ian
 skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); with Premium, invite recent profile viewers to connect; follow back followers
 voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
 scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
@@ -31,7 +32,7 @@ scripts/gtd-label-tidy.py - archive the mail of closed tasks and remove their GT
 scripts/people-note.py  - find a person's gtd people file, add an email/slack/whatsapp/meeting log line in the right place, set their level
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
-scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning
+scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning, /weekly-plan every Sunday evening
 skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
@@ -127,3 +128,23 @@ is on power; test it before relying on it. Run it now with
 `launchctl kickstart gui/$(id -u)/com.ianmiell.comms-morning`, remove it
 with `scripts/install-comms-morning.sh --uninstall`. The log is
 `~/Library/Logs/com.ianmiell.comms-morning.log`.
+
+## Weekly plan
+
+`scripts/install-weekly-plan.sh` installs a launchd agent that starts a
+background Claude Code session running
+`claude --bg '/personal-assistant:weekly-plan sunday'` every Sunday at
+18:00 (or another time: `scripts/install-weekly-plan.sh 19:00`). The
+session reads both calendars and the open gtd tasks for the coming Monday
+to Friday and emails a day-by-day plan (clashes, free blocks, which todos
+and reminders go where) to ian.miell@container-solutions.com. It changes
+nothing else. Gmail's `send_message` isn't allowed in the global settings,
+so `weekly-plan.sh` grants it to this session alone with
+`--allowed-tools`; the skill only sends to Ian. When the Mac is asleep at
+18:00, launchd runs it on waking; when it's shut down, that week is
+skipped. Run it now with
+`launchctl kickstart gui/$(id -u)/com.ianmiell.weekly-plan`, remove it
+with `scripts/install-weekly-plan.sh --uninstall`. The log is
+`~/Library/Logs/com.ianmiell.weekly-plan.log`. `/weekly-plan noemail`
+shows the plan without sending it.
+
