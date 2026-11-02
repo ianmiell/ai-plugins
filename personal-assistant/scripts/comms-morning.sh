@@ -45,8 +45,8 @@ done
 # /comms reads LinkedIn through Claude in Chrome.
 open -g -a "Google Chrome" || log "could not start Google Chrome" >&2
 
-# launchd's PATH doesn't include ~/.local/bin, where the claude installer puts it.
-export PATH="${HOME}/.local/bin:${PATH}"
+# launchd's PATH doesn't include ~/.local/bin (claude) or /opt/homebrew/bin (gog).
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:${PATH}"
 
 if (cd "${GTD_DIR}" && "${CLAUDE_BIN}" --bg --chrome --name "comms-$(date +%a-%d-%b)" \
       '/personal-assistant:comms morning')
