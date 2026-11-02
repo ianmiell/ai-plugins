@@ -154,6 +154,21 @@ typed. Show the list and ask.
 
 ### 4. Move or rename
 
+**Start Whisper first.** Whisper's Watch Folder only sees files that arrive
+while the app is running, so a `.mp4` moved in while it's closed is never
+transcribed. Before any move or rename, check it's running and start it if
+not:
+
+```bash
+w='Whisper Transcription.app/Contents/MacOS'
+pgrep -f "$w" >/dev/null && echo running ||
+  { open -a "Whisper Transcription" && pgrep -f "$w" >/dev/null && echo started; }
+```
+
+`open -a` returns once the app has launched. Tell Ian if you started it. If
+it prints neither `running` nor `started`, run the check again; if Whisper
+still isn't up, stop and ask before moving anything.
+
 After a yes, run `python3 $M apply <stem> "<event title>"` (same title or
 `--name` as the plan). It does what follows for either path, including the
 `gtd push` on the transcript path, and prints each move. Then, on the
