@@ -1,6 +1,6 @@
 ---
 name: comms
-description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages, invitations and comments on his own posts he hasn't answered, pending calendar invites, and who his Google Drive files and calendars are shared with (with the option to cut each share) — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms shares", "/comms unread", "/comms morning" (the unattended daily run, which notifies Ian when the list is ready).
+description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages, invitations and comments on his own posts he hasn't answered, pending calendar invites, and the third-party apps and services he has given access to his Google accounts (with the option to remove each) — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms apps", "/comms unread", "/comms morning" (the unattended daily run, which notifies Ian when the list is ready).
 ---
 
 # Comms: every channel at once
@@ -19,7 +19,7 @@ remain for a single channel (`/mail`, `/slack`, `/whatsapp`, `/calendar invites`
 | `WA` | WhatsApp | `personal-assistant:whatsapp` | since its last run |
 | `LI` | LinkedIn messages, invitations and comments on Ian's posts | this skill (below), in Chrome | the 10 newest conversations; comments from the last 14 days |
 | `📅` | Pending invites on W and P | `personal-assistant:calendar` | next 4 weeks |
-| `🔗` | Who Ian's Google Drive files and calendars are shared with, on W and P | this skill (below), `google-shares.py` | new shares, plus up to 15 older ones a run |
+| `🔑` | Apps and services with access to Ian's Google accounts (W and P) | this skill (below), in Chrome | new or widened since the last run, plus up to 10 not yet reviewed |
 
 Load the **mail, slack, whatsapp, calendar and gtd** skills with the Skill tool at the
 start of a run (only the ones in scope). Each one's **Setup, Tools and Rules** apply in
@@ -100,35 +100,57 @@ newer than a comment, say "not sure" rather than "unanswered". Then classify:
 Group several comments on one post into one row only when one reply answers them all;
 otherwise a row per commenter, with the post's first few words in What.
 
-### Google shares
+### Google apps
 
-Every run goes through the people Ian has shared his Google files and calendars with, so he
-can cut off shares he no longer wants. `python3 $S/google-shares.py list` scans My Drive on
-both accounts with gog's read-only sharing audit, plus the sharing rules of the calendars he
-owns. It takes about two minutes, so start it first in step 3 and read the rest while it
-runs. It prints one entry per grantee (a person, a group, `domain:…` or `anyone`, meaning
-anyone with the link), each with its shares: account, file name and path, role, link,
-`firstSeen` (the first scan that found it, not when it was shared: the first run finds
-everything), and `new` when this scan found it first. Shares Ian chose to keep aren't
-listed again. Colleagues on work Drive and the company's free/busy rule are left out, and
-so are files outside My Drive.
+Each run goes through the third-party apps and services Ian has given his Google accounts
+to (Sign in with Google, or access to Gmail, Drive, Calendar and so on), so he can cut off
+the ones he no longer wants. Google has no API for this outside a Workspace admin console,
+so it's read in Chrome, like LinkedIn, and is MacBook Pro only. `$C` below is this skill's
+folder (`<base>`).
 
-- **What to show.** Every grantee with a `new` share, then older unreviewed ones, at most 15
-  rows a run: `anyone` first, then writers and outside domains, then the rest, oldest first.
-  Say how many are left for later runs ("38 more people, a batch a day"). Ian answering
-  nothing leaves a share to come back later; that's fine.
-- **A row per grantee and account**; `anyone` gets a row per file, since that decision is
-  per file. Say how many files and name the first two or three. For a calendar share, say
-  which calendar and the role (`reader` sees details, `freeBusyReader` only busy times).
-- **Recommend.** Cut when the person or company is from past work Ian no longer does (a
-  former employer or client, an old course or interview) or the file is personal (money,
-  house, health, CVs) and shared wide. Keep for family, current colleagues and clients, and
-  public material (talks, courses, blog drafts) shared by link on purpose. Use what the rest
-  of this run turned up and gtd people notes (`people-note.py find`) rather than new mail
-  searches; say "not sure" when there's nothing to go on.
-- **Never cut without Ian's say-so for that row.** Removing a share isn't undone by this
-  skill: re-sharing it emails the person. "go" alone doesn't cut shares; Ian names them
-  ("cut 31 33", "keep 32", "keep all 34" for every share with that person, now and later).
+**Read (step 3).** For each account in scope, navigate a tab to
+`https://myaccount.google.com/connections?authuser=<address>` and run
+`$C/extract-google-apps.js` with `javascript_tool` (pass the file's text as it is). It
+only reads: it fetches the list and each app's page in the background and clicks nothing.
+It returns a short `{account, apps, errors}` and puts the list at the top of the page,
+since `javascript_tool` cuts long results at about 1,000 characters. Read it with
+`get_page_text` and pipe the lines from `GOOGLE-APPS-BEGIN` to `GOOGLE-APPS-END` (one
+JSON object per app: `name`, `signIn`, `linked`, and `access`, Google's own lines for what
+the app can do, such as "Read, compose and send emails from your Gmail account", empty for
+Sign in with Google only) to `python3 $C/google-apps.py record`, which saves it and marks each app `new` (not there last
+run), `grew` (Ian kept it, but it can now do more) or `kept`, lists `gone` apps, and sorts
+what to review first. If the page shows a sign-in form or `{error}`, report it and carry on. Close the tab
+when both accounts are read.
+The first record marks nothing new; that run starts the backlog.
+
+**What to show.** Every `new` and `grew` app, then up to 10 apps not yet kept that have
+`access`, most access first, then one row per account for the sign-in-only ones not yet
+kept, naming them ("35 sign-in only: ADN Cleaning, AllTrails, …"). Say how many are left
+for later runs. Ian answering nothing on a row brings it back next run; that's fine.
+Mention `gone` apps in FYI.
+
+**Recommend.**
+- Cut: one-off services and shops he's done with (cleaners, tickets, comparison sites),
+  games and TV or device apps with wide access ("all of your Google Drive files", "data in
+  Google products"), and anything he doesn't recognise. Wide access to Gmail or all of
+  Drive from a non-essential app is the strongest case.
+- Keep: what this assistant and his own projects run on (`gog CLI`,
+  `github-ianmiell-home-rag`, Claude's connectors, `Google Cloud SDK`), and the tools he
+  uses for work now (Slack, Toggl, Reclaim, Atlassian and the like). Removing those breaks
+  things; say what would break when he asks to cut one.
+- Not sure: say so, with what the app can do.
+
+**Cut (step 8).** Only the apps Ian names ("cut 31 33"); "go" alone never removes one, since
+signing in again or re-granting is the only undo. For each, in the account's tab: navigate
+to the connections URL above, `find` the app by name in the list and click it, check the
+page's heading names that app, click **Delete all** ("Remove all links and stop sharing your
+Google Account data with …"), take a screenshot of the confirmation dialog, and press its
+confirm button only if the dialog names the same app. Anything else: close it and report.
+An app listed twice under one name (two Adobe Acrobat entries) needs each entry removed.
+Then `python3 $C/google-apps.py cut <work|personal> "<name>"`. For apps Ian keeps,
+`google-apps.py keep <work|personal> "<name>"`, so it's only raised again if its access
+grows. On the work account, an app may come back if Container Solutions' admin installed
+it for everyone; say so if it reappears.
 
 Where a channel skill and this one disagree on how to present or batch things, this one
 wins. On what's allowed (sending, deleting, approvals, privacy), the stricter rule wins.
@@ -158,10 +180,9 @@ Everything in the channel skills' Rules, and in particular:
   repeated.
 - A time (`today`, `2d`, `since monday`): that window for Slack and WhatsApp, and
   `in:inbox newer_than:…` for mail. Invites stay at 4 weeks ahead.
-- `work`: W✉, S, LI, invites and 🔗 shares on W (`google-shares.py list --account work`).
-  `personal`: P✉, WA, invites and 🔗 shares on P (`--account personal`).
+- `work`: W✉, S, LI, invites and 🔑 apps on W. `personal`: P✉, WA, invites and 🔑 apps on P.
 - Channel names (`mail`, `work-mail`, `personal-mail`, `slack`, `whatsapp`, `linkedin`,
-  `invites`, `shares`):
+  `invites`, `apps`):
   only those, in any combination.
 - `unread`: `is:unread` for mail, `--unread` for WhatsApp, and the normal window for Slack
   (it has no unread state).
@@ -169,9 +190,9 @@ Everything in the channel skills' Rules, and in particular:
   Same scope as no argument. Ian isn't watching, so notify him when the list is ready
   (end of step 7). It can combine with the others, e.g. `morning work`.
 
-WhatsApp and LinkedIn are MacBook Pro only (the mail skill's "Which machine" check). On
-any other machine, such as klimt, leave WA and LI out of every scope, including `work`,
-`personal` and an explicit `whatsapp` or `linkedin`, and don't load the whatsapp or
+WhatsApp, LinkedIn and Google apps are MacBook Pro only (the mail skill's "Which machine"
+check). On any other machine, such as klimt, leave WA, LI and 🔑 out of every scope, including
+`work`, `personal` and an explicit `whatsapp`, `linkedin` or `apps`, and don't load the whatsapp or
 claude-in-chrome skills. Say once that they're off on this machine; that isn't a failed
 channel.
 
@@ -190,9 +211,7 @@ Run every channel's access check in parallel, in one go, before gathering:
 - Slack: `slack_read_user_profile` with no `user_id` (slack skill, Setup).
 - Calendar: `list_events` on both calendar IDs for the invite window, checking
   `accessRole` (calendar skill, Setup).
-- Google shares: none; `google-shares.py list` reports any account it couldn't scan in
-  `errors` (exit 1), and the other account's shares still count.
-- LinkedIn, on the MacBook Pro only: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
+- LinkedIn and Google apps, on the MacBook Pro only: `tabs_context_mcp` with `createIfEmpty`. If Chrome isn't connected, report it
   with the fix (open Chrome and check the Claude extension is connected) and carry on.
 
 Report failures in one block at the top, with each fix, and carry on with the channels
@@ -200,10 +219,10 @@ that work. Never silently skip a channel, and never present a partial run as com
 
 ### 3. Gather, in parallel
 
-Start `google-shares.py list` first (it's the slowest), then fire the other independent calls together: `mail-gather.py list` for the gog mailboxes (and
+Fire the independent calls together: `mail-gather.py list` for the gog mailboxes (and
 `search_threads` for the work connector on the MacBook Pro), `gtd-label-tidy.py` for the
 `close-task-tidies-mail` rule, the three Slack searches, `whatsapp.py chats`, the
-LinkedIn page reads (messages, invitations, then the comment lists), and `list_events` for pending invites (`responseStatus: needsAction`
+LinkedIn page reads (messages, invitations, then the comment lists), the Google apps reads (in their own tab), and `list_events` for pending invites (`responseStatus: needsAction`
 on Ian's attendee entry). Use the windows `pa-env.py check` printed for Slack (`after:`
 date, then drop results before the epoch) and WhatsApp (`--since`). Then read what needs
 reading, as each channel skill's Gather step says (`mail-gather.py read` for gog mail).
@@ -248,7 +267,7 @@ Use the mail skill's buckets, extended with the Slack and WhatsApp ones:
 | **Act now** | Someone is waiting on Ian (a question, decision, approval, blocker, deadline, plan to confirm), on any channel |
 | **Waiting on Ian** | Ian promised something and hasn't done it |
 | **Schedule** | Invites to answer, meeting requests, bookings and plans not in the calendar |
-| **Google shares** | Who Ian's Drive files and calendars are shared with: keep or cut (Google shares, above) |
+| **Google apps** | Apps and services with access to Ian's Google accounts: keep or cut (Google apps, above) |
 | **Delegate** | Better handled by someone else |
 | **Acknowledge** | Ian should show he's seen it (Slack reaction) |
 | **Read later** | Worth reading, no action (mail: keep in inbox and star) |
@@ -271,7 +290,7 @@ bucket, people waiting longest first. Columns:
 | Column | What goes in it |
 |---|---|
 | # | The item number (a range such as `7–14` for a grouped row) |
-| Ch | The channel tag(s): `W✉`, `P✉`, `S`, `WA`, `LI`, `📅 W`, `📅 P`, `🔗 W`, `🔗 P`, joined with `+` |
+| Ch | The channel tag(s): `W✉`, `P✉`, `S`, `WA`, `LI`, `📅 W`, `📅 P`, `🔑 W`, `🔑 P`, joined with `+` |
 | Who | The person or sender, with where and when (`DM, 11:02`, `#beach, Thu`) |
 | What | A one-line summary; for Act now, the question or decision Ian has to answer |
 | Tags | `📅 …`, `⚠ …`, `🗂 …` from the cross-checks, or empty |
@@ -301,13 +320,13 @@ says, even when nothing is for Ian. Example (made-up names):
 |---|---|---|---|---|---|
 | 6 | 📅 W | Bob, Q4 planning Tue 14:00 | Invite | 📅 pending · ⚠ clashes with P dentist | Decline with note, or move the dentist? |
 
-#### Google shares
+#### Google apps
 
 | # | Ch | Who | What | Tags | → |
 |---|---|---|---|---|---|
-| 7 | 🔗 P | sam@gmail.com | Writer on 2 files: "Moving House 2026", "Budget" | 🆕 today | Keep |
-| 8 | 🔗 P | anyone with the link | "Bank statements 2025" (Folder/Money), reader | | Cut |
-| 9 | 🔗 W | domain:oldclient.example | Reader on "Platform review 2019" | | Cut: engagement ended |
+| 7 | 🔑 P | PhotoPrintr | Can see, edit and delete all your Google Drive files | 🆕 | Cut unless you use it |
+| 8 | 🔑 W | Calendly | Calendar: was read-only, now can edit events | ⬆ access grew | Keep, still in use |
+| 9 | 🔑 P | 12 sign-in only | Old Shop, Ticket Co, Cleaners Ltd, … | | Cut the first three, keep the rest |
 
 #### Read later / FYI / Junk
 
@@ -319,8 +338,8 @@ says, even when nothing is for Ian. Example (made-up names):
 | 19 | LI | 3 cold pitches | Recruiter, agency, Premium offer | | No reply |
 
 Small buckets can share a table, as Read later, FYI and Junk do above; keep Act now,
-Waiting on Ian, Schedule and Google shares in tables of their own. Google shares go after
-Schedule, with how many more are left for later runs under the table. Use the same tables in the Execute
+Waiting on Ian, Schedule and Google apps in tables of their own. Google apps go after
+Schedule, with how many are left for later runs under the table. Use the same tables in the Execute
 report (step 9) where they help, eg drafts with their text, or calendar changes and who was
 notified.
 
@@ -333,7 +352,7 @@ options.
 **Morning run only** (`morning` in the argument): once the list is shown, tell Ian it's
 ready in two ways, since he may be away from the Mac or not at a terminal. Use one message,
 under 200 characters, one line, no markdown and no double quotes. Lead with what needs him:
-`Comms ready (Mon 02 Nov): 3 act now, 1 to schedule, 2 new shares, 12 FYI/junk. Top: Jane Doe wants
+`Comms ready (Mon 02 Nov): 3 act now, 1 to schedule, 1 new Google app, 12 FYI/junk. Top: Jane Doe wants
 sign-off by Fri. Slack failed.` Name any channel that failed. With nothing in Act now, say
 `nothing urgent`.
 - `PushNotification` with `status: "proactive"`. It reaches his phone when Remote Control
@@ -362,12 +381,8 @@ skill's Execute step:
   nothing is typed into LinkedIn and nothing is liked.
 - **Calendar** (calendar skill): respond, add, move, saying who gets notified; then offer
   to archive the related email.
-- **Google shares**: one plan to `google-shares.py apply`, a line per share: `cut <account>
-  <fileId> <permissionId>` for each share Ian said to cut, `keep <account> <fileId>
-  <permissionId>` for each he kept, `keep-person <who>` for "keep all". Run it with
-  `--dry-run` first only if the plan is long. A calendar share can't be cut by gog: give Ian
-  the row's `url` (that calendar's settings, "Share with specific people") to remove it
-  himself.
+- **Google apps**: the apps Ian named, removed one at a time in Chrome as Google apps (above)
+  says, then `google-apps.py cut`; `google-apps.py keep` for those he kept.
 - **gtd** (gtd skill): new tasks with `gtd-new-task.py` (`--mailbox/--thread` for gog
   mail, which adds the `GTD-<N>` label; `--link` with the Slack link, `WhatsApp: <chat>,
   <time>` or the connector's `viewUrl` otherwise), notes on existing tasks with
@@ -392,9 +407,9 @@ he chose to do nothing.
 ### 9. Report and continue
 
 A short report grouped by channel: what was archived, starred, trashed; drafts (where and
-their text); calendar changes and who was notified; shares cut and kept (file and person); tasks and notes created; people notes
+their text); calendar changes and who was notified; Google apps removed and kept; tasks and notes created; people notes
 added; and what still needs Ian personally (sending each draft, pressing Enter on
-WhatsApp, pasting LinkedIn drafts and comment replies, accepting invitations, removing calendar shares, approvals only he can give). Give any errors as they came.
+WhatsApp, pasting LinkedIn drafts and comment replies, accepting invitations, approvals only he can give). Give any errors as they came.
 
 If a mailbox had more threads than the first batch, offer the next batch, saying which
 mailbox.
