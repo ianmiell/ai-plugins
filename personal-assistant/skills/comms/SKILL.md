@@ -1,6 +1,6 @@
 ---
 name: comms
-description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages and invitations, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread", "/comms morning" (the unattended daily run, which notifies Ian when the list is ready).
+description: Catch up on everything at once — Ian's work and personal email, Slack, WhatsApp, LinkedIn messages, invitations and comments on his own posts he hasn't answered, and pending calendar invites — in one pass, with one numbered list and one round of approvals. Finds who's waiting on Ian on any channel, merges the same conversation across channels, checks dates against both calendars and work against gtd, then drafts replies (never sends), archives, stars, makes tasks and logs people notes. Use when Ian asks to go through his comms, messages or "everything", catch up, "what needs me", "who's waiting on me", clear the decks, or invokes /comms. Optional argument narrows it, e.g. "/comms 2d", "/comms work" (work mail + Slack + LinkedIn + work invites), "/comms personal" (personal mail + WhatsApp + personal invites), "/comms mail slack", "/comms linkedin", "/comms unread", "/comms morning" (the unattended daily run, which notifies Ian when the list is ready).
 ---
 
 # Comms: every channel at once
@@ -17,7 +17,7 @@ remain for a single channel (`/mail`, `/slack`, `/whatsapp`, `/calendar invites`
 | `P✉` | Personal mail, ian.miell@gmail.com | `personal-assistant:mail` | `in:inbox` |
 | `S` | Slack, Container Solutions | `personal-assistant:slack` | since its last run |
 | `WA` | WhatsApp | `personal-assistant:whatsapp` | since its last run |
-| `LI` | LinkedIn messages and invitations | this skill (below), in Chrome | the 10 newest conversations |
+| `LI` | LinkedIn messages, invitations and comments on Ian's posts | this skill (below), in Chrome | the 10 newest conversations; comments from the last 14 days |
 | `📅` | Pending invites on W and P | `personal-assistant:calendar` | next 4 weeks |
 
 Load the **mail, slack, whatsapp, calendar and gtd** skills with the Skill tool at the
@@ -32,7 +32,7 @@ does the calendar and gtd cross-checks once for everything.
 LinkedIn has no connector or API for messages, so this skill reads it in Ian's own
 signed-in Chrome through Claude in Chrome, so it's MacBook Pro only (klimt has no desktop
 Chrome or extension; switched off there October 2026). Load the `claude-in-chrome` skill, then
-`select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__tabs_create_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__get_page_text,mcp__claude-in-chrome__tabs_close_mcp`.
+`select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__tabs_create_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__get_page_text,mcp__claude-in-chrome__javascript_tool,mcp__claude-in-chrome__tabs_close_mcp`.
 
 - **Read with `get_page_text` only.** Open a new tab, navigate to
   `https://www.linkedin.com/messaging/`, and read the page text. It gives the 10 newest
@@ -40,21 +40,64 @@ Chrome or extension; switched off there October 2026). Load the `claude-in-chrom
   it, plus the whole of the newest conversation (LinkedIn opens it automatically, which
   marks it read). Then navigate the same tab to
   `https://www.linkedin.com/mynetwork/invitation-manager/received/` for pending
-  invitations (ignore the "Suggestions for you" below them). Close the tab when done.
-- **No scripts, clicks or typing on LinkedIn.** On the messaging page, `javascript_tool`,
+  invitations (ignore the "Suggestions for you" below them). Then the comments on Ian's
+  posts (below). Close the tab when done.
+- **No clicks or typing on LinkedIn, and no scripts on the messaging page.** There,
+  `javascript_tool`,
   screenshots and clicks fail with "Cannot access a chrome-extension:// URL of different
   extension" (another extension injects into the message box, October 2026), and
   conversation list items have no links, so other conversations can't be opened. Don't
   work round this. If an item needs the whole conversation, say so and Ian opens it.
 - **Never send, accept or connect.** Replies are drafts shown in the conversation for Ian
   to paste; invitations are accepted or ignored by Ian in LinkedIn. LinkedIn restricts
-  accounts that look automated, so keep to the two page loads above.
+  accounts that look automated, so keep to the page loads in this section.
 - If the page shows a sign-in form or a security check, don't type anything: report it
   and carry on without LinkedIn.
 - **What counts:** a conversation is waiting on Ian when its last message isn't `You:`.
   Cold pitches (recruiters, agencies, sales, "free review", Premium offers) go in Junk with
   no draft unless Ian asks; the LinkedIn voice guide's "Sales pitch decline" row is for
   when he does. Event invitations from people Ian met go in Schedule.
+
+#### Comments on Ian's posts
+
+Comments on Ian's own posts that he hasn't replied to are people waiting on him too. No one
+LinkedIn page shows this. A post page renders only a few of its comments ("Most
+relevant", replies folded behind "See previous replies") and loading the rest takes
+clicks, so read two lists and match them (checked November 2026):
+
+1. **Who commented.** Navigate to
+   `https://www.linkedin.com/notifications/?filter=my_posts_all` (the "My posts" tab) and
+   read it with `get_page_text`. Keep the "commented on your post" and "replied to your
+   comment" notifications from the last 14 days (times are relative: `52m`, `13h`,
+   `2d`, `1w`). Each gives the commenter, the comment text and the post's opening words.
+   Reactions and reposts are FYI and aren't listed.
+2. **The others, when it's grouped.** "Frederic Buchner and 7 others commented on your
+   post" names only the newest. For these, one read-only `javascript_tool` call on the
+   notifications page gets the post links. The tool blocks URLs with query strings, so
+   return paths only:
+   `[...document.querySelectorAll('main a[href]')].map(a=>new URL(a.href).pathname).filter(p=>/^\/(feed\/update|posts)\//.test(p))`.
+   Open at most 5 of those posts, newest first, and read each with `get_page_text`: it
+   shows some of the comments, and Ian's own replies marked `Author`. Say when a post has
+   more comments than the page showed.
+3. **What Ian answered.** Navigate to
+   `https://www.linkedin.com/in/%E2%80%8Bian-miell-694496/recent-activity/comments/`
+   (Ian's Comments activity; the slug starts with a zero-width space, and
+   `/in/me/recent-activity/…` doesn't redirect) and read it with `get_page_text`. Each
+   of Ian's replies is shown under the comment it answers, marked `Author` and usually
+   starting with the commenter's name.
+
+A comment is **unanswered** when no reply from Ian on that post names the commenter or
+sits under their comment, dated after it. If the oldest reply on the activity page is
+newer than a comment, say "not sure" rather than "unanswered". Then classify:
+
+- A question, a challenge or a point that invites an answer: **Act now**, with a draft
+  reply in his voice (the LinkedIn voice guide's Comments section).
+- Praise, "nice one", agreement: **Acknowledge**, with a short reply draft, or "like it"
+  for Ian to do; no reply needed is fine.
+- Self-promotion, link drops and pitches: **Junk**, no draft.
+
+Group several comments on one post into one row only when one reply answers them all;
+otherwise a row per commenter, with the post's first few words in What.
 
 Where a channel skill and this one disagree on how to present or batch things, this one
 wins. On what's allowed (sending, deleting, approvals, privacy), the stricter rule wins.
@@ -125,8 +168,8 @@ that work. Never silently skip a channel, and never present a partial run as com
 
 Fire the independent calls together: `mail-gather.py list` for the gog mailboxes (and
 `search_threads` for the work connector on the MacBook Pro), `gtd-label-tidy.py` for the
-`close-task-tidies-mail` rule, the three Slack searches, `whatsapp.py chats`, the two
-LinkedIn page reads, and `list_events` for pending invites (`responseStatus: needsAction`
+`close-task-tidies-mail` rule, the three Slack searches, `whatsapp.py chats`, the
+LinkedIn page reads (messages, invitations, then the comment lists), and `list_events` for pending invites (`responseStatus: needsAction`
 on Ian's attendee entry). Use the windows `pa-env.py check` printed for Slack (`after:`
 date, then drop results before the epoch) and WhatsApp (`--since`). Then read what needs
 reading, as each channel skill's Gather step says (`mail-gather.py read` for gog mail).
@@ -139,8 +182,8 @@ and start with the newest 25 mail threads per mailbox, as the mail skill does.
 Turn messages into **items**: one per conversation, and one per *topic* when the same
 person (or the same thing) turns up on more than one channel. For example: an email from a
 colleague plus their Slack ping "sent you an email"; a calendar invite plus the email
-inviting Ian; a WhatsApp "see my email" plus the email; LinkedIn's "X sent you a message" or invitation
-email plus the LinkedIn conversation (archive the email, act on LinkedIn). Match on the person (name, email
+inviting Ian; a WhatsApp "see my email" plus the email; LinkedIn's "X sent you a message", "X commented on your post" or invitation
+email plus the LinkedIn item (archive the email, act on LinkedIn). Match on the person (name, email
 address, Slack profile, phone), the subject and the dates. A merged item lists every
 channel it touches (`W✉+S`) and gets one recommendation, usually a reply on the channel
 where the real content is, plus tidying the others (archive the email, 👀 on the ping).
@@ -215,19 +258,20 @@ says, even when nothing is for Ian. Example (made-up names):
 | 2 | WA | Sam, 1:1, 15:53 | Pint on Thu 29th? | 📅 free after 18:00 | Draft "yup, pencilled in", add to P 19:00 |
 | 3 | S | Bob, DM, 11:02 | Needs your view on the bench offer | | Draft reply |
 | 4 | LI | Chris, Oct 19 | Can't do Fri; offers Wed or Mon | 📅 Mon 10:00 free | Draft "Monday works - 10am?" to paste |
+| 5 | LI | Pat Lee, comment on "Is everyone building…", 2h | Asks which stack you used; unanswered | | Draft reply to paste under Pat's comment |
 
 #### Schedule
 
 | # | Ch | Who | What | Tags | → |
 |---|---|---|---|---|---|
-| 5 | 📅 W | Bob, Q4 planning Tue 14:00 | Invite | 📅 pending · ⚠ clashes with P dentist | Decline with note, or move the dentist? |
+| 6 | 📅 W | Bob, Q4 planning Tue 14:00 | Invite | 📅 pending · ⚠ clashes with P dentist | Decline with note, or move the dentist? |
 
 #### Read later / FYI / Junk
 
 | # | Ch | Who | What | Tags | → |
 |---|---|---|---|---|---|
-| 6 | P✉ | Newsletter you read | Weekly issue | | Keep, star |
-| 7–14 | W✉ | GitHub, Calendly, receipts | Notifications | | Archive |
+| 7 | P✉ | Newsletter you read | Weekly issue | | Keep, star |
+| 8–14 | W✉ | GitHub, Calendly, receipts | Notifications | | Archive |
 | 15 | WA | Street group (muted), 40 messages | Nothing for you. Mostly the parking scheme consultation and someone selling a bike | | — |
 | 16 | LI | 3 cold pitches | Recruiter, agency, Premium offer | | No reply |
 
@@ -238,7 +282,7 @@ notified.
 
 Instructions from Ian, if any, come first, above Act now. If Act now is empty across
 every channel, say so first. Then ask how to proceed, taking
-shorthand that spans channels: "go", "go except 5", "draft 1 2 3 4, archive 7–14", "2: say
+shorthand that spans channels: "go", "go except 5", "draft 1 2 3 4, archive 8–14", "2: say
 I'll call tonight", "task 1". Use AskUserQuestion only for a single decision that needs
 options.
 
@@ -269,8 +313,9 @@ skill's Execute step:
   if asked.
 - **WhatsApp** (whatsapp skill): `whatsapp.py draft`, **one at a time**, after Ian has
   seen the text, saying which chat each one is in before the next.
-- **LinkedIn**: show each draft's text with the conversation's name for Ian to paste;
-  nothing is typed into LinkedIn.
+- **LinkedIn**: show each draft's text with the conversation's name, or for a comment
+  reply the post's opening words, the commenter and the post link, for Ian to paste;
+  nothing is typed into LinkedIn and nothing is liked.
 - **Calendar** (calendar skill): respond, add, move, saying who gets notified; then offer
   to archive the related email.
 - **gtd** (gtd skill): new tasks with `gtd-new-task.py` (`--mailbox/--thread` for gog
@@ -299,7 +344,7 @@ he chose to do nothing.
 A short report grouped by channel: what was archived, starred, trashed; drafts (where and
 their text); calendar changes and who was notified; tasks and notes created; people notes
 added; and what still needs Ian personally (sending each draft, pressing Enter on
-WhatsApp, pasting LinkedIn drafts, accepting invitations, approvals only he can give). Give any errors as they came.
+WhatsApp, pasting LinkedIn drafts and comment replies, accepting invitations, approvals only he can give). Give any errors as they came.
 
 If a mailbox had more threads than the first batch, offer the next batch, saying which
 mailbox.
