@@ -1001,3 +1001,53 @@ class LinkedInCorrespondents(Base):
     self.assertTrue(match("Jane Doe", [r("jd", "Jane Doe")]).startswith("MATCH"))
     self.assertEqual(match("Jane Doe", [r("x", "John Doe")], "acme"), "NONE\n")
     self.li("match", "Jane Doe", stdin=json.dumps({"error": "signed out"}), check=1)
+
+
+
+class GoogleApps(Base):
+  def ga(self, *args, page="", check=0):
+    return self.run_script("google-apps.py", *args, stdin=page, check=check,
+                           script=os.path.join(SCRIPTS, "..", "skills", "comms", "google-apps.py"))
+
+  def record(self, apps, acct=PERSONAL):
+    return json.loads(self.ga("record", page=self.block(acct, apps)).stdout)
+
+  def block(self, acct, apps, count=None):
+    # As get_page_text gives it: the block, with the rest of the page around it
+    return "\n".join(["Title: Linked apps", "---", f"GOOGLE-APPS-BEGIN {acct}", *(json.dumps(a) for a in apps),
+                      f"GOOGLE-APPS-END {len(apps) if count is None else count}", "Manage data sharing"])
+
+  def test_record_keep_grow_cut(self):
+    first = self.record([{"name": "Netflix", "access": []}, {"name": "HubSpot", "access": ["Gmail", "Drive"]},
+                         {"name": "Calendly", "access": ["Calendar"]}])
+    self.assertTrue(first["firstRecord"])
+    # The first record isn't "new": everything is, so nothing is. Most access first.
+    self.assertEqual([a["name"] for a in first["apps"]], ["HubSpot", "Calendly", "Netflix"])
+    self.assertFalse(any(a["new"] for a in first["apps"]))
+    self.assertEqual(first["counts"], {"total": 3, "withAccess": 2, "toReview": 3})
+    self.ga("keep", "personal", "Calendly")
+    self.ga("keep", PERSONAL, "Netflix")
+    self.ga("keep", "personal", "Nope", check=1)
+    nxt = self.record([{"name": "Netflix", "access": []}, {"name": "Calendly", "access": ["Calendar", "Gmail"]},
+                       {"name": "Shady", "access": ["Drive"]}])
+    by = {a["name"]: a for a in nxt["apps"]}
+    self.assertNotIn("firstRecord", nxt)
+    self.assertEqual(nxt["gone"], ["HubSpot"])
+    self.assertTrue(by["Shady"]["new"])
+    self.assertTrue(by["Calendly"]["grew"])
+    self.assertFalse(by["Calendly"]["kept"])
+    self.assertTrue(by["Netflix"]["kept"])
+    self.assertEqual([a["name"] for a in nxt["apps"]], ["Shady", "Calendly", "Netflix"])
+    self.assertEqual(nxt["counts"]["toReview"], 2)
+    self.ga("cut", "personal", "Shady")
+    again = self.record([{"name": "Netflix", "access": []}, {"name": "Shady", "access": ["Drive"]}])
+    self.assertTrue({a["name"]: a for a in again["apps"]}["Shady"]["new"])
+    # Accounts are separate
+    work = self.record([{"name": "Slack", "access": []}], acct=WORK)
+    self.assertEqual(work["account"], "work")
+    self.assertTrue(work["firstRecord"])
+
+  def test_bad_input(self):
+    self.ga("record", page="Title: Sign in", check=1)
+    self.ga("record", page=self.block(PERSONAL, [{"name": "A", "access": []}], count=2), check=1)
+    self.ga("record", page=self.block("someone@else.example", []), check=2)

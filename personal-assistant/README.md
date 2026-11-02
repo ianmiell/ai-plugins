@@ -7,7 +7,7 @@ work and workflows to help me save time and be more effective in my job.
 
 ```
 README.md               - this readme file
-skills/comms/SKILL.md   - /comms: everything at once (both mailboxes, Slack, WhatsApp, LinkedIn messages, invitations and unanswered comments on Ian's posts, pending invites) in one list and one round of approvals; the usual starting point
+skills/comms/SKILL.md   - /comms: everything at once (both mailboxes, Slack, WhatsApp, LinkedIn messages, invitations and unanswered comments on Ian's posts, pending invites, apps with access to his Google accounts) in one list and one round of approvals; the usual starting point
 skills/mail/SKILL.md    - /mail: triage the Gmail inbox and decide what to do with each thread
 skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, invites, booking
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
@@ -33,6 +33,7 @@ scripts/people-note.py  - find a person's gtd people file, add an email/slack/wh
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning, /weekly-plan every Sunday evening
+skills/comms/extract-google-apps.js, google-apps.py - /comms' Google apps check: read the apps with access to each Google account in Chrome, and track which are new, widened or kept
 skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
