@@ -13,8 +13,8 @@ GTD_DIR="${GTD_DIR:-${HOME}/git/gtd}"
 echo "$(date '+%F %T') starting a linkedin-sync session"
 open -g -a "Google Chrome" || echo "$(date '+%F %T') could not start Google Chrome" >&2
 
-# launchd's PATH doesn't include ~/.local/bin, where the claude installer puts it.
-export PATH="${HOME}/.local/bin:${PATH}"
+# launchd's PATH doesn't include ~/.local/bin (claude) or /opt/homebrew/bin (gog).
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:${PATH}"
 
 (cd "${GTD_DIR}" && claude --bg --chrome --name "linkedin-sync" '/personal-assistant:linkedin-sync') \
   || echo "$(date '+%F %T') failed to start a background claude session" >&2

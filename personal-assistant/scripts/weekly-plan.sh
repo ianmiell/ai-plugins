@@ -41,8 +41,8 @@ do
 done
 (( waited > 0 )) && log "network up after ${waited}s"
 
-# launchd's PATH doesn't include ~/.local/bin, where the claude installer puts it.
-export PATH="${HOME}/.local/bin:${PATH}"
+# launchd's PATH doesn't include ~/.local/bin (claude) or /opt/homebrew/bin (gog).
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:${PATH}"
 
 # The = form matters: --allowed-tools takes a list and would swallow the prompt otherwise.
 if (cd "${GTD_DIR}" && "${CLAUDE_BIN}" --bg --name "weekly-plan-$(date +%d-%b)" \
