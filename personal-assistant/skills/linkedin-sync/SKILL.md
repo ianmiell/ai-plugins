@@ -1,6 +1,6 @@
 ---
 name: linkedin-sync
-description: Bring Ian's gtd people notes (~/git/gtd/people) up to date with new LinkedIn connections. Reads the "Recently added" connections page in Ian's own signed-in Chrome back to the newest connection already in people/, adds the new people with `gtd import-connections --auto`, then looks for each one in the calendars, meeting transcripts, email and other people notes and suggests a level (met, in-touch, forgotten) for Ian to confirm. Looks up everyone Ian has emailed since the last sync (written to, or replied to) who isn't in people/, finds them with LinkedIn's people search, and sends a connection request (no note) when the match is clear: straight away for work mail, after Ian's yes for personal mail; these go first in the daily invitations. If Ian has LinkedIn Premium, also sends a connection request (no note) to everyone on the "Who's viewed your profile" page since the last sync who isn't already a connection, and to the people LinkedIn suggests on the Grow page ("People you may know") with the most mutual connections: about 20 invitations a day at most with Premium (viewers first), 10 without (suggestions only), and never more than 100 in any 7 days. Follows back everyone who follows Ian and isn't followed yet (the newest 200 followers, at most 25 follows a day). Also picks up a LinkedIn data export in ~/Downloads, and once a month reminds Ian to request one. Use when Ian asks to sync or update people from LinkedIn, "who have I connected with", or invokes /linkedin-sync; the linkedin-sync launchd agent opens a session with it every Monday morning.
+description: Bring Ian's gtd people notes (~/git/gtd/people) up to date with new LinkedIn connections. Reads the "Recently added" connections page in Ian's own signed-in Chrome back to the newest connection already in people/, adds the new people with `gtd import-connections --auto`, then looks for each one in the calendars, meeting transcripts, email and other people notes and suggests a level (met, in-touch, forgotten) for Ian to confirm. Looks up everyone Ian has emailed since the last sync (written to, or replied to) who isn't in people/, finds them with LinkedIn's people search, and sends a connection request (no note) when the match is clear: straight away for work mail, after Ian's yes for personal mail; these go first in the daily invitations. If Ian has LinkedIn Premium, also sends a connection request (no note) to everyone on the "Who's viewed your profile" page since the last sync who isn't already a connection, and to the people LinkedIn suggests on the Grow page ("People you may know") with the most mutual connections: about 20 invitations a day at most with Premium (viewers first), 10 without (suggestions only), and never more than 150 in any 7 days. Follows back everyone who follows Ian and isn't followed yet (the newest 200 followers, at most 25 follows a day). Also picks up a LinkedIn data export in ~/Downloads, and once a month reminds Ian to request one. Use when Ian asks to sync or update people from LinkedIn, "who have I connected with", or invokes /linkedin-sync; the linkedin-sync launchd agent opens a session with it every Monday morning.
 ---
 
 # LinkedIn sync
@@ -185,7 +185,7 @@ The bookkeeping is done by `linkedin-state.py` next to this file
    `linkedin-sync-last` (the first run), `LAST` is a week ago.
    The budget: `python3 $L budget` prints `SENT` (invitations in the last
    24 hours, from the log), `WEEK` (in the last 7 days) and `LEFT`, out of
-   **20 a day** with Premium and **100 in any 7 days** (LinkedIn's own weekly
+   **20 a day** with Premium and **150 in any 7 days** (LinkedIn's own weekly
    limit stopped a run at about 220 a week, so stay well under it).
    Steps 3b, 4 and 5 share it, in that order. Skip this step if step 3b
    stopped inviting at a `limit`, `unexpected` or `error`.
@@ -244,7 +244,7 @@ The bookkeeping is done by `linkedin-state.py` next to this file
 LinkedIn's Grow page suggests people to connect with ("<Name>'s connections
 you may know", "Suggestions for you"). Invite the ones with the most mutual
 connections, with what's left of the budget: `python3 $L budget` with
-Premium (20 a day and 100 a week, less what step 4 sent), `python3 $L budget --per-day 10`
+Premium (20 a day and 150 a week, less what step 4 sent), `python3 $L budget --per-day 10`
 without. With `LEFT 0`, skip this step. Skip it too if step 4 stopped
 sending at a `limit`, `unexpected` or `error`.
 
