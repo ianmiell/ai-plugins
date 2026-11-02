@@ -3,7 +3,7 @@
 the local evidence for new people's levels.
 
   linkedin-state.py window                    # NOW and LAST (step 4.1)
-  linkedin-state.py budget [--per-day 20] [--per-week 100]  # invitations sent lately, and LEFT
+  linkedin-state.py budget [--per-day 20] [--per-week 150]  # invitations sent lately, and LEFT
   linkedin-state.py queue < viewers.txt       # step 4.4: who to invite, in order
   linkedin-state.py suggestions < page.txt    # step 5.3: suggested people to invite, in order
   linkedin-state.py log sent URL "Name"       # after each connect-profile.js result
@@ -39,7 +39,7 @@ a `# over the cap` line for `defer`.
 
 `budget` counts the `sent` lines of the last 24 hours and of the last 7 days in the log and
 prints `SENT <n>`, `WEEK <w>` and `LEFT <the smaller of per-day - n and per-week - w>` (at
-least 0): about 20 invitations a day with Premium, 10 without, and never more than 100 in any
+least 0): about 20 invitations a day with Premium, 10 without, and never more than 150 in any
 7 days, which keeps under LinkedIn's own weekly invitation limit.
 
 `suggestions` reads the get_page_text output of the Grow page (SUGGESTIONS-BEGIN ...
@@ -561,7 +561,7 @@ def main():
   sub.add_parser("window")
   p = sub.add_parser("budget")
   p.add_argument("--per-day", type=int, default=20)
-  p.add_argument("--per-week", type=int, default=100)
+  p.add_argument("--per-week", type=int, default=150)
   p = sub.add_parser("queue")
   p.add_argument("--max", type=int, default=20)
   p = sub.add_parser("log")
