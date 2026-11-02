@@ -7,7 +7,7 @@ work and workflows to help me save time and be more effective in my job.
 
 ```
 README.md               - this readme file
-skills/comms/SKILL.md   - /comms: everything at once (both mailboxes, Slack, WhatsApp, LinkedIn messages, invitations and unanswered comments on Ian's posts, pending invites) in one list and one round of approvals; the usual starting point
+skills/comms/SKILL.md   - /comms: everything at once (both mailboxes, Slack, WhatsApp, LinkedIn messages, invitations and unanswered comments on Ian's posts, pending invites, who his Google Drive files and calendars are shared with) in one list and one round of approvals; the usual starting point
 skills/mail/SKILL.md    - /mail: triage the Gmail inbox and decide what to do with each thread
 skills/calendar/SKILL.md - /calendar: combined work + personal agenda, clashes, invites, booking
 skills/gtd/SKILL.md      - /gtd: drive the gtd task system in ~/git/gtd; used by mail and calendar
@@ -24,6 +24,7 @@ scripts/voice-check.py  - mechanical check of a draft against the voices (em das
 scripts/pa-env.py       - start-of-run checks in one call: machine, gog mailbox access, WhatsApp, Slack/WhatsApp windows; `mark` records a run
 scripts/mail-gather.py  - inbox threads via gog, compactly, with a first-pass hint from the house rules; `read` gives a thread as plain text
 scripts/mail-apply.py   - approved archive/keep/trash/spam/label/GTD-N actions via gog, with the star rules built in
+scripts/google-shares.py - who Ian's Drive files and calendars are shared with, new shares first, from gog's read-only sharing audit; `apply` cuts or keeps them
 scripts/gtd-find.py     - open gtd tasks mentioning names, thread ids or subject words (`--batch` for a whole triage run)
 scripts/gtd-new-task.py - new gtd task with its source link and notes; for email, labels the thread GTD-<N> and archives it
 scripts/gtd-note.py     - dated note with its source on an existing gtd task, pushed; for email, labels the thread GTD-<N>

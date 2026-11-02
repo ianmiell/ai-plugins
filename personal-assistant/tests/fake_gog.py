@@ -4,6 +4,8 @@
 FAKE_GOG_STATE is the state ({"accounts": {address: {"labels": [...], "threads": {...}}}}),
 rewritten after every change; FAKE_GOG_LOG gets one JSON line per call. Threads are Gmail API
 threads ({"messages": [{"id", "labelIds", "internalDate", "snippet", "payload"}]}).
+An account can also have "shares" (gog drive audit findings), "calendars" and "acl"
+({calendarId: [rules]}) for google-shares.py.
 """
 
 import fcntl
@@ -20,6 +22,26 @@ def fail(msg, code=1):
   sys.exit(code)
 
 
+def drive_calendar(box, rest, readonly):
+  if rest[:3] == ["drive", "audit", "sharing"]:
+    internal = rest[rest.index("--internal-domain") + 1]
+    return [f for f in box.get("shares", []) if f["permissionType"] == "anyone"
+            or not (f.get("email") or f.get("domain") or "").endswith(internal)]
+  if rest[:2] == ["drive", "unshare"]:
+    if readonly:
+      fail("fake gog: unshare with --readonly")
+    before = len(box.get("shares", []))
+    box["shares"] = [f for f in box.get("shares", []) if (f["fileId"], f["permissionId"]) != tuple(rest[2:4])]
+    if len(box["shares"]) == before:
+      fail(f"fake gog: no permission {rest[2:4]}")
+    return {"removed": True}
+  if rest[:2] == ["calendar", "calendars"]:
+    return box.get("calendars", [])
+  if rest[:2] == ["calendar", "acl"]:
+    return box.get("acl", {}).get(rest[2], [])
+  fail(f"fake gog: unsupported {rest}", 2)
+
+
 def main():
   argv = sys.argv[1:]
   if LOG:
@@ -28,7 +50,8 @@ def main():
   if "--gmail-no-send" not in argv:
     fail("fake gog: called without --gmail-no-send", 3)
   account = argv[argv.index("-a") + 1]
-  rest = [a for i, a in enumerate(argv) if a not in ("--gmail-no-send", "--no-input", "--json", "--results-only")
+  rest = [a for i, a in enumerate(argv) if a not in ("--gmail-no-send", "--no-input", "--json", "--results-only",
+                                                     "--readonly", "--force")
           and not (i > 0 and argv[i - 1] == "-a") and a != "-a"]
   # mail-gather reads several threads at once: one call at a time over the state file.
   lock = open(STATE + ".lock", "w")
@@ -38,6 +61,12 @@ def main():
   box = state["accounts"].get(account)
   if box is None:
     fail(f"fake gog: no account {account}")
+  if rest[0] in ("drive", "calendar"):
+    out = drive_calendar(box, rest, "--readonly" in argv)
+    with open(STATE, "w") as f:
+      json.dump(state, f)
+    print(json.dumps(out))
+    return
   assert rest[0] == "gmail", rest
   cmd, args = rest[1], rest[2:]
   out = None

@@ -1001,3 +1001,84 @@ class LinkedInCorrespondents(Base):
     self.assertTrue(match("Jane Doe", [r("jd", "Jane Doe")]).startswith("MATCH"))
     self.assertEqual(match("Jane Doe", [r("x", "John Doe")], "acme"), "NONE\n")
     self.li("match", "Jane Doe", stdin=json.dumps({"error": "signed out"}), check=1)
+
+
+class GoogleShares(Base):
+  def setUp(self):
+    super().setUp()
+    def share(fid, name, pid, ptype, email=None, domain=None, role="reader"):
+      return {"fileId": fid, "fileName": name, "path": f"Folder/{name}", "permissionId": pid,
+              "permissionType": ptype, "email": email, "domain": domain, "role": role}
+    with open(self.state_file) as f:
+      st = json.load(f)
+    st["accounts"][PERSONAL].update(
+      shares=[share("f1", "Plan", "p1", "user", "friend@gmail.com", role="writer"),
+              share("f1", "Plan", "p2", "user", WORK),
+              share("f2", "Slides", "p3", "anyone"),
+              share("f3", "Notes", "p4", "user", "friend@gmail.com")],
+      calendars=[{"id": PERSONAL, "accessRole": "owner", "summary": "Ian"},
+                 {"id": WORK, "accessRole": "owner", "summary": "Work"},
+                 {"id": "en.uk#holiday@group.v.calendar.google.com", "accessRole": "reader"}],
+      acl={PERSONAL: [{"id": f"user:{PERSONAL}", "role": "owner", "scope": {"type": "user", "value": PERSONAL}},
+                      {"id": "user:partner@gmail.com", "role": "reader",
+                       "scope": {"type": "user", "value": "partner@gmail.com"}}],
+           WORK: [{"id": "user:boss@x.example", "role": "reader", "scope": {"type": "user", "value": "boss@x.example"}}]})
+    st["accounts"][WORK].update(
+      shares=[share("w1", "Proposal", "q1", "user", "client@acme.example"),
+              share("w2", "Internal", "q2", "user", "colleague@container-solutions.com")],
+      calendars=[{"id": WORK, "accessRole": "owner", "summary": "Work"}],
+      acl={WORK: [{"id": "domain:container-solutions.com", "role": "freeBusyReader",
+                   "scope": {"type": "domain", "value": "container-solutions.com"}},
+                  {"id": "user:boss@x.example", "role": "reader", "scope": {"type": "user", "value": "boss@x.example"}}]})
+    with open(self.state_file, "w") as f:
+      json.dump(st, f)
+
+  def gs(self, *args, stdin="", check=0):
+    return self.run_script("google-shares.py", *args, stdin=stdin, check=check)
+
+  def people(self, *args):
+    return {p["who"]: p for p in json.loads(self.gs("list", *args).stdout)["people"]}
+
+  def test_list(self):
+    ppl = self.people()
+    # Gmail friends count (the personal account's gmail.com isn't internal); colleagues on
+    # work, Ian's own addresses, the company free/busy rule and the shared-in work calendar
+    # (seen from personal) don't.
+    self.assertEqual(set(ppl), {"friend@gmail.com", "anyone", "partner@gmail.com", "client@acme.example",
+                                "boss@x.example"})
+    self.assertEqual(len(ppl["friend@gmail.com"]["shares"]), 2)
+    self.assertEqual(len(ppl["boss@x.example"]["shares"]), 1)
+    self.assertEqual(ppl["boss@x.example"]["shares"][0]["account"], "work")
+    self.assertEqual(ppl["anyone"]["kind"], "anyone with the link")
+    self.assertTrue(all(p["new"] for p in ppl.values()))
+    self.assertTrue(ppl["partner@gmail.com"]["shares"][0]["fileId"].startswith("calendar:"))
+    # A second scan: nothing is new any more
+    self.assertFalse(any(p["new"] for p in self.people().values()))
+    self.assertTrue(all(c[c.index("-a") + 2] == "--gmail-no-send" and "--readonly" in c for c in self.gog_calls()))
+
+  def test_keep_and_cut(self):
+    self.people()
+    plan = "cut personal f2 p3\nkeep personal f3 p4\nkeep-person partner@gmail.com\n"
+    self.gs("apply", "--dry-run", stdin=plan)
+    self.assertEqual(len(self.mail()[PERSONAL]["shares"]), 4)
+    out = self.gs("apply", stdin=plan).stdout
+    self.assertIn("cut personal f2 p3", out)
+    self.assertEqual(len(self.mail()[PERSONAL]["shares"]), 3)
+    ppl = self.people()
+    self.assertNotIn("anyone", ppl)
+    self.assertNotIn("partner@gmail.com", ppl)
+    self.assertEqual([s["fileId"] for s in ppl["friend@gmail.com"]["shares"]], ["f1"])
+    d = json.loads(self.gs("list").stdout)
+    self.assertEqual(d["kept"], 2)
+    self.assertIn("partner@gmail.com", self.people("--all"))
+
+  def test_calendar_cut_refused_and_bad_lines(self):
+    p = self.gs("apply", stdin="cut personal calendar:x user:y\ncut nobody f1 p1\nnonsense\n", check=1)
+    self.assertIn("Google Calendar settings", p.stderr)
+    self.assertEqual(p.stderr.count("FAILED"), 3)
+    self.assertFalse(any("unshare" in c for c in self.gog_calls()))
+
+  def test_failed_account_reported(self):
+    self.env["PA_GOG"] = "/nonexistent/gog"
+    p = self.gs("list", "--account", "personal", check=None)
+    self.assertNotEqual(p.returncode, 0)
