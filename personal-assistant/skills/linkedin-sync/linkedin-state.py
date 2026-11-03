@@ -17,6 +17,7 @@ the local evidence for new people's levels.
   linkedin-state.py correspondents --gog personal [< to-cc.txt]  # step 3b: who Ian emailed, not in people/
   linkedin-state.py match "Name" [--company X] < results.json   # step 3b: pick the profile from a search
   linkedin-state.py log --email a@b.com sent URL "Name"         # after each step 3b result
+  linkedin-state.py notifications < page.txt  # step 5c: updates from people Ian knows, to answer
 
 State is in ~/.local/state/personal-assistant (PA_LINKEDIN_STATE overrides it):
 linkedin-sync-last (UTC time of the last sync), linkedin-invites.log (one line per viewer
@@ -82,6 +83,15 @@ company only a single result with their name is a MATCH.
 `log --email ADDRESS` logs a step 3b result to linkedin-correspondents.log (time, status, email,
 name, url) and, for a connect-profile.js status, to the invitations log too, so the daily budget
 and steps 4 and 5 count it.
+
+`notifications` reads the get_page_text output of the notifications page after
+extract-notifications.js (NOTIFICATIONS-BEGIN ... NOTIFICATIONS-END <count>), checks the count, and
+keeps the notifications naming someone whose people/ note (found by its LinkedIn URL) has a level in
+--levels (close, met, in-touch). It prints `action<TAB>level<TAB>name<TAB>kind<TAB>age<TAB>file<TAB>text`
+lines, one per person and kind (the newest), `reply` first (they commented, replied or mentioned Ian:
+waiting on an answer), then `look` (their own news: a post, a new job, an anniversary, a comment on
+a Container Solutions post), then `fyi` (reactions, reposts, follows), closest level first within
+each. A `#` line first says how many were read and kept.
 
 `export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it)
 and prints `EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than
@@ -555,6 +565,73 @@ def cmd_evidence(args):
     print(f"{name}\t{level}\t{'; '.join(ev) or '-'}")
 
 
+LEVELS = ["close", "met", "in-touch", "forgotten"]
+# What a notification is, from the verb after the name: (pattern, kind, action); the earliest match wins
+NOTIFICATION_KINDS = [
+  (r"\b(replied to|mentioned you|tagged you|commented on your|commented on a post you|sent you a message)", "comment", "reply"),
+  (r"\b(started a new position|new position|work anniversary|celebrat|birthday|new job|is hiring|starting a new)", "milestone", "look"),
+  (r"\b(commented on|shared posts? from|shared a post|posted|published|shared)", "post", "look"),
+  (r"\b(reacted to|liked|likes|found your|celebrates your|supports your|loves your|reposted)", "reaction", "fyi"),
+  (r"\bfollowed you\b", "follow", "fyi"),
+]
+ACTIONS = ["reply", "look", "fyi"]
+
+
+def linkedin_slug(url):
+  m = re.search(r"linkedin\.com/in/([^/?#\s)]+)", url or "")
+  return urllib.parse.unquote(m.group(1)).strip("\u200b").lower() if m else None
+
+
+def people_by_linkedin():
+  """{slug: (file, name, level)} from the `- LinkedIn:` lines (or any profile link) in people/."""
+  out, people_dir = {}, os.path.join(pa.GTD, "people")
+  for f in sorted(os.listdir(people_dir)) if os.path.isdir(people_dir) else []:
+    if not f.endswith(".md"):
+      continue
+    with open(os.path.join(people_dir, f), encoding="utf-8", errors="replace") as fh:
+      text = fh.read()
+    level = (re.search(r"^- Level:\s*(\S+)", text, re.M) or [None, ""])[1].lower()
+    # The first heading that is a name, not a section ("## managed by linkedin_tools", "## LinkedIn messages")
+    name = next((h.strip() for h in re.findall(r"^#+ (.+)$", text, re.M)
+                 if not re.match(r"(managed by|linkedin messages|messages|notes|meetings?|log)\b", h.strip(), re.I)),
+                f[:-3].replace("_", " "))
+    for url in re.findall(r"https?://(?:[a-z]+\.)?linkedin\.com/in/[^/?#\s)]+", text):
+      out.setdefault(linkedin_slug(url), (f, name, level))
+  return out
+
+
+def notification_kind(text):
+  """The kind of the verb that comes first: the one right after the name, not one in the excerpt
+  of Ian's post that follows ("reacted to your post. Just published ...")."""
+  best = None
+  for pattern, kind, action in NOTIFICATION_KINDS:
+    m = re.search(pattern, text, re.I)
+    if m and (best is None or m.start() < best[0]):
+      best = (m.start(), kind, action)
+  return best[1:] if best else ("other", "look")
+
+
+def cmd_notifications(args):
+  rows = read_page(sys.stdin.read(), "NOTIFICATIONS-END")
+  wanted = [l.strip() for l in args.levels.split(",") if l.strip()]
+  people = people_by_linkedin()
+  kept = {}
+  for n in rows:
+    text = re.sub(r"\s+", " ", n.get("text", "")).strip()
+    kind, action = notification_kind(text)
+    for url in n.get("urls", []):
+      person = people.get(linkedin_slug(url))
+      if not person or person[2] not in wanted:
+        continue
+      key = (person[0], kind)
+      if key not in kept:  # newest first on the page: keep the first
+        kept[key] = (action, person[2], person[1], kind, n.get("age", ""), person[0], text[:200])
+  order = sorted(kept.values(), key=lambda r: (ACTIONS.index(r[0]), wanted.index(r[1])))
+  print(f"# {len(rows)} notification(s) read, {len(order)} from people at {', '.join(wanted)}")
+  for r in order:
+    print("\t".join(r))
+
+
 def main():
   ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
   sub = ap.add_subparsers(dest="cmd", required=True)
@@ -592,10 +669,13 @@ def main():
   p.add_argument("now")
   p = sub.add_parser("evidence")
   p.add_argument("--days", type=int, default=30)
+  p = sub.add_parser("notifications")
+  p.add_argument("--levels", default="close,met,in-touch", help="people at these levels (comma-separated)")
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
    "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export,
-   "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match}[args.cmd](args)
+   "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match,
+   "notifications": cmd_notifications}[args.cmd](args)
 
 
 if __name__ == "__main__":

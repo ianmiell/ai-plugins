@@ -858,6 +858,43 @@ class LinkedInState(Base):
                            "Eli Moss\tin-touch\tpeople/Other.md",
                            "Fay Ng\tforgotten?\t-"])
 
+  def test_notifications(self):
+    notes = {
+      "Dana_Lee.md": "## managed by linkedin_tools\n## Dana Lee\n- LinkedIn: https://www.linkedin.com/in/dana-lee-1\n- Level: met\n",
+      "Eli_Moss.md": "# Eli Moss\n- LinkedIn: https://uk.linkedin.com/in/elimoss/\n- Level: close\n",
+      "Fay_Ng.md": "## Fay Ng\n- LinkedIn: https://www.linkedin.com/in/fayng\n- Level: forgotten\n",
+      "Gus_Hale.md": "## Gus Hale\n- LinkedIn: https://www.linkedin.com/in/gus%C3%A9hale\n- Level: in-touch\n",
+    }
+    for name, text in notes.items():
+      with open(os.path.join(self.gtd, "people", name), "w") as f:
+        f.write(text)
+    rows = [
+      (["https://www.linkedin.com/in/elimoss"], "Eli Moss and 9 others reacted to your post. Just published this post", "1h"),
+      (["https://www.linkedin.com/in/dana-lee-1"], "Dana Lee commented on your post. Great read, can we talk?", "3h"),
+      (["https://www.linkedin.com/in/fayng"], "Fay Ng commented on your post. Nice", "4h"),
+      (["https://www.linkedin.com/in/nobody"], "No Body mentioned you in a comment.", "5h"),
+      (["https://www.linkedin.com/in/elimoss"], "Eli Moss started a new position as CTO at Acme", "1d"),
+      (["https://www.linkedin.com/in/dana-lee-1"], "Dana Lee commented on your post. An older comment", "1d"),
+      (["https://www.linkedin.com/in/gus%C3%A9hale", "https://www.linkedin.com/in/elimoss"],
+       "Gusé Hale and Eli Moss followed you.", "2d"),
+    ]
+    page = ("Title: Notifications\nNOTIFICATIONS-BEGIN\n" +
+            "\n".join(json.dumps({"urls": u, "text": t, "age": a}) for u, t, a in rows) + "\nNOTIFICATIONS-END 7\n")
+    out = self.li("notifications", stdin=page, check=0).stdout.splitlines()
+    self.assertEqual(out[0], "# 7 notification(s) read, 5 from people at close, met, in-touch")
+    got = [l.split("\t")[:6] for l in out[1:]]
+    # reply, then look, then fyi; the newest per person and kind; the verb after the name, not the
+    # excerpt ("published"), decides; forgotten and unknown people are left out
+    self.assertEqual(got, [["reply", "met", "Dana Lee", "comment", "3h", "Dana_Lee.md"],
+                           ["look", "close", "Eli Moss", "milestone", "1d", "Eli_Moss.md"],
+                           ["fyi", "close", "Eli Moss", "reaction", "1h", "Eli_Moss.md"],
+                           ["fyi", "close", "Eli Moss", "follow", "2d", "Eli_Moss.md"],
+                           ["fyi", "in-touch", "Gus Hale", "follow", "2d", "Gus_Hale.md"]])
+    out = self.li("notifications", "--levels", "forgotten", stdin=page, check=0).stdout
+    self.assertIn("reply\tforgotten\tFay Ng\tcomment", out)
+    p = self.li("notifications", stdin=page.replace("NOTIFICATIONS-END 7", "NOTIFICATIONS-END 8"))
+    self.assertNotEqual(p.returncode, 0)
+
   def test_follows_queue_cap_and_own_log(self):
     self.li("log", "sent", "https://www.linkedin.com/in/a", "A Person", check=0)
     self.li("log", "--follows", "followed", "https://www.linkedin.com/in/a", "A Person", check=0)
