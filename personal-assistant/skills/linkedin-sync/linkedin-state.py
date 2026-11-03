@@ -17,7 +17,7 @@ the local evidence for new people's levels.
   linkedin-state.py correspondents --gog personal [< to-cc.txt]  # step 3b: who Ian emailed, not in people/
   linkedin-state.py match "Name" [--company X] < results.json   # step 3b: pick the profile from a search
   linkedin-state.py log --email a@b.com sent URL "Name"         # after each step 3b result
-  linkedin-state.py notifications < page.txt  # step 5c: updates from people Ian knows, to answer
+  linkedin-state.py feed < page.txt           # step 5c: posts in Ian's feed worth a response
 
 State is in ~/.local/state/personal-assistant (PA_LINKEDIN_STATE overrides it):
 linkedin-sync-last (UTC time of the last sync), linkedin-invites.log (one line per viewer
@@ -84,14 +84,18 @@ company only a single result with their name is a MATCH.
 name, url) and, for a connect-profile.js status, to the invitations log too, so the daily budget
 and steps 4 and 5 count it.
 
-`notifications` reads the get_page_text output of the notifications page after
-extract-notifications.js (NOTIFICATIONS-BEGIN ... NOTIFICATIONS-END <count>), checks the count, and
-keeps the notifications naming someone whose people/ note (found by its LinkedIn URL) has a level in
---levels (close, met, in-touch). It prints `action<TAB>level<TAB>name<TAB>kind<TAB>age<TAB>file<TAB>text`
-lines, one per person and kind (the newest), `reply` first (they commented, replied or mentioned Ian:
-waiting on an answer), then `look` (their own news: a post, a new job, an anniversary, a comment on
-a Container Solutions post), then `fyi` (reactions, reposts, follows), closest level first within
-each. A `#` line first says how many were read and kept.
+`feed` reads the get_page_text output of the feed's Network tab after extract-feed.js
+(FEED-BEGIN ... FEED-END <count>), checks the count, and picks the posts Ian should respond to.
+Each post scores for how close its author is to Ian (their people/ note, found by LinkedIn URL:
+close 5, met 3, in-touch 2), how significant it is (FEED_SIGNALS: a new job or role, looking for
+work, hard news, a launch or achievement, a milestone, speaking, hiring) and how popular
+(reactions + 3 x comments + 2 x reposts, on a log scale: about 1 at 30, 2 at 100, 3 at 350, 4
+at 1500, at most 5). So a close friend's post always makes it, a met or in-touch one's when it's
+news or popular, anyone's when it's big news or goes viral. It keeps each author's best post,
+those scoring at least --min (3.5), at most --max (15),
+best first, and prints `score<TAB>name<TAB>level<TAB>why<TAB>age<TAB>url<TAB>text` lines, where
+why says what counted ("close; new job; 134 reactions, 60 comments") and url is the author's
+recent activity, where the post is. A `#` line first says how many were read and kept.
 
 `export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it)
 and prints `EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than
@@ -105,6 +109,7 @@ import datetime
 import email.utils
 import importlib.util
 import json
+import math
 import os
 import re
 import sys
@@ -565,16 +570,21 @@ def cmd_evidence(args):
     print(f"{name}\t{level}\t{'; '.join(ev) or '-'}")
 
 
-LEVELS = ["close", "met", "in-touch", "forgotten"]
-# What a notification is, from the verb after the name: (pattern, kind, action); the earliest match wins
-NOTIFICATION_KINDS = [
-  (r"\b(replied to|mentioned you|tagged you|commented on your|commented on a post you|sent you a message)", "comment", "reply"),
-  (r"\b(started a new position|new position|work anniversary|celebrat|birthday|new job|is hiring|starting a new)", "milestone", "look"),
-  (r"\b(commented on|shared posts? from|shared a post|posted|published|shared)", "post", "look"),
-  (r"\b(reacted to|liked|likes|found your|celebrates your|supports your|loves your|reposted)", "reaction", "fyi"),
-  (r"\bfollowed you\b", "follow", "fyi"),
+LEVEL_POINTS = {"close": 5, "met": 3, "in-touch": 2}
+# What makes a post worth answering, besides who wrote it: (pattern, points, why); each counts once
+FEED_SIGNALS = [
+  (r"\b(passed away|rest in peace|\bRIP\b|funeral|cancer|diagnos|in hospital|grief|grieving|lost my)", 5, "hard news"),
+  (r"(\bopen to work\b|laid off|made redundant|redundanc|looking for (my|a) (next|new) (role|job|opportunity)"
+   r"|rejection)", 4, "looking for work"),
+  (r"(starting a new position|started a new position|job update|new (role|job|chapter|position)|i('ve| have) joined"
+   r"|joined .{0,40}\bas\b|\bpromoted\b|\bnew challenge|my last day|leaving .{0,30}after)", 4, "new job"),
+  (r"\b(launch|launched|released|is here|is out|published|my (new )?book|raised|funding round|series [abc]\b"
+   r"|crossed [\d,]+|award|we won|i won|acquired by|been acquired)", 3, "launch or achievement"),
+  (r"(years in business|anniversary|\bturned \d+|birthday|graduated|\d+ years of|celebrat|wedding|married"
+   r"|new baby|born)", 2, "milestone"),
+  (r"\b(speaking at|to speak at|keynote|co-chair|my talk|giving a talk|on stage)", 1, "speaking"),
+  (r"\b(hiring|we're looking for|job opening|open role)", 1, "hiring"),
 ]
-ACTIONS = ["reply", "look", "fyi"]
 
 
 def linkedin_slug(url):
@@ -600,36 +610,53 @@ def people_by_linkedin():
   return out
 
 
-def notification_kind(text):
-  """The kind of the verb that comes first: the one right after the name, not one in the excerpt
-  of Ian's post that follows ("reacted to your post. Just published ...")."""
-  best = None
-  for pattern, kind, action in NOTIFICATION_KINDS:
-    m = re.search(pattern, text, re.I)
-    if m and (best is None or m.start() < best[0]):
-      best = (m.start(), kind, action)
-  return best[1:] if best else ("other", "look")
+def popularity(post):
+  """Points for reactions, comments and reposts: comments weigh most, as they're conversations."""
+  n = post.get("reactions", 0) + 3 * post.get("comments", 0) + 2 * post.get("reposts", 0)
+  return 0.0 if n < 30 else min(5.0, round(1.8 * math.log10(n) - 1.6, 1))
 
 
-def cmd_notifications(args):
-  rows = read_page(sys.stdin.read(), "NOTIFICATIONS-END")
-  wanted = [l.strip() for l in args.levels.split(",") if l.strip()]
+def score_post(post, person):
+  level = person[2] if person else ""
+  why, score = [], LEVEL_POINTS.get(level, 0)
+  if score:
+    why.append(level)
+  # The words that are the author's own: a reshare carries the other post after its author's
+  # "Jane Doe • 2nd" header, and that post's news isn't theirs
+  own = re.split(r"\s•\s*(?:1st|2nd|3rd\+?|Following)\b", post.get("text", ""), maxsplit=1)[0]
+  words = " ".join(["open to work" if post.get("openToWork") else "", own[:400]])
+  for pattern, points, label in FEED_SIGNALS:
+    if re.search(pattern, words, re.I):
+      score += points
+      why.append(label)
+  pop = popularity(post)
+  if pop:
+    score += pop
+  if pop or post.get("comments"):
+    why.append(f"{post.get('reactions', 0)} reactions, {post.get('comments', 0)} comments")
+  return round(score, 1), why
+
+
+def cmd_feed(args):
+  posts = read_page(sys.stdin.read(), "FEED-END")
   people = people_by_linkedin()
-  kept = {}
-  for n in rows:
-    text = re.sub(r"\s+", " ", n.get("text", "")).strip()
-    kind, action = notification_kind(text)
-    for url in n.get("urls", []):
-      person = people.get(linkedin_slug(url))
-      if not person or person[2] not in wanted:
-        continue
-      key = (person[0], kind)
-      if key not in kept:  # newest first on the page: keep the first
-        kept[key] = (action, person[2], person[1], kind, n.get("age", ""), person[0], text[:200])
-  order = sorted(kept.values(), key=lambda r: (ACTIONS.index(r[0]), wanted.index(r[1])))
-  print(f"# {len(rows)} notification(s) read, {len(order)} from people at {', '.join(wanted)}")
+  best = {}
+  for post in posts:
+    slug = linkedin_slug(post.get("url"))
+    if not slug:
+      continue
+    person = people.get(slug)
+    score, why = score_post(post, person)
+    if score >= args.min and (slug not in best or score > best[slug][0]):
+      # The name as the feed shows it (the person's own), without emoji or badges
+      name = re.sub(r"^[^\w(]+|,\s*Open to work$", "", post.get("name", "")).strip() or (person or ["", "?"])[1]
+      best[slug] = (score, name, (person[2] if person else "") or "-", "; ".join(why), post.get("age", ""),
+                    f"https://www.linkedin.com/in/{post['url'].rstrip('/').split('/in/')[1]}/recent-activity/all/",
+                    re.sub(r"\s+", " ", post.get("text", ""))[:200], (person or [""])[0])
+  order = sorted(best.values(), key=lambda r: -r[0])[:args.max]
+  print(f"# {len(posts)} post(s) read, {len(best)} scoring {args.min:g} or more, showing {len(order)}")
   for r in order:
-    print("\t".join(r))
+    print("\t".join([f"{r[0]:g}", *r[1:7]]))
 
 
 def main():
@@ -669,13 +696,14 @@ def main():
   p.add_argument("now")
   p = sub.add_parser("evidence")
   p.add_argument("--days", type=int, default=30)
-  p = sub.add_parser("notifications")
-  p.add_argument("--levels", default="close,met,in-touch", help="people at these levels (comma-separated)")
+  p = sub.add_parser("feed")
+  p.add_argument("--min", type=float, default=3.5, help="the lowest score shown")
+  p.add_argument("--max", type=int, default=15)
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
    "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export,
    "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match,
-   "notifications": cmd_notifications}[args.cmd](args)
+   "feed": cmd_feed}[args.cmd](args)
 
 
 if __name__ == "__main__":

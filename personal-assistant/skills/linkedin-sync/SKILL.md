@@ -1,6 +1,6 @@
 ---
 name: linkedin-sync
-description: Bring Ian's gtd people notes (~/git/gtd/people) up to date with new LinkedIn connections. Reads the "Recently added" connections page in Ian's own signed-in Chrome back to the newest connection already in people/, adds the new people with `gtd import-connections --auto`, then looks for each one in the calendars, meeting transcripts, email and other people notes and suggests a level (met, in-touch, forgotten) for Ian to confirm. Looks up everyone Ian has emailed since the last sync (written to, or replied to) who isn't in people/, finds them with LinkedIn's people search, and sends a connection request (no note) when the match is clear: straight away for work mail, after Ian's yes for personal mail; these go first in the daily invitations. If Ian has LinkedIn Premium, also sends a connection request (no note) to everyone on the "Who's viewed your profile" page since the last sync who isn't already a connection, and to the people LinkedIn suggests on the Grow page ("People you may know") with the most mutual connections: about 20 invitations a day at most with Premium (viewers first), 10 without (suggestions only), and never more than 150 in any 7 days. Follows back everyone who follows Ian and isn't followed yet (the newest 200 followers, at most 25 follows a day). Reads the notifications since the last sync and alerts Ian to the ones from people he has a history with (close, met or in-touch in people/) that he should respond to: comments on his posts, replies, mentions, and their own news. Also picks up a LinkedIn data export in ~/Downloads, and once a month reminds Ian to request one. Use when Ian asks to sync or update people from LinkedIn, "who have I connected with", or invokes /linkedin-sync; the linkedin-sync launchd agent opens a session with it every Monday morning.
+description: Bring Ian's gtd people notes (~/git/gtd/people) up to date with new LinkedIn connections. Reads the "Recently added" connections page in Ian's own signed-in Chrome back to the newest connection already in people/, adds the new people with `gtd import-connections --auto`, then looks for each one in the calendars, meeting transcripts, email and other people notes and suggests a level (met, in-touch, forgotten) for Ian to confirm. Looks up everyone Ian has emailed since the last sync (written to, or replied to) who isn't in people/, finds them with LinkedIn's people search, and sends a connection request (no note) when the match is clear: straight away for work mail, after Ian's yes for personal mail; these go first in the daily invitations. If Ian has LinkedIn Premium, also sends a connection request (no note) to everyone on the "Who's viewed your profile" page since the last sync who isn't already a connection, and to the people LinkedIn suggests on the Grow page ("People you may know") with the most mutual connections: about 20 invitations a day at most with Premium (viewers first), 10 without (suggestions only), and never more than 150 in any 7 days. Follows back everyone who follows Ian and isn't followed yet (the newest 200 followers, at most 25 follows a day). Reads the posts in Ian's feed from his network since the last sync and picks out the ones he should respond to, by how close the author is to him (their level in people/), how significant the post is (a new job, looking for work, hard news, a launch, a milestone) and how popular. Also picks up a LinkedIn data export in ~/Downloads, and once a month reminds Ian to request one. Use when Ian asks to sync or update people from LinkedIn, "who have I connected with", or invokes /linkedin-sync; the linkedin-sync launchd agent opens a session with it every Monday morning.
 ---
 
 # LinkedIn sync
@@ -16,8 +16,8 @@ in `people/`, and invites the ones LinkedIn's people search finds clearly.
 With Premium, step 4 also invites recent profile viewers to connect, and
 step 5 (with or without Premium) the people LinkedIn suggests, one profile at
 a time at a human pace. Step 5b follows back everyone who follows Ian and
-isn't followed yet. Step 5c reads the notifications since the last sync and
-picks out the ones from people Ian has a history with that he should answer.
+isn't followed yet. Step 5c reads the posts from Ian's network in his feed and
+picks out the ones he should respond to.
 The time of the last sync is kept in
 `~/.local/state/personal-assistant/linkedin-sync-last`, every
 invitation tried is logged to
@@ -43,16 +43,15 @@ follow-back tried to `linkedin-follows.log` next to it.
 - **Read only, except invitations and follow-backs.** Open only the
   connections page, the people search pages of step 3b (at most 20 a run),
   the profile views page, the Grow page, the followers
-  page, the notifications page, and the profiles of the people being invited
+  page, the feed's Network tab, and the profiles of the people being invited
   in steps 3b, 4 and 5 (and, in step 6, the data export page for Ian to use).
   The only clicks are the
   ones `connect-profile.js` makes, Connect in a profile's top card and Send
   in its invitation dialog; Load more on the Grow page, which
-  `extract-suggestions.js` clicks; Show more results on the followers and
-  notifications pages, which `extract-followers.js` and
-  `extract-notifications.js` click; and Follow in a follower's card,
-  which `follow-follower.js` clicks. Never open a notification (it marks it
-  read) or reply, react or comment for Ian. Don't click Message, Following (it
+  `extract-suggestions.js` clicks; Show more results on the followers page,
+  which `extract-followers.js` clicks; and Follow in a follower's card,
+  which `follow-follower.js` clicks. `extract-feed.js` only scrolls: never
+  react to, comment on, repost or expand a post for Ian. Don't click Message, Following (it
   unfollows), Follow anywhere else, or anything else, add a note, open
   other profiles, or call LinkedIn's internal APIs. LinkedIn restricts
   accounts that look automated.
@@ -313,38 +312,42 @@ following someone never changes whether they're invited.
      tell Ian what the page shows.
 5. Close the tab.
 
-### 5c. Updates to answer
+### 5c. Posts to respond to
 
-Ian wants to hear when someone he has a history with (a `people/` note at
-`close`, `met` or `in-touch`) has done something on LinkedIn he should
-answer: commented on his post, replied to his comment, mentioned him, or has
-news of their own (a post, a new job, an anniversary). Read only: this runs
+Ian wants to hear which posts from his network he should respond to: from
+people close to him, or that are big news (a new job, looking for work, hard
+news, a launch, a milestone), or that are taking off. Read only: this runs
 even after a `limit`, `unexpected` or `error` in steps 3b to 5b, but not
-after a sign-in or security check. Nothing is answered for Ian: replies are
-his, or the write skill's to draft if he asks.
+after a sign-in or security check. Nothing is posted for Ian: a reply is his
+to write, or the write skill's to draft if he asks.
 
 1. `tabs_create_mcp` for a new tab and navigate it to
-   `https://www.linkedin.com/notifications/`. Read `extract-notifications.js`
-   (next to this file), replace `__SINCE__` with `LAST` from step 4.1 (the
-   time read before `done` moved it; with no `linkedin-sync-last`, a week
-   ago), and run it with `javascript_tool`. It returns `{done, loaded, count}`
-   or `{error}`. Its only click is "Show more results", when the page has one.
-   - `done: false`: run it again (it carries on), up to 4 times. Still not
-     done: go on with what it read, and say so in the report.
+   `https://www.linkedin.com/feed/network/` (the feed's Network tab: posts
+   from his connections and the people he follows, not suggestions). Read
+   `extract-feed.js` (next to this file), replace `__SINCE__` with `LAST`
+   from step 4.1 (the time read before `done` moved it; with no
+   `linkedin-sync-last`, a week ago), and run it with `javascript_tool`. It
+   returns `{done, loaded, count}` or `{error}`, and clicks nothing.
+   - `done: false`: run it again (it carries on from the posts read), up to
+     4 times. The feed isn't in time order, so it usually reads its 120 posts
+     in two calls.
    - `error`: take a screenshot, tell Ian what it shows, close the tab and go
      on to step 6.
    - After a `javascript_tool` timeout, reload the page and start again.
-2. `get_page_text`: one JSON object per notification naming someone,
-   newest first, between `NOTIFICATIONS-BEGIN` and `NOTIFICATIONS-END <count>`.
-3. Pass the page text to `python3 $L notifications` on stdin. It checks the
-   count, finds each person's note by their LinkedIn URL, keeps those at
-   `close`, `met` or `in-touch`, and prints
-   `action<TAB>level<TAB>name<TAB>kind<TAB>age<TAB>file<TAB>text` lines:
-   `reply` (they commented, replied or mentioned Ian, so they're waiting on
-   him) first, then `look` (their own news, or a comment on a Container
-   Solutions post), then `fyi` (reactions, reposts, follows), closest level
-   first. In November 2026 a day of notifications held 27, of which 4 were
-   `reply` and 11 kept in all.
+2. `get_page_text`: one JSON object per post since `LAST`, between
+   `FEED-BEGIN` and `FEED-END <count>`.
+3. Pass the page text to `python3 $L feed` on stdin. It checks the count,
+   scores each post for its author's level in `people/` (found by LinkedIn
+   URL: close 5, met 3, in-touch 2), what it's about (a new job or looking
+   for work 4, hard news 5, a launch or achievement 3, a milestone 2,
+   speaking or hiring 1; a reshare's news isn't the resharer's) and its
+   reactions, comments and reposts (up to 5 for a viral post), keeps each
+   author's best post scoring 3.5 or more, and prints at most 15,
+   best first: `score<TAB>name<TAB>level<TAB>why<TAB>age<TAB>url<TAB>text`,
+   where `url` is the author's recent activity, where the post is. In
+   November 2026, 111 posts from three days gave 15: a close friend's post
+   always makes it, a met one's with news or a big following, and anyone's
+   new job, job hunt or viral post.
 4. Close the tab.
 
 ### 6. The data export
@@ -406,10 +409,12 @@ Then `cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd push </dev/nul
 
 ### 9. Report
 
-Lead with step 5c, as it's what Ian may have to act on: each `reply` on its
-own line (name, level, what they said, briefly, and how long ago), then the
-`look` ones the same way, then the `fyi` ones on one line by name. If there
-are none, say so in a line. Then one short report: `SINCE`, how many cards were read, how many people were
+Lead with step 5c, as it's what Ian may want to act on: each post on its
+own line, best first (name, level if any, what the post is about in a few
+words, why it's there, how long ago, and the link), with a suggestion of
+the kind of response where it's obvious (congratulate them on the new job,
+offer an introduction to someone looking for work, a word of sympathy). If
+there are none, say so in a line. Then one short report: `SINCE`, how many cards were read, how many people were
 added (and their file names if a handful), pending name matches (and the
 `gtd import-connections --apply` command), levels set, whether an export was
 imported or requested, and anything that stopped the run. For step 3b: how

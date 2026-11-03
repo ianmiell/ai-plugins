@@ -858,41 +858,44 @@ class LinkedInState(Base):
                            "Eli Moss\tin-touch\tpeople/Other.md",
                            "Fay Ng\tforgotten?\t-"])
 
-  def test_notifications(self):
+  def test_feed(self):
     notes = {
-      "Dana_Lee.md": "## managed by linkedin_tools\n## Dana Lee\n- LinkedIn: https://www.linkedin.com/in/dana-lee-1\n- Level: met\n",
-      "Eli_Moss.md": "# Eli Moss\n- LinkedIn: https://uk.linkedin.com/in/elimoss/\n- Level: close\n",
+      "Dana_Lee.md": "## Discussion 5 Feb 2025\n- LinkedIn: https://www.linkedin.com/in/dana-lee-1\n- Level: close\n",
+      "Eli_Moss.md": "# Eli Moss\n- LinkedIn: https://uk.linkedin.com/in/elimoss/\n- Level: met\n",
       "Fay_Ng.md": "## Fay Ng\n- LinkedIn: https://www.linkedin.com/in/fayng\n- Level: forgotten\n",
-      "Gus_Hale.md": "## Gus Hale\n- LinkedIn: https://www.linkedin.com/in/gus%C3%A9hale\n- Level: in-touch\n",
     }
     for name, text in notes.items():
       with open(os.path.join(self.gtd, "people", name), "w") as f:
         f.write(text)
-    rows = [
-      (["https://www.linkedin.com/in/elimoss"], "Eli Moss and 9 others reacted to your post. Just published this post", "1h"),
-      (["https://www.linkedin.com/in/dana-lee-1"], "Dana Lee commented on your post. Great read, can we talk?", "3h"),
-      (["https://www.linkedin.com/in/fayng"], "Fay Ng commented on your post. Nice", "4h"),
-      (["https://www.linkedin.com/in/nobody"], "No Body mentioned you in a comment.", "5h"),
-      (["https://www.linkedin.com/in/elimoss"], "Eli Moss started a new position as CTO at Acme", "1d"),
-      (["https://www.linkedin.com/in/dana-lee-1"], "Dana Lee commented on your post. An older comment", "1d"),
-      (["https://www.linkedin.com/in/gus%C3%A9hale", "https://www.linkedin.com/in/elimoss"],
-       "Gusé Hale and Eli Moss followed you.", "2d"),
+    def post(slug, name, text, reactions=0, comments=0, age="1h", openToWork=False):
+      return dict(url=f"https://www.linkedin.com/in/{slug}", name=name, openToWork=openToWork, degree="1st",
+                  context="", age=age, reactions=reactions, comments=comments, reposts=0, text=text)
+    posts = [
+      post("dana-lee-1", "⚙️ Dana Lee", "Lunch thoughts on Kubernetes"),                       # close: 5
+      post("dana-lee-1", "⚙️ Dana Lee", "Pleased to share that I've joined Acme as CTO", age="2h"),  # 5 + 4
+      post("elimoss", "Eli Moss", "Some thoughts on platforms"),                               # met only: 3
+      post("elimoss", "Eli Moss", "My dad turned 75 yesterday", reactions=10, age="3h"),      # 3 + 2
+      post("fayng", "Fay Ng", "Great talk Gus Hale • 2nd CTO at Bigco I'm starting a new position"),  # reshare: 0
+      post("gushale", "Gus Hale", "I'm happy to share that I'm starting a new position at Bigco",
+           reactions=40, comments=8),                                                          # 4 + 1.7
+      post("ivyorr", "Ivy Orr, Open to work", "Building my own thing", openToWork=True),      # 4
+      post("jojones", "Jo Jones", "We are being tracked", reactions=563, comments=162),       # 3.8
+      post("kimkay", "Kim Kay", "Talent Acquisition tips", reactions=5),                       # 0
     ]
-    page = ("Title: Notifications\nNOTIFICATIONS-BEGIN\n" +
-            "\n".join(json.dumps({"urls": u, "text": t, "age": a}) for u, t, a in rows) + "\nNOTIFICATIONS-END 7\n")
-    out = self.li("notifications", stdin=page, check=0).stdout.splitlines()
-    self.assertEqual(out[0], "# 7 notification(s) read, 5 from people at close, met, in-touch")
-    got = [l.split("\t")[:6] for l in out[1:]]
-    # reply, then look, then fyi; the newest per person and kind; the verb after the name, not the
-    # excerpt ("published"), decides; forgotten and unknown people are left out
-    self.assertEqual(got, [["reply", "met", "Dana Lee", "comment", "3h", "Dana_Lee.md"],
-                           ["look", "close", "Eli Moss", "milestone", "1d", "Eli_Moss.md"],
-                           ["fyi", "close", "Eli Moss", "reaction", "1h", "Eli_Moss.md"],
-                           ["fyi", "close", "Eli Moss", "follow", "2d", "Eli_Moss.md"],
-                           ["fyi", "in-touch", "Gus Hale", "follow", "2d", "Gus_Hale.md"]])
-    out = self.li("notifications", "--levels", "forgotten", stdin=page, check=0).stdout
-    self.assertIn("reply\tforgotten\tFay Ng\tcomment", out)
-    p = self.li("notifications", stdin=page.replace("NOTIFICATIONS-END 7", "NOTIFICATIONS-END 8"))
+    page = "Title: Feed\nFEED-BEGIN\n" + "\n".join(json.dumps(p) for p in posts) + f"\nFEED-END {len(posts)}\n"
+    out = self.li("feed", stdin=page, check=0).stdout.splitlines()
+    self.assertEqual(out[0], "# 9 post(s) read, 5 scoring 3.5 or more, showing 5")
+    got = [l.split("\t")[:5] for l in out[1:]]
+    # Each author's best post, best first; the feed's name, not a note heading; a reshare's news
+    # isn't the resharer's; met alone isn't enough, met with news is
+    self.assertEqual(got, [["9", "Dana Lee", "close", "close; new job", "2h"],
+                           ["5.7", "Gus Hale", "-", "new job; 40 reactions, 8 comments", "1h"],
+                           ["5", "Eli Moss", "met", "met; milestone", "3h"],
+                           ["4", "Ivy Orr", "-", "looking for work", "1h"],
+                           ["3.8", "Jo Jones", "-", "563 reactions, 162 comments", "1h"]])
+    self.assertEqual(out[1].split("\t")[5], "https://www.linkedin.com/in/dana-lee-1/recent-activity/all/")
+    self.assertEqual(len(self.li("feed", "--max", "2", stdin=page, check=0).stdout.splitlines()), 3)
+    p = self.li("feed", stdin=page.replace(f"FEED-END {len(posts)}", "FEED-END 99"))
     self.assertNotEqual(p.returncode, 0)
 
   def test_follows_queue_cap_and_own_log(self):
