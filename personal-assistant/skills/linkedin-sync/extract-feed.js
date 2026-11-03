@@ -4,7 +4,8 @@
 // (see SKILL.md step 5c).
 //
 // Scrolls the feed (it lives in <main>, not the window) at a human pace and reads each post by a
-// person: who wrote it (their profile link, name, degree, and an "Open to work" badge), who brought
+// person: its own address (postUrl, a /feed/update/ link; empty if the page didn't have it), who
+// wrote it (their profile link, name, degree, and an "Open to work" badge), who brought
 // it into the feed ("Jane Doe commented on this"), its words, its age and its reactions, comments
 // and reposts. The words are cut at 300 characters (and at LinkedIn's own "… more"), enough to tell
 // what the post is about. Returns JSON:
@@ -15,11 +16,11 @@
 // the feed. The Network feed is not in time order, so in practice it reads MAX_POSTS in about two
 // calls, most of them from the last day or two. When done, it replaces the page's <main> with the
 // posts since SINCE, one JSON object
-//   {url, name, openToWork, degree, context, age, reactions, comments, reposts, text}
+//   {url, postUrl, name, openToWork, degree, context, age, reactions, comments, reposts, text}
 // per line between FEED-BEGIN and FEED-END <count> lines, to be read with get_page_text.
 // Ads ("Promoted") and posts by companies are left out. The page gives relative ages ("3h",
 // "2d"), so a post counts as since SINCE if it could have been after it.
-// It clicks nothing: no reactions, comments, "… more" or Follow. Class names on the page are
+// It clicks nothing: no reactions, comments, "… more", the post's menu or Follow. Class names on the page are
 // generated, so it goes by structure: the hidden "Feed post" heading of each post, the /in/ links
 // in it, and the counts in its Reaction, Comment and Repost buttons.
 await (async () => {
@@ -43,6 +44,37 @@ await (async () => {
     const b = [...post.querySelectorAll("button")].find(b => re.test(b.getAttribute("aria-label") || ""));
     const n = b && (b.innerText || "").match(/(\d[\d,.]*)\s*(K)?/);
     return n ? Math.round(parseFloat(n[1].replace(/,/g, "")) * (n[2] ? 1000 : 1)) : 0;
+  };
+  // The post's own address: its id (urn:li:activity:<n>, or ugcPost/share) isn't in the markup,
+  // only in the props React keeps on the card (about 11 levels up from it, November 2026). Read
+  // from the page's memory: no click, no call to LinkedIn.
+  const URN = /urn:li:(activity|ugcPost|share):\d+/;
+  const urnIn = root => {
+    let hit = null;
+    const seen = new WeakSet();
+    const walk = (o, depth) => {
+      if (hit || !o || typeof o !== "object" || depth > 12 || seen.has(o)) return;
+      seen.add(o);
+      for (const k of Object.keys(o)) {
+        if (hit) return;
+        if (k === "_owner" || k === "return" || k === "stateNode" || k === "sibling" || k === "child") continue;
+        let v;
+        try { v = o[k]; } catch (e) { continue; }
+        if (typeof v === "string") { const m = v.match(URN); if (m) hit = m[0]; }
+        else if (v && typeof v === "object") walk(v, depth + 1);
+      }
+    };
+    walk(root, 0);
+    return hit;
+  };
+  const postUrl = post => {
+    const key = Object.keys(post).find(k => k.startsWith("__reactFiber"));
+    let fiber = key && post[key];
+    for (let i = 0; i < 25 && fiber; i++, fiber = fiber.return) {
+      const urn = urnIn(fiber.memoizedProps);
+      if (urn) return `https://www.linkedin.com/feed/update/${urn}/`;
+    }
+    return "";
   };
   const read = post => {
     const lines = (post.innerText || "").split("\n").map(s => s.trim()).filter(s => s && s !== "​" && s !== "Feed post");
@@ -70,7 +102,7 @@ await (async () => {
     // The words: after the age line (or the header), up to the counts and the action bar
     const body = lines.slice(ageAt >= 0 ? ageAt + 1 : at + 1)
       .filter(s => !/^(Follow|Visit my website|… more|…see more|\d[\d,.]*K?|Like|Comment|Repost|Send)$/.test(s));
-    return {url, name, openToWork, degree, context, age: m ? `${m[1]}${m[2]}` : "",
+    return {url, postUrl: postUrl(post), name, openToWork, degree, context, age: m ? `${m[1]}${m[2]}` : "",
       at: m ? now - Number(m[1]) * UNITS[m[2]] : now,
       reactions: count(post, /^Reaction button/), comments: count(post, /^Comment/), reposts: count(post, /^Repost/),
       text: body.join(" ").replace(/\s+/g, " ").slice(0, 300)};

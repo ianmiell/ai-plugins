@@ -50,7 +50,8 @@ follow-back tried to `linkedin-follows.log` next to it.
   in its invitation dialog; Load more on the Grow page, which
   `extract-suggestions.js` clicks; Show more results on the followers page,
   which `extract-followers.js` clicks; and Follow in a follower's card,
-  which `follow-follower.js` clicks. `extract-feed.js` only scrolls: never
+  which `follow-follower.js` clicks. `extract-feed.js` only scrolls (it reads
+  each post's id from the page's own memory, not from LinkedIn): never
   react to, comment on, repost or expand a post for Ian. Don't click Message, Following (it
   unfollows), Follow anywhere else, or anything else, add a note, open
   other profiles, or call LinkedIn's internal APIs. LinkedIn restricts
@@ -344,7 +345,8 @@ to write, or the write skill's to draft if he asks.
    reactions, comments and reposts (up to 5 for a viral post), keeps each
    author's best post scoring 3.5 or more, and prints at most 15,
    best first: `score<TAB>name<TAB>level<TAB>why<TAB>age<TAB>url<TAB>text`,
-   where `url` is the author's recent activity, where the post is. In
+   where `url` is the post itself (a `/feed/update/` link; the author's
+   recent activity if the page didn't give the post's id). In
    November 2026, 111 posts from three days gave 15: a close friend's post
    always makes it, a met one's with news or a big following, and anyone's
    new job, job hunt or viral post.
@@ -409,12 +411,27 @@ Then `cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd push </dev/nul
 
 ### 9. Report
 
-Lead with step 5c, as it's what Ian may want to act on: each post on its
-own line, best first (name, level if any, what the post is about in a few
-words, why it's there, how long ago, and the link), with a suggestion of
-the kind of response where it's obvious (congratulate them on the new job,
-offer an introduction to someone looking for work, a word of sympathy). If
-there are none, say so in a line. Then one short report: `SINCE`, how many cards were read, how many people were
+Ian wants direct links in tables: every list of people or posts in the
+report is a markdown table with a link column, `[Post](url)` or
+`[Profile](url)`, never a bare name he has to look up. Links come from the
+script output and the logs (profile URLs from the connections JSON, the
+invitations and follows logs, the feed's post links); never make one up.
+
+Lead with step 5c, as it's what Ian may want to act on: one table, best
+first, with columns `#`, Who (and level, if any), Post (what it's about in a
+few words), Why (from `why`), Age, Suggested response (where it's obvious:
+congratulate them on the new job, offer an introduction to someone looking
+for work, a word of sympathy) and Link (`[Post](url)`). If there are none,
+say so in a line.
+
+Then tables, each with a link column, for: the new people added (name, role,
+suggested level, `[Profile](url)`), the invitations sent and the ones for
+Ian to do by hand (`needs-email`, `no-connect`, `ambiguous` with each
+candidate's profile), and the follow-backs (`followed`, `not-followed`).
+Leave out a table with nothing in it, and keep the counts to a line or two
+around them.
+
+Then one short report: `SINCE`, how many cards were read, how many people were
 added (and their file names if a handful), pending name matches (and the
 `gtd import-connections --apply` command), levels set, whether an export was
 imported or requested, and anything that stopped the run. For step 3b: how

@@ -94,8 +94,8 @@ at 1500, at most 5). So a close friend's post always makes it, a met or in-touch
 news or popular, anyone's when it's big news or goes viral. It keeps each author's best post,
 those scoring at least --min (3.5), at most --max (15),
 best first, and prints `score<TAB>name<TAB>level<TAB>why<TAB>age<TAB>url<TAB>text` lines, where
-why says what counted ("close; new job; 134 reactions, 60 comments") and url is the author's
-recent activity, where the post is. A `#` line first says how many were read and kept.
+why says what counted ("close; new job; 134 reactions, 60 comments") and url is the post itself
+(postUrl), or the author's recent activity when the page didn't give it. A `#` line first says how many were read and kept.
 
 `export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it)
 and prints `EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than
@@ -651,6 +651,7 @@ def cmd_feed(args):
       # The name as the feed shows it (the person's own), without emoji or badges
       name = re.sub(r"^[^\w(]+|,\s*Open to work$", "", post.get("name", "")).strip() or (person or ["", "?"])[1]
       best[slug] = (score, name, (person[2] if person else "") or "-", "; ".join(why), post.get("age", ""),
+                    post.get("postUrl") or
                     f"https://www.linkedin.com/in/{post['url'].rstrip('/').split('/in/')[1]}/recent-activity/all/",
                     re.sub(r"\s+", " ", post.get("text", ""))[:200], (person or [""])[0])
   order = sorted(best.values(), key=lambda r: -r[0])[:args.max]

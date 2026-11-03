@@ -867,12 +867,13 @@ class LinkedInState(Base):
     for name, text in notes.items():
       with open(os.path.join(self.gtd, "people", name), "w") as f:
         f.write(text)
-    def post(slug, name, text, reactions=0, comments=0, age="1h", openToWork=False):
-      return dict(url=f"https://www.linkedin.com/in/{slug}", name=name, openToWork=openToWork, degree="1st",
+    def post(slug, name, text, reactions=0, comments=0, age="1h", openToWork=False, postUrl=""):
+      return dict(url=f"https://www.linkedin.com/in/{slug}", postUrl=postUrl, name=name, openToWork=openToWork, degree="1st",
                   context="", age=age, reactions=reactions, comments=comments, reposts=0, text=text)
     posts = [
       post("dana-lee-1", "⚙️ Dana Lee", "Lunch thoughts on Kubernetes"),                       # close: 5
-      post("dana-lee-1", "⚙️ Dana Lee", "Pleased to share that I've joined Acme as CTO", age="2h"),  # 5 + 4
+      post("dana-lee-1", "⚙️ Dana Lee", "Pleased to share that I've joined Acme as CTO", age="2h",
+           postUrl="https://www.linkedin.com/feed/update/urn:li:activity:1/"),                 # 5 + 4
       post("elimoss", "Eli Moss", "Some thoughts on platforms"),                               # met only: 3
       post("elimoss", "Eli Moss", "My dad turned 75 yesterday", reactions=10, age="3h"),      # 3 + 2
       post("fayng", "Fay Ng", "Great talk Gus Hale • 2nd CTO at Bigco I'm starting a new position"),  # reshare: 0
@@ -893,7 +894,9 @@ class LinkedInState(Base):
                            ["5", "Eli Moss", "met", "met; milestone", "3h"],
                            ["4", "Ivy Orr", "-", "looking for work", "1h"],
                            ["3.8", "Jo Jones", "-", "563 reactions, 162 comments", "1h"]])
-    self.assertEqual(out[1].split("\t")[5], "https://www.linkedin.com/in/dana-lee-1/recent-activity/all/")
+    # The post's own link when the page gave it, else the author's recent activity
+    self.assertEqual(out[1].split("\t")[5], "https://www.linkedin.com/feed/update/urn:li:activity:1/")
+    self.assertEqual(out[2].split("\t")[5], "https://www.linkedin.com/in/gushale/recent-activity/all/")
     self.assertEqual(len(self.li("feed", "--max", "2", stdin=page, check=0).stdout.splitlines()), 3)
     p = self.li("feed", stdin=page.replace(f"FEED-END {len(posts)}", "FEED-END 99"))
     self.assertNotEqual(p.returncode, 0)
