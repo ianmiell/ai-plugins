@@ -17,6 +17,7 @@ the local evidence for new people's levels.
   linkedin-state.py correspondents --gog personal [< to-cc.txt]  # step 3b: who Ian emailed, not in people/
   linkedin-state.py match "Name" [--company X] < results.json   # step 3b: pick the profile from a search
   linkedin-state.py log --email a@b.com sent URL "Name"         # after each step 3b result
+  linkedin-state.py feed < page.txt           # step 5c: posts in Ian's feed worth a response
 
 State is in ~/.local/state/personal-assistant (PA_LINKEDIN_STATE overrides it):
 linkedin-sync-last (UTC time of the last sync), linkedin-invites.log (one line per viewer
@@ -83,6 +84,19 @@ company only a single result with their name is a MATCH.
 name, url) and, for a connect-profile.js status, to the invitations log too, so the daily budget
 and steps 4 and 5 count it.
 
+`feed` reads the get_page_text output of the feed's Network tab after extract-feed.js
+(FEED-BEGIN ... FEED-END <count>), checks the count, and picks the posts Ian should respond to.
+Each post scores for how close its author is to Ian (their people/ note, found by LinkedIn URL:
+close 5, met 3, in-touch 2), how significant it is (FEED_SIGNALS: a new job or role, looking for
+work, hard news, a launch or achievement, a milestone, speaking, hiring) and how popular
+(reactions + 3 x comments + 2 x reposts, on a log scale: about 1 at 30, 2 at 100, 3 at 350, 4
+at 1500, at most 5). So a close friend's post always makes it, a met or in-touch one's when it's
+news or popular, anyone's when it's big news or goes viral. It keeps each author's best post,
+those scoring at least --min (3.5), at most --max (15),
+best first, and prints `score<TAB>name<TAB>level<TAB>why<TAB>age<TAB>url<TAB>text` lines, where
+why says what counted ("close; new job; 134 reactions, 60 comments") and url is the post itself
+(postUrl), or the author's recent activity when the page didn't give it. A `#` line first says how many were read and kept.
+
 `export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it)
 and prints `EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than
 7 days old, `ACTION request` when there's none or it's more than 30 days old, else
@@ -95,6 +109,7 @@ import datetime
 import email.utils
 import importlib.util
 import json
+import math
 import os
 import re
 import sys
@@ -555,6 +570,96 @@ def cmd_evidence(args):
     print(f"{name}\t{level}\t{'; '.join(ev) or '-'}")
 
 
+LEVEL_POINTS = {"close": 5, "met": 3, "in-touch": 2}
+# What makes a post worth answering, besides who wrote it: (pattern, points, why); each counts once
+FEED_SIGNALS = [
+  (r"\b(passed away|rest in peace|\bRIP\b|funeral|cancer|diagnos|in hospital|grief|grieving|lost my)", 5, "hard news"),
+  (r"(\bopen to work\b|laid off|made redundant|redundanc|looking for (my|a) (next|new) (role|job|opportunity)"
+   r"|rejection)", 4, "looking for work"),
+  (r"(starting a new position|started a new position|job update|new (role|job|chapter|position)|i('ve| have) joined"
+   r"|joined .{0,40}\bas\b|\bpromoted\b|\bnew challenge|my last day|leaving .{0,30}after)", 4, "new job"),
+  (r"\b(launch|launched|released|is here|is out|published|my (new )?book|raised|funding round|series [abc]\b"
+   r"|crossed [\d,]+|award|we won|i won|acquired by|been acquired)", 3, "launch or achievement"),
+  (r"(years in business|anniversary|\bturned \d+|birthday|graduated|\d+ years of|celebrat|wedding|married"
+   r"|new baby|born)", 2, "milestone"),
+  (r"\b(speaking at|to speak at|keynote|co-chair|my talk|giving a talk|on stage)", 1, "speaking"),
+  (r"\b(hiring|we're looking for|job opening|open role)", 1, "hiring"),
+]
+
+
+def linkedin_slug(url):
+  m = re.search(r"linkedin\.com/in/([^/?#\s)]+)", url or "")
+  return urllib.parse.unquote(m.group(1)).strip("\u200b").lower() if m else None
+
+
+def people_by_linkedin():
+  """{slug: (file, name, level)} from the `- LinkedIn:` lines (or any profile link) in people/."""
+  out, people_dir = {}, os.path.join(pa.GTD, "people")
+  for f in sorted(os.listdir(people_dir)) if os.path.isdir(people_dir) else []:
+    if not f.endswith(".md"):
+      continue
+    with open(os.path.join(people_dir, f), encoding="utf-8", errors="replace") as fh:
+      text = fh.read()
+    level = (re.search(r"^- Level:\s*(\S+)", text, re.M) or [None, ""])[1].lower()
+    # The first heading that is a name, not a section ("## managed by linkedin_tools", "## LinkedIn messages")
+    name = next((h.strip() for h in re.findall(r"^#+ (.+)$", text, re.M)
+                 if not re.match(r"(managed by|linkedin messages|messages|notes|meetings?|log)\b", h.strip(), re.I)),
+                f[:-3].replace("_", " "))
+    for url in re.findall(r"https?://(?:[a-z]+\.)?linkedin\.com/in/[^/?#\s)]+", text):
+      out.setdefault(linkedin_slug(url), (f, name, level))
+  return out
+
+
+def popularity(post):
+  """Points for reactions, comments and reposts: comments weigh most, as they're conversations."""
+  n = post.get("reactions", 0) + 3 * post.get("comments", 0) + 2 * post.get("reposts", 0)
+  return 0.0 if n < 30 else min(5.0, round(1.8 * math.log10(n) - 1.6, 1))
+
+
+def score_post(post, person):
+  level = person[2] if person else ""
+  why, score = [], LEVEL_POINTS.get(level, 0)
+  if score:
+    why.append(level)
+  # The words that are the author's own: a reshare carries the other post after its author's
+  # "Jane Doe • 2nd" header, and that post's news isn't theirs
+  own = re.split(r"\s•\s*(?:1st|2nd|3rd\+?|Following)\b", post.get("text", ""), maxsplit=1)[0]
+  words = " ".join(["open to work" if post.get("openToWork") else "", own[:400]])
+  for pattern, points, label in FEED_SIGNALS:
+    if re.search(pattern, words, re.I):
+      score += points
+      why.append(label)
+  pop = popularity(post)
+  if pop:
+    score += pop
+  if pop or post.get("comments"):
+    why.append(f"{post.get('reactions', 0)} reactions, {post.get('comments', 0)} comments")
+  return round(score, 1), why
+
+
+def cmd_feed(args):
+  posts = read_page(sys.stdin.read(), "FEED-END")
+  people = people_by_linkedin()
+  best = {}
+  for post in posts:
+    slug = linkedin_slug(post.get("url"))
+    if not slug:
+      continue
+    person = people.get(slug)
+    score, why = score_post(post, person)
+    if score >= args.min and (slug not in best or score > best[slug][0]):
+      # The name as the feed shows it (the person's own), without emoji or badges
+      name = re.sub(r"^[^\w(]+|,\s*Open to work$", "", post.get("name", "")).strip() or (person or ["", "?"])[1]
+      best[slug] = (score, name, (person[2] if person else "") or "-", "; ".join(why), post.get("age", ""),
+                    post.get("postUrl") or
+                    f"https://www.linkedin.com/in/{post['url'].rstrip('/').split('/in/')[1]}/recent-activity/all/",
+                    re.sub(r"\s+", " ", post.get("text", ""))[:200], (person or [""])[0])
+  order = sorted(best.values(), key=lambda r: -r[0])[:args.max]
+  print(f"# {len(posts)} post(s) read, {len(best)} scoring {args.min:g} or more, showing {len(order)}")
+  for r in order:
+    print("\t".join([f"{r[0]:g}", *r[1:7]]))
+
+
 def main():
   ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
   sub = ap.add_subparsers(dest="cmd", required=True)
@@ -592,10 +697,14 @@ def main():
   p.add_argument("now")
   p = sub.add_parser("evidence")
   p.add_argument("--days", type=int, default=30)
+  p = sub.add_parser("feed")
+  p.add_argument("--min", type=float, default=3.5, help="the lowest score shown")
+  p.add_argument("--max", type=int, default=15)
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
    "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export,
-   "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match}[args.cmd](args)
+   "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match,
+   "feed": cmd_feed}[args.cmd](args)
 
 
 if __name__ == "__main__":

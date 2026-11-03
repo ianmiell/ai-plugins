@@ -858,6 +858,49 @@ class LinkedInState(Base):
                            "Eli Moss\tin-touch\tpeople/Other.md",
                            "Fay Ng\tforgotten?\t-"])
 
+  def test_feed(self):
+    notes = {
+      "Dana_Lee.md": "## Discussion 5 Feb 2025\n- LinkedIn: https://www.linkedin.com/in/dana-lee-1\n- Level: close\n",
+      "Eli_Moss.md": "# Eli Moss\n- LinkedIn: https://uk.linkedin.com/in/elimoss/\n- Level: met\n",
+      "Fay_Ng.md": "## Fay Ng\n- LinkedIn: https://www.linkedin.com/in/fayng\n- Level: forgotten\n",
+    }
+    for name, text in notes.items():
+      with open(os.path.join(self.gtd, "people", name), "w") as f:
+        f.write(text)
+    def post(slug, name, text, reactions=0, comments=0, age="1h", openToWork=False, postUrl=""):
+      return dict(url=f"https://www.linkedin.com/in/{slug}", postUrl=postUrl, name=name, openToWork=openToWork, degree="1st",
+                  context="", age=age, reactions=reactions, comments=comments, reposts=0, text=text)
+    posts = [
+      post("dana-lee-1", "⚙️ Dana Lee", "Lunch thoughts on Kubernetes"),                       # close: 5
+      post("dana-lee-1", "⚙️ Dana Lee", "Pleased to share that I've joined Acme as CTO", age="2h",
+           postUrl="https://www.linkedin.com/feed/update/urn:li:activity:1/"),                 # 5 + 4
+      post("elimoss", "Eli Moss", "Some thoughts on platforms"),                               # met only: 3
+      post("elimoss", "Eli Moss", "My dad turned 75 yesterday", reactions=10, age="3h"),      # 3 + 2
+      post("fayng", "Fay Ng", "Great talk Gus Hale • 2nd CTO at Bigco I'm starting a new position"),  # reshare: 0
+      post("gushale", "Gus Hale", "I'm happy to share that I'm starting a new position at Bigco",
+           reactions=40, comments=8),                                                          # 4 + 1.7
+      post("ivyorr", "Ivy Orr, Open to work", "Building my own thing", openToWork=True),      # 4
+      post("jojones", "Jo Jones", "We are being tracked", reactions=563, comments=162),       # 3.8
+      post("kimkay", "Kim Kay", "Talent Acquisition tips", reactions=5),                       # 0
+    ]
+    page = "Title: Feed\nFEED-BEGIN\n" + "\n".join(json.dumps(p) for p in posts) + f"\nFEED-END {len(posts)}\n"
+    out = self.li("feed", stdin=page, check=0).stdout.splitlines()
+    self.assertEqual(out[0], "# 9 post(s) read, 5 scoring 3.5 or more, showing 5")
+    got = [l.split("\t")[:5] for l in out[1:]]
+    # Each author's best post, best first; the feed's name, not a note heading; a reshare's news
+    # isn't the resharer's; met alone isn't enough, met with news is
+    self.assertEqual(got, [["9", "Dana Lee", "close", "close; new job", "2h"],
+                           ["5.7", "Gus Hale", "-", "new job; 40 reactions, 8 comments", "1h"],
+                           ["5", "Eli Moss", "met", "met; milestone", "3h"],
+                           ["4", "Ivy Orr", "-", "looking for work", "1h"],
+                           ["3.8", "Jo Jones", "-", "563 reactions, 162 comments", "1h"]])
+    # The post's own link when the page gave it, else the author's recent activity
+    self.assertEqual(out[1].split("\t")[5], "https://www.linkedin.com/feed/update/urn:li:activity:1/")
+    self.assertEqual(out[2].split("\t")[5], "https://www.linkedin.com/in/gushale/recent-activity/all/")
+    self.assertEqual(len(self.li("feed", "--max", "2", stdin=page, check=0).stdout.splitlines()), 3)
+    p = self.li("feed", stdin=page.replace(f"FEED-END {len(posts)}", "FEED-END 99"))
+    self.assertNotEqual(p.returncode, 0)
+
   def test_follows_queue_cap_and_own_log(self):
     self.li("log", "sent", "https://www.linkedin.com/in/a", "A Person", check=0)
     self.li("log", "--follows", "followed", "https://www.linkedin.com/in/a", "A Person", check=0)

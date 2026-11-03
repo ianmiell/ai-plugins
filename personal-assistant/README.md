@@ -17,7 +17,7 @@ skills/meeting/SKILL.md  - /meeting: name a new recording after its calendar eve
 skills/write/SKILL.md    - /write: draft LinkedIn posts and messages, blog posts and articles, PR review comments in Ian's voice; /write check reviews a draft
 skills/timesheet/SKILL.md - /timesheet: fill in the weekly Toggl Track timesheet in Chrome (8 h a weekday across CCF, pre-sales and holiday) and submit it for approval after Ian's yes
 skills/weekly-plan/SKILL.md - /weekly-plan: plan the coming Mon-Fri from both calendars and open gtd tasks, and email it to Ian
-skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); with Premium, invite recent profile viewers to connect; follow back followers
+skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); with Premium, invite recent profile viewers to connect; follow back followers; pick out the posts in his feed he should respond to
 voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
 scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
 scripts/voice-check.py  - mechanical check of a draft against the voices (em dashes, banned phrases, US spelling, emoji, length)
@@ -34,7 +34,7 @@ scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply n
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
 scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning, /weekly-plan every Sunday evening
 skills/comms/extract-google-apps.js, google-apps.py - /comms' Google apps check: read the apps with access to each Google account in Chrome, and track which are new, widened or kept
-skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels
+skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels, scoring feed posts worth a response
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
 tests/                  - `python3 -m unittest discover -s personal-assistant/tests`: the scripts against made-up fixtures and a fake gog
