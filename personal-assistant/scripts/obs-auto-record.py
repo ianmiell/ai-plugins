@@ -6,8 +6,9 @@ If a call is live and OBS isn't recording, start recording: through obs-websocke
 (localhost:4455, no auth) when OBS is running, or by launching OBS with --startrecording when it
 isn't. A call is live when
   - Zoom's meeting process (CptHost) is running, or
-  - the WhatsApp desktop app has had the microphone open for WHATSAPP_AFTER checks in a row (so a
-    voice note doesn't start a recording; asked of CoreAudio, which needs macOS 14 or later), or
+  - the WhatsApp desktop app (a call) or the Slack desktop app (a huddle) has had the microphone
+    open for the number of checks in a row given in DESKTOP_APPS (so a voice note or clip doesn't
+    start a recording; asked of CoreAudio, which needs macOS 14 or later), or
   - a browser tab (Chrome, Safari, Arc, Edge, Brave) is on a meeting URL: a Google Meet code
     (meet.google.com/abc-defg-hij, or the meet.google.com/meet/abc-defg-hij Meet redirects to),
     the Zoom web client, a Teams meeting, a Slack huddle, Whereby, Jitsi or Webex, and that browser
@@ -38,7 +39,11 @@ STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/
                          "personal-assistant")
 STATE = os.path.join(STATE_DIR, "obs-auto-record.json")
 STOP_AFTER = 3   # checks with no call before stopping a recording this script started
-WHATSAPP_AFTER = 2   # checks with WhatsApp on the microphone before it counts as a call
+DESKTOP_APPS = {   # call label -> (path of its processes that use the mic, checks on the mic before
+                  # it counts as a call). Slack clips run longer than voice notes, so Slack waits longer.
+    "WhatsApp": ("/WhatsApp.app/", 2),
+    "Slack huddle": ("/Slack.app/", 3),
+}
 
 MEETING_URL = re.compile(
     r"meet\.google\.com/(meet/)?[a-z]{3}-[a-z]{4}-[a-z]{3}"
@@ -122,12 +127,15 @@ def live_call(state):
     if running("CptHost"):
         return "Zoom"
     mic = mic_pids()
-    if on_mic("/WhatsApp.app/", mic):
-        state["whatsapp"] = state.get("whatsapp", 0) + 1
-        if state["whatsapp"] >= WHATSAPP_AFTER:
-            return "WhatsApp"
-    else:
-        state.pop("whatsapp", None)
+    counts = state.setdefault("on_mic", {})
+    state.pop("whatsapp", None)   # the counter's name before Slack was added
+    for label, (path, after) in DESKTOP_APPS.items():
+        if on_mic(path, mic):
+            counts[label] = counts.get(label, 0) + 1
+            if counts[label] >= after:
+                return label
+        else:
+            counts.pop(label, None)
     for proc, (app, mic_path) in BROWSERS.items():
         if not running(proc):
             continue   # telling a closed browser anything would launch it
