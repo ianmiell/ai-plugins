@@ -25,3 +25,23 @@ To prepare me for an interview:
 
 - look at the CV for the candidate and point out anything I might be interested in pursuing
 
+
+## Forking the exercise repo (pairing interviews)
+
+Step 3 of the process doc: before a pairing interview, fork `ContainerSolutions/API-Exercise` as
+`API-Exercise-<candidate GitHub handle>` and give the candidate write access. Afterwards, remove
+their access. `scripts/interview-fork.py` (in the plugin's `scripts/`) does both:
+
+- `interview-fork.py [HANDLE]` forks and invites the candidate with write access.
+- `interview-fork.py [HANDLE] --remove` removes their access and cancels any pending invitation.
+- `--dry-run` shows what would happen without changing anything; `--yes` skips the y/n prompt.
+
+The handle isn't on the CV or the calendar invite. Look in the candidate folder and the calendar
+description first. If it isn't there, ask Ian for it (Ivana or the recruiter can supply it), and
+never guess one. The script exits with status 2 and "needs input" when it has no handle, and
+checks the handle is a real GitHub user before doing anything.
+
+Forking and inviting are outward-facing, so when preparing Ian: run `--dry-run` with the handle,
+show him the result, and run it for real only once he says yes. Removing access after the session
+likewise waits for his yes (or his asking for it). Include both the fork and the removal in the
+checklist, with the status of the fork.
