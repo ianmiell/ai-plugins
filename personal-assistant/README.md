@@ -106,7 +106,7 @@ with `scripts/install-linkedin-sync.sh --uninstall`. The log is
 `scripts/install-comms-morning.sh` installs a launchd agent that starts a
 background Claude Code session running
 `claude --bg --chrome '/personal-assistant:comms morning'` every day at
-07:45 (or another time: `scripts/install-comms-morning.sh 08:15`). The
+05:00 (or another time: `scripts/install-comms-morning.sh 08:15`). The
 session is named for the day (`comms-Mon-02-Nov`). It gathers every channel
 and does the cross-checks, then stops at the numbered list, with proposed
 replies, and waits. Because of `morning`, it then sends a notification
@@ -120,13 +120,13 @@ The list is as of when it ran, so when attaching later, ask it to pick up
 anything newer. Sessions nobody opens stay in `claude agents` until
 stopped.
 
-When the Mac is asleep at 07:45, launchd runs the agent on waking (missed
+When the Mac is asleep at 05:00, launchd runs the agent on waking (missed
 mornings collapse into one run). When it's shut down, that morning is
 skipped. On waking, the script waits up to 5 minutes for the network
 before starting the session. It keeps the Mac from idle-sleeping while it
 waits and for 20 minutes afterwards (`caffeinate -i`), but closing the lid
 on battery still sleeps it. To have the list ready before opening the
-laptop, `sudo pmset repeat wake MTWRF 07:40:00` may help when the laptop
+laptop, `sudo pmset repeat wake MTWRF 04:55:00` may help when the laptop
 is on power; test it before relying on it. Run it now with
 `launchctl kickstart gui/$(id -u)/com.ianmiell.comms-morning`, remove it
 with `scripts/install-comms-morning.sh --uninstall`. The log is

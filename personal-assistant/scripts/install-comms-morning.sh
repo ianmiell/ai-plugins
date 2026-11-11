@@ -2,7 +2,7 @@
 # install-comms-morning.sh: install (or with --uninstall, remove) the launchd agent that starts
 # /personal-assistant:comms as a background Claude Code session every morning, so the
 # triage list and drafts are waiting when Ian sits down.
-#   install-comms-morning.sh            # every day at 07:45
+#   install-comms-morning.sh            # every day at 05:00
 #   install-comms-morning.sh 08:15      # every day at another time
 #   install-comms-morning.sh --uninstall
 # Run it now with
@@ -19,7 +19,7 @@ GTD_DIR="${GTD_DIR:-${HOME}/git/gtd}"
 PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG="${HOME}/Library/Logs/${LABEL}.log"
 DOMAIN="gui/$(id -u)"
-AT="${1:-07:45}"
+AT="${1:-05:00}"
 
 launchctl bootout "${DOMAIN}/${LABEL}" 2>/dev/null || true
 
