@@ -5,6 +5,7 @@
                                          ContainerSolutions/API-Exercise-<HANDLE> and give HANDLE write access
   interview-fork.py [HANDLE] --remove    remove HANDLE's access (and any pending invitation) after the session
   interview-fork.py [HANDLE] --dry-run   show what would happen, change nothing
+  interview-fork.py --list               show every API-Exercise-<handle> fork and who still has access
 
 HANDLE is the candidate's GitHub handle; a leading @ or a github.com/ URL is accepted. If it
 isn't given, the script asks for it on the terminal. With no terminal (as when the interview
@@ -68,13 +69,33 @@ def repo_exists(repo):
     return gh("api", f"repos/{ORG}/{repo}", check=False)[0] == 0
 
 
+def list_access():
+    """Print each API-Exercise-* fork with its outside collaborators and pending invitations."""
+    _, out, _ = gh("api", f"orgs/{ORG}/repos", "--paginate", "--jq", ".[].name")
+    repos = sorted(n for n in out.split() if n.startswith(SOURCE + "-"))
+    if not repos:
+        print("No candidate forks.")
+    for repo in repos:
+        _, out, _ = gh("api", f"repos/{ORG}/{repo}/collaborators?affiliation=outside", "--paginate",
+                       "--jq", ".[].login")
+        people = out.split()
+        _, out, _ = gh("api", f"repos/{ORG}/{repo}/invitations", "--paginate", "--jq", ".[].invitee.login")
+        pending = out.split()
+        state = ", ".join(people + [f"{p} (invited)" for p in pending]) or "no outside access"
+        print(f"{repo}: {state}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("handle", nargs="?", help="candidate's GitHub handle")
     ap.add_argument("--remove", action="store_true", help="remove their access after the session")
     ap.add_argument("--dry-run", action="store_true", help="show what would happen, change nothing")
+    ap.add_argument("--list", action="store_true", help="show the candidate forks and who has access")
     ap.add_argument("--yes", "-y", action="store_true", help="don't ask before changing anything")
     args = ap.parse_args()
+
+    if args.list:
+        return list_access()
 
     handle = get_handle(args.handle)
     repo = f"{SOURCE}-{handle}"

@@ -30,7 +30,7 @@ scripts/gtd-new-task.py - new gtd task with its source link and notes; for email
 scripts/gtd-note.py     - dated note with its source on an existing gtd task, pushed; for email, labels the thread GTD-<N>
 scripts/gtd-list.py     - gtd tasks by prefix with review flags (overdue, due soon, untouched, past meeting); `reminders FROM TO` for the calendar
 scripts/gtd-label-tidy.py - archive the mail of closed tasks and remove their GTD-<N> labels (rules/close-task-tidies-mail.md)
-scripts/interview-fork.py - fork the pairing exercise repo for a candidate (ContainerSolutions/API-Exercise-<handle>) and give them write access; `--remove` takes it away afterwards; asks for the handle if it isn't given
+scripts/interview-fork.py - fork the pairing exercise repo for a candidate (ContainerSolutions/API-Exercise-<handle>) and give them write access; `--remove` takes it away after the interview (the skill does this without asking); `--list` shows who still has access; asks for the handle if it isn't given
 scripts/people-note.py  - find a person's gtd people file, add an email/slack/whatsapp/meeting log line in the right place, set their level
 scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
 scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
