@@ -48,7 +48,8 @@ Gmail connector there even if it's loaded. Wherever this skill says
 "connector" for the work mailbox, use the gog command from the table under
 "Mailboxes via gog" with `-a ian.miell@container-solutions.com` instead
 (e.g. `unlabel_thread` → `gmail thread modify --remove`, `create_draft` →
-`gmail drafts reply`, the thread's `viewUrl` → `gog gmail url`).
+`mail-draft.py` (which runs `gmail drafts reply`), `get_thread` → `mail-gather.py read`,
+the thread's `viewUrl` → `gog gmail url`).
 
 ### gog setup for the personal mailbox (one-off, done October 2026)
 
@@ -198,8 +199,11 @@ on the MacBook Pro the work mailbox still goes through the connector.
 |---|---|
 | Account and write checks | `python3 $S/pa-env.py check --only mail` |
 | List the inbox | `python3 $S/mail-gather.py list [--mailbox work\|personal] [--query '…'] [--max 25]`: one compact block per thread, numbered across mailboxes, with a first-pass hint from the house rules |
-| Read a thread | `python3 $S/mail-gather.py read <mailbox> <threadId>`: plain-text bodies with quoted replies cut (a 56 KB `thread get` comes out at about 2 KB) |
+| Read a thread | `python3 $S/mail-gather.py read <mailbox> <threadId>`: plain-text bodies with quoted replies cut (a 56 KB `thread get` comes out at about 2 KB). Always this, never `thread get` or the connector's `get_thread`, for a mailbox gog serves |
+| Number the list, print the tables, read Ian's answer | `python3 $S/comms-items.py add`, `render --mail`, `expand "<answer>"` (Present and Execute, below) |
 | Archive, keep + star, trash, spam, label, `GTD-N` | `python3 $S/mail-apply.py` with a plan on stdin (Execute, below) |
+| Draft a reply or forward | `python3 $S/mail-draft.py <mailbox> <threadId> [--reply-all \| --forward ADDR]`, the text on stdin: voice check, then the draft (never sent) |
+| Starred threads outside the inbox | `python3 $S/mail-gather.py starred-outside`: the ones this plugin starred (safe to unstar) apart from older ones (`rules/unstar-outside-inbox.md`) |
 | New gtd task from a thread | `python3 $S/gtd-new-task.py --mailbox M --thread ID …` (gtd skill) |
 | Note on an existing task from a thread | `python3 $S/gtd-note.py N --mailbox M --thread ID [--archive]` (gtd skill), note on stdin |
 | Closed tasks' `GTD-N` labels | `python3 $S/gtd-label-tidy.py` |
@@ -293,6 +297,10 @@ a subject starting `AI:` is an instruction to follow (`ai-instructions.md`).
   thread. A reply always comes from the mailbox the email arrived in.
 - Flag anything that looks like phishing (mismatched sender domain, urgent
   credential or payment requests) rather than recommending a reply.
+- **The shell is zsh.** Don't print separators starting with `=` (`echo ===` fails with
+  "=== not found") and don't use globs that might match nothing (the whole command
+  aborts). Run the scripts one per call, or several joined with `;`: they print their own
+  headers, and their output is the result, not an error.
 
 ## Process
 
@@ -303,7 +311,7 @@ argument, turn it into a Gmail query — e.g. "last 2 days" → `in:inbox
 newer_than:2d`, "unread" → `in:inbox is:unread`. Use the same query for both
 mailboxes. If an inbox is very large (more than ~50 threads), say how many
 there are and start with the most recent 25 from that mailbox; offer to
-continue afterwards.
+continue afterwards (Continue, below).
 
 ### 2. Gather
 
@@ -328,7 +336,8 @@ Hints are a start, not the classification. Then read
 (`mail-gather.py read <mailbox> <threadId>`) anything from a real person,
 anything that might need a reply, and anything ambiguous. For the connector
 mailbox (work on the MacBook Pro), run `search_threads` and `get_thread` as
-before. Tag every thread with the mailbox it came from. Note: who it's from,
+before; `get_thread` can return hundreds of KB for a long thread, so read only
+the threads that need it. Tag every thread with the mailbox it came from. Note: who it's from,
 whether Ian was in To or CC, whether Ian has already replied (last message
 from Ian), any dates or deadlines, and any explicit question asked of Ian.
 
@@ -421,7 +430,24 @@ Show one list per mailbox (WORK, then PERSONAL), each grouped by bucket, most
 important first. Number threads continuously across both lists (work 1–12,
 personal 13–20) so a number always means exactly one thread. For each: sender, subject, one-line summary,
 recommended action, plus the calendar tag if it has one. For Act now items,
-add the specific question or decision in a second line. Example:
+the What is the specific question or decision.
+
+Don't number or lay it out by hand: put a line per thread (or per group of
+like notifications) in the ledger, the way the comms skill's Present step
+describes, and render it in this layout, as markdown tables per mailbox:
+
+```
+python3 $S/comms-items.py add --reset <<'EOF'
+{"bucket": "act", "who": "Jane Doe, Contract renewal", "what": "Wants sign-off on revised terms by Fri", "rec": "Draft reply accepting, asking for the redline", "go": ["draft"], "mail": [1], "draft": "<text>"}
+{"bucket": "fyi", "who": "GitHub", "what": "PR #123 merged", "rec": "Archive", "go": ["archive"], "mail": [5]}
+EOF
+python3 $S/comms-items.py render --mail
+```
+
+`mail` is the number `mail-gather.py list` printed (connector threads: `"work
+<threadId>"`), and `go` is what "go" does for the thread (`archive`, `keep`,
+`trash`, `spam`, `label:<Name>`, `draft`, `task`, `note`, `accept`, `decline`,
+`add`). Show render's output as it is. The older text layout, for reference:
 
 ```
 ━━ WORK (ian.miell@container-solutions.com) — 12 threads ━━
@@ -457,11 +483,17 @@ just take free-text instructions.
 ### 5. Execute
 
 Carry out only the approved actions, each through the connector for the
-thread's own mailbox.
+thread's own mailbox. First turn Ian's answer into the actions with
+`python3 $S/comms-items.py expand "<his answer, exactly as he wrote it>"`: it
+maps the numbers back to the threads, prints the `mail-apply.py` plan with a
+line for every thread shown (`keep` for those staying in the inbox) and the
+connector, draft and gtd steps. If it lists anything as not understood (`?`),
+ask Ian; never guess.
 
 **gog mailboxes: one `mail-apply.py` call** for every archive, keep, trash,
 spam and label in the batch, with a line for each thread shown in the list
-(`keep` for those staying in the inbox, so the star rule is covered):
+(`keep` for those staying in the inbox, so the star rule is covered). Run the
+plan expand saved, with the command it printed; written by hand it looks like:
 
 ```bash
 python3 $S/mail-apply.py <<'EOF'
@@ -489,8 +521,14 @@ with the connector.
 - **Spam**: `mark_thread_spam`.
 - **Then apply the house rules:** star every thread from the batch that's
   still in the inbox, and make sure nothing that left the inbox is starred.
-- **Draft reply / forward**: `create_draft` in the existing thread, in the
-  same mailbox, so it's sent from the address the email went to. Write in
+- **Draft reply / forward**: for a gog mailbox,
+  `python3 $S/mail-draft.py <mailbox> <threadId> [--reply-all | --forward ADDR]`
+  with the text on stdin: it runs the voice check and refuses a flagged draft
+  (fix it; `--force` only when Ian keeps the wording), replies to the thread's
+  latest message from someone else, and prints the draft id and text. For the
+  connector, `create_draft` in the existing thread (`mail-draft.py work
+  <threadId> --message <id>` still does the voice check and prints the
+  arguments), in the same mailbox, so it's sent from the address the email went to. Write in
   Ian's voice: read `voices/common.md` and `voices/email.md` at the plugin
   root (`<base>/../../voices/`) before the first draft of a run, and follow
   the section for the draft's mailbox (work or personal) and audience. In
@@ -537,8 +575,9 @@ with the connector.
   then label the thread with the connector as for a new task. When closing,
   tidy the task's mail with `gtd-label-tidy.py --task N`
   (`rules/close-task-tidies-mail.md`).
-- **People notes** (`rules/people-notes-from-email.md`):
-  `python3 $S/people-note.py find "Name" --email <address>`, then
+- **People notes** (`rules/people-notes-from-email.md`): one
+  `python3 $S/people-note.py find --batch` for everyone, a line each on stdin
+  (`<number>: Name | address`), then
   `python3 $S/people-note.py log <File> --kind "email, work" [--task N] "<summary>"`
   for each, then one `bin/gtd push`.
 
@@ -549,4 +588,8 @@ If anything failed, say so with the error.
 ### 6. Continue
 
 If either mailbox has more threads beyond the first batch, offer to do the
-next one, saying which mailbox it's from.
+next one, saying which mailbox it's from. `python3 $S/comms-items.py next`
+prints the `mail-gather.py list --exclude …` command for it: it skips every
+thread already shown, so archiving the first batch doesn't shift it. `add`
+(without `--reset`) and `render --mail` the new threads; their numbers carry on
+from the last batch.

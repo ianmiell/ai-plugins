@@ -15,13 +15,14 @@ subject, reminder date, and flags:
   due in Nd       the reminder fires within --soon days (7)
   untouched Nd    no file in the task's folder changed for --stale days (90) or more. It reads
                   file times, which a fresh clone resets, so it can only under-report.
-  past meeting    a `MEETING: ... starting at Tue 20 Oct, 10:00, id: ...` task whose time has
-                  passed: `bin/gtd clear-meetings` closes them
 Then a FLAGS block repeats the flagged tasks, worst first, so Ian sees them without scrolling.
 
+`MEETING:` tasks (they mirror calendar events) are left out of every list: Ian retired them
+in October 2026. When any are still open, `list` ends with one count line, and when some
+have passed, the hint that `bin/gtd clear-meetings` closes them.
+
 `reminders FROM [TO]` prints every task that isn't closed whose reminder falls between FROM and
-TO (dates, both inclusive; TO defaults to FROM), soonest first, leaving out `MEETING:` tasks
-(they mirror calendar events).
+TO (dates, both inclusive; TO defaults to FROM), soonest first.
 """
 
 import argparse
@@ -72,11 +73,21 @@ def meeting_time(subject, now):
     return None
 
 
+def is_meeting(subject):
+  return subject.startswith("MEETING:")
+
+
 def load(statuses, now, soon, stale):
-  tasks = []
+  """The tasks, and the MEETING: tasks left out of them as (how many, how many past)."""
+  tasks, meetings, past = [], 0, 0
   for n, status in pa.open_tasks(statuses):
     subject = pa.task_subject(n)
     if subject is None:
+      continue
+    if is_meeting(subject):
+      meetings += 1
+      when = meeting_time(subject, now)
+      past += bool(when and when < now)
       continue
     m = PREFIX_RE.match(subject)
     t = {"task": n, "status": status, "subject": subject, "prefix": m.group(1) if m else "",
@@ -89,16 +100,12 @@ def load(statuses, now, soon, stale):
       elif days <= soon:
         t["flags"].append(f"due in {days}d" if days else "due today")
         t["rank"] = 2
-    when = meeting_time(subject, now)
-    if when and when < now:
-      t["flags"].append("past meeting")
-      t["rank"] = min(t["rank"], 1)
     touched = last_touched(n)
-    if touched and stale and (now - touched).days >= stale and not when:
+    if touched and stale and (now - touched).days >= stale:
       t["flags"].append(f"untouched {(now - touched).days}d")
       t["rank"] = min(t["rank"], 3)
     tasks.append(t)
-  return tasks
+  return tasks, (meetings, past)
 
 
 def line(t, show_status):
@@ -120,7 +127,7 @@ def cmd_list(args, now):
   for s in args.statuses or ["todo"]:
     statuses += list(pa.OPEN_STATUSES) if s == "open" else [s]
   statuses = list(dict.fromkeys(statuses))
-  tasks = load(statuses, now, args.soon, args.stale)
+  tasks, (meetings, past) = load(statuses, now, args.soon, args.stale)
   if args.json:
     print(pa.as_json(tasks))
     return
@@ -142,8 +149,9 @@ def cmd_list(args, now):
     print(f"\nFLAGS ({len(flagged)})")
     for t in flagged:
       print("  " + line(t, show_status))
-    if any("past meeting" in t["flags"] for t in flagged):
-      print("  → past MEETING: tasks: bin/gtd clear-meetings closes them")
+  if meetings:
+    print(f"\n{meetings} MEETING: task(s) left out" +
+          (f", {past} past: bin/gtd clear-meetings closes them" if past else ""))
 
 
 def parse_date(s):
@@ -162,7 +170,7 @@ def cmd_reminders(args, now):
     if not r or not start <= r.date() <= end:
       continue
     subject = pa.task_subject(n) or ""
-    if subject.startswith("MEETING:"):
+    if is_meeting(subject):
       continue
     hits.append({"task": n, "status": status, "subject": subject, "reminder": r})
   hits.sort(key=lambda h: (h["reminder"], h["task"]))

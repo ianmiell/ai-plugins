@@ -3,33 +3,20 @@
 # an OBS recording whenever a Zoom, Google Meet, Teams, WhatsApp, Slack huddle or similar call is
 # live (see obs-auto-record.py).
 #
-# The agent runs obs-auto-record.py from this checkout, not from the installed plugin, whose
-# folder name changes with each version. Re-run after moving the checkout.
+# It copies obs-auto-record.py from this checkout to ~/.local/share/personal-assistant/launchd/
+# and the agent runs that copy, so it doesn't depend on the branch the checkout is on (it
+# failed when the checkout was on a branch without it). Re-run it after changing the script.
 
 set -euo pipefail
+source "$(dirname "$0")/install-common.sh"
 
-LABEL=com.ianmiell.obs-auto-record
-HERE="$(cd "$(dirname "$0")" && pwd)"
-PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
-LOG="${HOME}/Library/Logs/${LABEL}.log"
-DOMAIN="gui/$(id -u)"
+install_init com.ianmiell.obs-auto-record
+[[ ${1:-} == --uninstall ]] && install_uninstall
 
-launchctl bootout "${DOMAIN}/${LABEL}" 2>/dev/null || true
-
-if [[ ${1:-} == --uninstall ]]
-then
-  rm -f "${PLIST}"
-  echo "Removed ${LABEL}. The log (${LOG}) is left in place."
-  exit 0
-fi
-
-mkdir -p "$(dirname "${PLIST}")" "$(dirname "${LOG}")"
-sed -e "s|__SCRIPT__|${HERE}/obs-auto-record.py|" \
-    -e "s|__LOG__|${LOG}|g" \
-    "${HERE}/${LABEL}.plist" > "${PLIST}"
-plutil -lint "${PLIST}"
-launchctl bootstrap "${DOMAIN}" "${PLIST}"
+install_copy obs-auto-record.py
+install_plist -e "s|__SCRIPT__|${DEST}/obs-auto-record.py|"
 
 echo "Installed ${LABEL}: checking for live calls every 20 seconds, logging to ${LOG}"
+echo "It runs ${DEST}/obs-auto-record.py: re-run this installer after changing the script."
 echo "OBS needs obs-websocket enabled on port 4455 without authentication."
 echo "The first time it checks each browser, macOS asks to allow control of it. Allow it."

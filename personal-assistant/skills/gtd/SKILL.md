@@ -46,7 +46,9 @@ cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd <command> … </dev/
   - `HOME:` for personal and home matters
   - `MC:` for Ian's own side work (books, courses, writing, consulting)
   - `MEETING: <title> starting at <date>, id: <event-id>` is created
-    automatically from the calendar, and `gtd clear-meetings` closes it
+    automatically from the calendar, and `gtd clear-meetings` closes it.
+    Ian has retired these from review: don't list them (gtd-list.py leaves
+    them out)
   - Pick the prefix from the context (work mailbox → `CS:`, personal admin →
     `HOME:`, writing or publishing → `MC:`) and ask if unsure.
 - Tasks created from email usually contain the **Gmail link** on the line
@@ -60,7 +62,7 @@ cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 120 bin/gtd <command> … </dev/
 
 | Need | Command |
 |---|---|
-| Open tasks, for review | `python3 $S/gtd-list.py [todo\|waiting\|background\|someday\|new\|open]`: grouped by prefix, with priority, reminder and flags (OVERDUE, due within 7 days, untouched 90+ days, past meeting), then a FLAGS block |
+| Open tasks, for review | `python3 $S/gtd-list.py [todo\|waiting\|background\|someday\|new\|open]`: grouped by prefix, with priority, reminder and flags (OVERDUE, due within 7 days, untouched 90+ days), then a FLAGS block; `MEETING:` tasks are left out, with one count line at the end |
 | Reminders firing on some days | `python3 $S/gtd-list.py reminders FROM [TO]` (dates; leaves out `MEETING:` tasks) |
 | Open tasks, gtd's own view | `bin/gtd todo` (also `waiting [DAYS]`, `background`, `someday`, `new`) |
 | One task | `bin/gtd show N` |
@@ -138,8 +140,8 @@ invariants in `AGENTS.md`).
    - overdue reminders
    - tasks with no change in a long time (`untouched Nd`; `bin/gtd info N`
      gives the history if Ian asks)
-   - `MEETING:` tasks for meetings that have passed (offer
-     `bin/gtd clear-meetings`)
+   - if the count line says past `MEETING:` tasks are still open, offer
+     `bin/gtd clear-meetings` in one line
 3. **Act** on Ian's shorthand ("close 4646", "defer 4630 7", "4642 high"),
    with one confirmation per batch. Report each result line by line.
 

@@ -16,37 +16,24 @@
 # If the Mac was asleep at the time, launchd runs this on waking, often before Wi-Fi is back,
 # so it waits for the network first, and keeps the Mac from idle-sleeping while it waits and
 # for the first AWAKE_FOR seconds of the session (default 15 minutes).
+#
+# install-interview-morning.sh copies this and launchd-common.sh to
+# ~/.local/share/personal-assistant/launchd/, and the agent runs that copy.
 
 set -u
 
-GTD_DIR="${GTD_DIR:-${HOME}/git/gtd}"
+source "$(dirname "$0")/launchd-common.sh" \
+  || { echo "$(date '+%F %T') cannot load launchd-common.sh next to $0" >&2; exit 1; }
+
 WORK_ACCOUNT="${WORK_ACCOUNT:-ian.miell@container-solutions.com}"
 AWAKE_FOR="${AWAKE_FOR:-900}"
-NETWORK_WAIT="${NETWORK_WAIT:-300}"
-CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 DRY_RUN="${DRY_RUN:-}"
 
-log() { echo "$(date '+%F %T') $*"; }
-
-# Hold an idle-sleep assertion for as long as this script runs.
-caffeinate -i -w $$ &
-
-waited=0
-until curl -s -o /dev/null --max-time 5 https://www.google.com/generate_204
-do
-  if (( waited >= NETWORK_WAIT ))
-  then
-    log "no network after ${NETWORK_WAIT}s; starting anyway" >&2
-    waited=-1
-    break
-  fi
-  sleep 5
-  waited=$((waited + 5))
-done
-(( waited > 0 )) && log "network up after ${waited}s"
-
-# launchd's PATH doesn't include ~/.local/bin (claude) or /opt/homebrew/bin (gog).
-export PATH="${HOME}/.local/bin:/opt/homebrew/bin:${PATH}"
+# First, so every run launchd starts leaves a line.
+log_start "interview check"
+stay_awake
+wait_for_network
+pa_path
 
 # gog --plain prints a header, then ID, START, END, SUMMARY separated by tabs. If the calendar
 # can't be read (expired token, no network), start the session anyway: it reads the calendar
@@ -71,13 +58,13 @@ then
   exit 0
 fi
 
+preflight || exit 1
 # The = form matters: --allowed-tools takes a list and would swallow the prompt otherwise.
-# Only the fork's dry run is allowed; the real fork waits for Ian.
-if (cd "${GTD_DIR}" && "${CLAUDE_BIN}" --bg --name "interview-$(date +%a-%d-%b)" \
-      --allowed-tools="mcp__claude_ai_Gmail__send_message,Bash(python3 *interview-fork.py * --dry-run)" \
-      '/personal-assistant:interview morning')
+# Only the fork's dry run is allowed; the real fork waits for Ian. The gather, calendar, mail
+# and notify scripts read and format only (pa-mail-html.py fixes the recipient to Ian).
+if start_claude --bg --name "interview-$(date +%a-%d-%b)" \
+     --allowed-tools="mcp__claude_ai_Gmail__send_message,Bash(python3 *interview-fork.py * --dry-run),Bash(python3 *interview-gather.py *),Bash(python3 *calendar-events.py *),Bash(python3 *pa-mail-html.py *),Bash(python3 *pa-notify.py *)" \
+     '/personal-assistant:interview morning'
 then
   sleep "${AWAKE_FOR}"
-else
-  log "failed to start a background claude session" >&2
 fi

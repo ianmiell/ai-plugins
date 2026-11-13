@@ -9,7 +9,7 @@ README.md                      - this file
 skills/drive/SKILL.md          - /drive: the content catalog against the shared drives and the blog; misfiled documents in the shared drives
 skills/drive/default-config.json - the shared drives, customer and all-hands settings, content and filing rules (generic; Ian's own go in ~/.claude/container-solutions/drive.json)
 scripts/drive-inventory.py     - cache a full listing of each shared drive via gog (refresh, status, tree, find, export)
-scripts/catalog-diff.py        - read the catalog (values and hyperlinks), diff it against the drives; `blog` against the blog sitemap
+scripts/catalog-diff.py        - read the catalog (values, hyperlinks and column headers), diff it against the drives; `blog` against the blog sitemap; `rows` prints paste-ready catalog rows for Drive files in a tab's own column order
 scripts/filing-check.py        - flag files that look misfiled (root, customer, allhands, rule, mydrive, stray)
 scripts/drive-decide.py        - record Ian's decisions on flagged files so they don't come up again
 scripts/cs_drive.py            - shared helpers (config, read-only gog, cache, Drive ID parsing)

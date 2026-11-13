@@ -622,25 +622,32 @@ class GtdList(Base):
 
   def test_list_groups_and_flags(self):
     out = self.run_script("gtd-list.py", "--now", self.NOW, check=0).stdout
-    self.assertIn("4 task(s) in todo", out)
+    self.assertIn("3 task(s) in todo", out)
     groups = [l for l in out.splitlines() if l and not l.startswith(" ")]
-    self.assertEqual(groups[1:], ["CS (1)", "HOME (1)", "MEETING (1)", "(no prefix) (1)", "FLAGS (3)"])
+    self.assertEqual(groups[1:], ["CS (1)", "HOME (1)", "(no prefix) (1)", "FLAGS (2)",
+                                  "1 MEETING: task(s) left out, 1 past: bin/gtd clear-meetings closes them"])
     self.assertIn("     10 (high) CS: Write proposal\n", out)
-    flags = out.split("FLAGS (3)\n")[1].splitlines()
-    self.assertEqual([l.split()[0] for l in flags[:3]], ["11", "12", "13"])
+    self.assertNotIn("Acme sync", out)
+    self.assertNotIn("past meeting", out)
+    flags = out.split("FLAGS (2)\n")[1].splitlines()
+    self.assertEqual([l.split()[0] for l in flags[:2]], ["11", "13"])
     self.assertIn("remind 2026-10-20 ⚑ OVERDUE", flags[0])
-    self.assertIn("⚑ past meeting", flags[1])
-    self.assertRegex(flags[2], r"⚑ untouched \d+d$")
-    self.assertIn("bin/gtd clear-meetings", flags[3])
+    self.assertRegex(flags[1], r"⚑ untouched \d+d$")
 
-  def test_waiting_and_open(self):
+  def test_meetings_left_out_everywhere(self):
     out = self.run_script("gtd-list.py", "waiting", "--now", self.NOW, "--stale", "0", check=0).stdout
     self.assertIn("14 CS: Invoice from Acme remind 2026-10-30 ⚑ due in 2d", out)
-    self.assertNotIn("past meeting", out)
+    self.assertNotIn("Board", out)
+    self.assertTrue(out.rstrip().endswith("1 MEETING: task(s) left out"), out)
     out = self.run_script("gtd-list.py", "open", "--now", self.NOW, check=0).stdout
-    self.assertIn("6 task(s) in todo, waiting", out)
+    self.assertIn("4 task(s) in todo, waiting", out)
     self.assertIn("14 [waiting] CS: Invoice", out)
     self.assertNotIn("Done thing", out)
+    self.assertIn("2 MEETING: task(s) left out, 1 past", out)
+    tasks = json.loads(self.run_script("gtd-list.py", "open", "--json", "--now", self.NOW, check=0).stdout)
+    self.assertEqual(sorted(t["task"] for t in tasks), [10, 11, 13, 14])
+    out = self.run_script("gtd-list.py", "reminders", "2026-10-30", check=0).stdout
+    self.assertNotIn("MEETING", out)
 
   def test_reminders_window(self):
     out = self.run_script("gtd-list.py", "reminders", "2026-10-29", "2026-11-01", check=0).stdout
@@ -963,7 +970,7 @@ class RulesMatchSenders(unittest.TestCase):
           tsv[addr] = bucket
     for name, bucket in (("newsletters-to-trash.md", "trash"), ("read-later-stays-in-inbox.md", "read-later")):
       with open(os.path.join(rules, name)) as f:
-        listed = set(re.findall(r"^- .*?\(`([^`]+@[^`]+)`\)", f.read(), re.M))
+        listed = set(re.findall(r"^- .*?\(`([^`]*@[^`]+)`\)", f.read(), re.M))
       self.assertTrue(listed, name)
       self.assertEqual(listed, {a for a, b in tsv.items() if b == bucket}, name)
 

@@ -9,6 +9,8 @@ or review technical writing as him.
 skills/tech-writing/SKILL.md    - /tech-writing: draft or review a blog post, article, how-to, talk write-up or book prose in Ian's voice
 skills/tech-writing/VOICE.md    - the full, self-contained voice description (persona, registers, titles, openings, structure, evidence, code, mechanics, vocabulary, humour, beliefs, endings, checklist)
 skills/tech-writing/EXAMPLES.md - annotated real passages and generic-to-Ian rewrites
+scripts/voice-check.py          - mechanical check of a draft against VOICE.md (dashes, eg/ie, spelling by register, avoid list); exit 1 when something's flagged
+tests/                          - `python3 -m unittest discover -s ian-voice/tests`: voice-check against made-up drafts
 ```
 
 ## Using it outside Claude Code

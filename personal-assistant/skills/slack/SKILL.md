@@ -60,9 +60,10 @@ select:mcp__claude_ai_Slack__slack_read_user_profile,mcp__claude_ai_Slack__slack
 | Send later | `slack_schedule_message` (only when Ian asks for it) |
 
 Search returns at most 20 results a page; follow `cursor` until the window is covered.
-Use `include_context: false` and `response_format: concise` for the first pass, then read
-the threads that matter in full. Search times are local (BST/GMT); `after:` is a date, so
-filter the results by the last-run time yourself.
+Use `include_context: false` and `response_format: detailed` (the concise format has no
+channel ids, timestamps or links), then read the threads that matter in full. Search times
+are local (BST/GMT) and `after:` is a date, so the results start up to a day early:
+`slack-merge.py` (Gather) filters them by the exact time, so don't do it by hand.
 
 A message's link, for gtd notes and the list, is
 `https://containersolutions.slack.com/archives/<channel_id>/p<ts without the dot>`
@@ -90,7 +91,10 @@ A message's link, for gtd notes and the list, is
 - **People notes:** the plugin's `rules/people-notes-from-email.md` applies to Slack too:
   for a meaningful exchange with a real person, add a line to their gtd people file under
   `### Email log`, as `- YYYY-MM-DD (slack): <one-sentence summary> [task N]`. Routine chat
-  with colleagues doesn't count.
+  with colleagues doesn't count. Find everyone's files in one
+  `people-note.py find --batch` call (`S2: Name` lines on stdin).
+- **The shell is zsh.** Don't print separators starting with `=` and don't use globs that
+  might match nothing; the scripts print their own headers.
 
 ## Process
 
@@ -108,8 +112,30 @@ A message's link, for gtd notes and the list, is
 ### 2. Gather
 
 Run the three searches from Tools (DMs, mentions, thread replies) for the window, in
-parallel. Merge them into **conversations**: one per DM, group DM or thread, not one per
-message. Drop:
+parallel. Save each result as it came: the text the tool returned (with the Write tool, to
+a file each under a scratch folder), or the file Claude Code saved a long result to (each
+page of a paged search is its own file). Then merge them in one call:
+
+```
+python3 <base>/../../scripts/slack-merge.py --since <epoch> --gtd-batch <file> <file> <file>
+```
+
+`--since` is the epoch `pa-env.py check --only windows` (or `comms-gather.py scope`)
+printed, or `last-run`, `2d`, `today`, `since monday`. It keeps the messages in the
+window, drops repeats across the searches, groups them into **conversations** (one per DM
+or group DM, one per thread elsewhere, numbered S1, S2, …) with the last message, who's in
+it and its link, and drops, listing each by name:
+
+- conversations where Ian (`URFKQUBEW`) sent the last message (`--keep-last` keeps them,
+  to check for something Ian promised);
+- self-DMs;
+- bot and app messages, except approval requests, bots that @-mention Ian, and any named
+  with `--allow-bot "<name>"` (`--allow-bot Slackbot` shows Ian's reminders that fired,
+  as FYI; calendar bots for clashing events, CI or alert bots Ian wants).
+
+`--gtd-batch` also prints the `gtd-find.py --batch` lines for 2b. It reads whatever the
+search returned; if it parses nothing, it says so: check the files. The rules it follows,
+for judging what it kept and dropped:
 
 - conversations where **Ian sent the last message** and nothing came after, unless someone
   is waiting on something Ian promised (then it's "waiting on Ian" in the list);
@@ -119,7 +145,8 @@ message. Drop:
   calendar bots for events that clash, and CI or alert bots in channels where Ian was
   @-mentioned.
 
-For each remaining conversation, read enough to classify it: the whole thread for anything
+Check the dropped you-spoke-last list for anything Ian promised. For each remaining
+conversation, read enough to classify it: the whole thread for anything
 from a real person that asks Ian something. Note who it's from, whether it's a DM, group DM
 or channel, whether a question or request is aimed at Ian, any date or deadline, and whether
 someone else has already answered for him.
@@ -134,7 +161,8 @@ someone else has already answered for him.
   `📅 in calendar` / `📅 not in calendar`.
 - Work that takes more than a couple of minutes, or something Ian promised ("I'll look at
   it tomorrow"): look for open gtd tasks with the person, the channel or the subject, in one
-  `gtd-find.py --batch` call for all the conversations (gtd skill, Commands). Tag
+  `gtd-find.py --batch` call for all the conversations (gtd skill, Commands), starting
+  from the lines `slack-merge.py --gtd-batch` printed. Tag
   `🗂 task N` (offer a note) or `🗂 → new task` with a `CS:`
   subject. Something Ian is waiting on someone else for becomes a `waiting` task with
   `defer N DAYS`.

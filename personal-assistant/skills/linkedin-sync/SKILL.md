@@ -37,6 +37,36 @@ follow-back tried to `linkedin-follows.log` next to it.
   tool `mcp__claude_ai_Google_Calendar__list_events`. Read only.
 - **Mail** (steps 3b and 7): the mail skill's Mailboxes setup (Gmail connector for
   work on the MacBook Pro, otherwise `gog`; `gog` for personal). Search only.
+- `L=<base>/linkedin-state.py` throughout; `python3 $L --help` lists its
+  commands.
+
+### Chrome checks
+
+After the first `navigate` of each new tab (the list pages of steps 2, 3b,
+4, 5, 5b and 5c; not every profile), run `preflight.js` (next to this file)
+with `javascript_tool` before the step's own script. It returns
+`{ok: true}` or `{ok: false, reason}`. At any point:
+- `ok: false`: do as `reason` says. A sign-in form or security check: stop,
+  as the Rules say.
+- Any Chrome tool fails with "Cannot access a
+  chrome-extension:// URL of different extension": tell Ian plainly
+  "another extension (e.g. Adobe Acrobat) has taken over the tab; disable
+  it", and stop. Retrying doesn't help.
+- The tab isn't in the MCP group, or has gone: `tabs_context_mcp` (with
+  `createIfEmpty`), a new tab with `tabs_create_mcp`, and try once more.
+- The extension is disconnected or Chrome isn't connected: tell Ian and stop.
+
+### Hand-off from the page
+
+Each `extract-*.js` except `extract-search.js` saves the list it read as a
+download, `~/Downloads/pa-linkedin-<kind>-<time>.json`, and returns its name
+as `file`. The matching `linkedin-state.py` command reads it with
+`--from-download`: it checks the count, and moves the file out of Downloads
+so it's never read twice. Never copy JSON from the page into a heredoc. If
+`file` says it wasn't saved, or the command finds no download (Chrome may ask
+once whether linkedin.com may download several files: ask Ian to allow it),
+fall back to `get_page_text` and pass the page text on stdin, without
+`--from-download`.
 
 ## Rules
 
@@ -50,7 +80,8 @@ follow-back tried to `linkedin-follows.log` next to it.
   in its invitation dialog; Load more on the Grow page, which
   `extract-suggestions.js` clicks; Show more results on the followers page,
   which `extract-followers.js` clicks; and Follow in a follower's card,
-  which `follow-follower.js` clicks. `extract-feed.js` only scrolls (it reads
+  which `follow-follower.js` clicks (and the extract scripts' own download link,
+an element they make, not one of LinkedIn's). `extract-feed.js` only scrolls (it reads
   each post's id from the page's own memory, not from LinkedIn): never
   react to, comment on, repost or expand a post for Ian. Don't click Message, Following (it
   unfollows), Follow anywhere else, or anything else, add a note, open
@@ -92,7 +123,8 @@ import skips anyone already in `people/`.
 1. `tabs_context_mcp` (with `createIfEmpty`), then `tabs_create_mcp` for a
    new tab, and navigate it to
    `https://www.linkedin.com/mynetwork/invite-connect/connections/`.
-   If Chrome isn't connected, tell Ian and stop.
+   If Chrome isn't connected, tell Ian and stop. Then the Chrome checks
+   above (`preflight.js`), as for each new tab below.
 2. Read `extract-connections.js` (next to this file), replace `__SINCE__`
    with `SINCE`, and run it with `javascript_tool`. It returns
    `{done, loaded, capped, count}` or `{error}`.
@@ -105,21 +137,19 @@ import skips anyone already in `people/`.
      than running it on top.
    - `capped: true`: more than 400 new connections, so some are missing.
      The data export in step 6 fills the gap.
-3. `get_page_text` on the tab. The page now holds one JSON object per line
-   between `GTD-SYNC-BEGIN` and `GTD-SYNC-END <count>`. Pass the page text
-   to `python3 $L connections` on stdin (`L=<base>/linkedin-state.py`). It
-   checks the number of lines against `<count>` and writes them, exactly as
-   they are, to `$TMPDIR/linkedin-connections-<YYYYMMDD>.json`, printing the
-   path. If it says the count is wrong, run `get_page_text` again.
+3. `python3 $L connections --from-download` reads the saved list, checks
+   the count and writes it to `$TMPDIR/linkedin-connections-<YYYYMMDD>.json`,
+   printing the path. (Fallback: `get_page_text`, whose text has the same
+   lines between `GTD-SYNC-BEGIN` and `GTD-SYNC-END <count>`, on stdin.)
 4. Close the tab.
 
 ### 3. Add the new people
 
 ```bash
-cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 300 bin/gtd import-connections --auto "$TMPDIR/linkedin-connections-<YYYYMMDD>.json" </dev/null
+cd ~/git/gtd && GTD_DISPLAY_CONTEXT=web timeout 300 bin/gtd import-connections --auto "$TMPDIR/linkedin-connections-<YYYYMMDD>.json" </dev/null | tee "$TMPDIR/linkedin-import.txt"
 ```
 
-It prints counts, then a `Created <file> | <name> | <role> | connected
+The copy in `$TMPDIR/linkedin-import.txt` feeds step 7. It prints counts, then a `Created <file> | <name> | <role> | connected
 <date> | <url>` line for each new person, and a `Pending ...` line for each
 connection that has the same name as an existing file without their
 profile. Pending ones wait in `people/.connections_pending.csv` until Ian
@@ -140,22 +170,27 @@ as in step 4.
    `people/` (by address or by name) and anyone tried before. Deferred
    people from an earlier run come first.
    - Mailboxes gog can read (personal everywhere, and work off the MacBook
-     Pro): `--gog personal` (and `--gog work`).
+     Pro): `--gog personal` (and `--gog work`). If gog fails, it says which
+     mailbox and lists nothing: rerun without that `--gog`, and say so in
+     the report.
    - The work mailbox on the MacBook Pro goes through the Gmail connector:
-     `search_threads` for `in:sent after:<LAST as YYYY/MM/DD>`, then for
-     each of Ian's messages in those threads one line with its To and Cc
-     addresses, piped in on stdin (`--stdin-mailbox work` is the default).
-   So on the MacBook Pro: `<the To/Cc lines> | python3 $L correspondents --gog personal`;
+     `search_threads` for `in:sent after:<LAST as YYYY/MM/DD>`, and save each
+     result as it is to a file in `$TMPDIR` (or use the file Claude Code
+     saved a long result to). `--threads-json <file>` (once per file) takes
+     the To and Cc of Ian's own messages from it. If it says `no messages
+     from Ian`, `get_thread` each thread and save those instead. Don't
+     rewrite the JSON into To/Cc lines by hand.
+   So on the MacBook Pro: `python3 $L correspondents --gog personal --threads-json "$TMPDIR/sent-1.json" </dev/null`;
    elsewhere `python3 $L correspondents --gog personal --gog work </dev/null`.
-   After 20 lines it prints `# over the cap`: pass the rest to
-   `python3 $L defer --email` on stdin, for the next run.
+   After 20 lines it prints `# over the cap`. It saves the whole list, so
+   the rest needs no copying: step 3b.5 defers it.
 2. The invitation budget: `python3 $L budget --per-day 10` (these go first,
    and steps 4 and 5 count them). Stop inviting at `LEFT`; defer the rest.
 3. **Personal mail needs Ian's yes.** Look up the `personal` rows (steps 4
    and 5 below, without connecting), then show Ian each clear match: name,
    the LinkedIn headline, the profile link and why it matched. Connect only
-   the ones he says yes to. If Ian isn't there, defer the `personal` rows
-   with `defer --email` and say so in the report. `work` rows need no yes.
+   the ones he says yes to. If Ian isn't there, leave the `personal` rows
+   for step 3b.5 to defer, and say so in the report. `work` rows need no yes.
 4. For each person, in a new tab (the same one for all of them): navigate
    to the search URL, read `extract-search.js` (next to this file), run it
    with `javascript_tool` (it waits a few seconds first), and pass its JSON
@@ -175,10 +210,11 @@ as in step 4.
    - `MATCH 2nd`/`3rd+`/`-` `<url>`: navigate to the profile and run
      `connect-profile.js` as in step 4.4, then
      `python3 $L log --email <email> <status> <url> "<name>"`, which also
-     writes the invitations log. Handle each status as in step 4.4: a
-     `limit`, `unexpected` or `error` stops all inviting this run (steps 4
-     and 5 too); defer everyone not yet looked up.
-5. Close the tab.
+     writes the invitations log. Handle each status as in step 4.4. When
+     `log` prints `STOP`, all inviting stops this run (steps 4 and 5 too).
+5. Close the tab, and `python3 $L defer --email --rest`: it logs everyone on
+   the saved list not yet looked up (over the cap, after a stop, personal
+   ones waiting for Ian) as deferred, for the next run.
 
 ### 4. Invite profile viewers (Premium only)
 
@@ -209,40 +245,34 @@ The bookkeeping is done by `linkedin-state.py` next to this file
    - `javascript_tool` gives up after 45 seconds, but the script carries on
      in the page and may replace the list a moment later. After a timeout,
      reload the page and start again rather than running it on top.
-3. `get_page_text`: one JSON object per line between `VIEWERS-BEGIN` and
-   `VIEWERS-END <count>`, newest first, already without 1st-degree
-   connections and anonymous viewers. Check the count. The list's degree
-   can be out of date, so `connect-profile.js` checks again on the profile.
-4. The queue: pass the page text (or just its JSON lines) to
-   `python3 $L queue` on stdin. It checks the count, and prints `url<TAB>name`
-   lines: viewers deferred by an earlier run first, then the new ones,
-   leaving out any URL the log already has as `sent`, `pending` or
-   `connected`. Run it as `python3 $L queue --max <LEFT>`: after `LEFT`
-   lines it prints `# over the cap` and the rest. Send at most `LEFT`
-   invitations (with `LEFT 0`, defer them all and skip to step 4.5). For each
-   viewer in turn: navigate the same tab to their URL, read
-   `connect-profile.js`, run it with `javascript_tool` (it waits a few seconds
-   first, so the pace stays human), and log its result with
-   `python3 $L log <status> <url> "<name>"`. "Log everyone not yet tried as
-   `deferred`" below means passing their `url<TAB>name` lines to
-   `python3 $L defer` on stdin.
+3. The list (newest first, already without 1st-degree connections and
+   anonymous viewers) is in the download. The list's degree can be out of
+   date, so `connect-profile.js` checks again on the profile.
+4. The queue: `python3 $L queue --max <LEFT> --from-download`. It checks the
+   count, and prints `url<TAB>name` lines: viewers deferred by an earlier
+   run first, then the new ones, leaving out any URL the log already has as
+   `sent`, `pending` or `connected`; after `LEFT` lines, `# over the cap`
+   and the rest. It saves the queue, so nobody needs copying. Send at most
+   `LEFT` invitations (with `LEFT 0`, skip to step 4.5). For each viewer in
+   turn: navigate the same tab to their URL, read `connect-profile.js`, run
+   it with `javascript_tool` (it waits a few seconds first, so the pace stays
+   human), and log its result with `python3 $L log <status> <url> "<name>"`.
+   `log` does the counting:
 
-   - `sent`, `connected`, `pending`, `no-connect`, `needs-email`: log it
-     and go on to the next.
-   - `limit`: log it, log everyone not yet tried as `deferred`, and stop
-     sending (skip step 5 too).
-   - `unexpected` or `error`: log it, take a screenshot, log everyone not
-     yet tried as `deferred`, stop sending (skip step 5 too), and tell Ian
-     what the page shows.
-   - After `LEFT` `sent`, log everyone not yet tried as `deferred`.
+   - `sent`, `connected`, `pending`, `no-connect`, `needs-email`,
+     `not-profile`: log it and go on to the next.
+   - `log` prints `STOP <status>` (after a `limit`, `unexpected` or `error`,
+     or three `not-profile` in a row): stop sending (skip step 5 too). For
+     anything but `limit`, take a screenshot and tell Ian what the page
+     shows.
+   - `log` prints `BUDGET` once `LEFT` are `sent`: stop sending.
 
    LinkedIn's own weekly limit can still end a run early with `limit`;
    that's handled above. If it does, the 7-day cap is too high: tell Ian.
-
-   Several `needs-email` or `no-connect` in a row is normal; but if three
-   profiles running don't load as profiles, stop as for `error`.
-5. Close the tab, and write `NOW` with `python3 $L done <NOW>` (also
-   after a `limit` or `unexpected` stop: the deferred viewers carry over).
+5. Close the tab, `python3 $L defer --rest` (logs everyone in the queue not
+   yet tried as `deferred`, for the next run), and write `NOW` with
+   `python3 $L done <NOW>` (also after a stop: the deferred viewers carry
+   over).
 
 ### 5. Invite suggested people
 
@@ -260,16 +290,15 @@ sending at a `limit`, `unexpected` or `error`.
    of the list.
    - `error`: take a screenshot, tell Ian what it shows, close the tab and go
      on to step 6.
-2. `get_page_text`: one JSON object per line between `SUGGESTIONS-BEGIN` and
-   `SUGGESTIONS-END <count>`, most mutual connections first. Check the count.
-3. The queue: pass the page text to `python3 $L suggestions` on stdin. It
-   prints `url<TAB>name<TAB>mutual` lines in the same order, leaving out anyone
-   the log has at all, so nobody is tried twice.
+2. (The list, most mutual connections first, is in the download.)
+3. The queue: `python3 $L suggestions --from-download`. It checks the count
+   and prints `url<TAB>name<TAB>mutual` lines in the same order, leaving out
+   anyone the log has at all, so nobody is tried twice.
 4. Go down the queue as in step 4.4 (navigate, `connect-profile.js`,
    `python3 $L log <status> <url> "<name>"`, with the same handling of each
-   status), until `LEFT` `sent` or the queue runs out. Suggestions are never
-   deferred: on a stop, or at the budget, leave the rest; the next run reads
-   the page afresh.
+   status and `STOP`), until `LEFT` `sent` or the queue runs out.
+   Suggestions are never deferred (no `defer --rest` here): on a stop, or at
+   the budget, leave the rest; the next run reads the page afresh.
 5. Close the tab.
 
 ### 5b. Follow back followers
@@ -291,14 +320,12 @@ following someone never changes whether they're invited.
    - `error`: take a screenshot, tell Ian what it shows, close the tab and go
      on to step 6.
    - After a `javascript_tool` timeout, reload the page and start again.
-2. `get_page_text`: the followers Ian doesn't follow back, one JSON object
-   per line between `FOLLOWERS-BEGIN` and `FOLLOWERS-END <count>`, at the top
-   of the page text. In October 2026 that was 6 of the newest 218: almost
-   everyone is followed already.
-3. The queue: pass the page text to `python3 $L follows` on stdin. It checks
-   the count and prints `url<TAB>name` lines, leaving out anyone already
-   tried, and after today's budget (25, less the follows of the last 24
-   hours) prints `# over the cap` and the rest, which the next run picks up.
+2. The download holds the followers Ian doesn't follow back. In October
+   2026 that was 6 of the newest 218: almost everyone is followed already.
+3. The queue: `python3 $L follows --from-download`. It checks the count and
+   prints `url<TAB>name` lines, leaving out anyone already tried, and after
+   today's budget (25, less the follows of the last 24 hours) prints
+   `# over the cap` and the rest, which the next run picks up.
 4. For each follower above the cap line, in order, on the same page (no
    navigating): read `follow-follower.js`, replace `__URL__` with their URL,
    run it with `javascript_tool` (it waits a few seconds first, so the pace
@@ -307,10 +334,12 @@ following someone never changes whether they're invited.
    - `followed`, `already`, `not-followed`, `missing`: log it and go on.
      `not-followed` means LinkedIn didn't take the follow (the button stayed
      Follow); it isn't tried again, and the report lists them for Ian.
-     Several `missing` in a row: run `extract-followers.js` again.
-   - `limit`: log it and stop following.
-   - `unexpected` or `error`: log it, take a screenshot, stop following, and
-     tell Ian what the page shows.
+   - `log` prints `RERUN` after three `missing` in a row: run
+     `extract-followers.js` again, then `follows --from-download` for a
+     fresh queue. After a second `RERUN`, stop following and say so.
+   - `log` prints `STOP` after a `limit` (stop following), or an
+     `unexpected` or `error` (take a screenshot, stop following, and tell
+     Ian what the page shows).
 5. Close the tab.
 
 ### 5c. Posts to respond to
@@ -335,9 +364,8 @@ to write, or the write skill's to draft if he asks.
    - `error`: take a screenshot, tell Ian what it shows, close the tab and go
      on to step 6.
    - After a `javascript_tool` timeout, reload the page and start again.
-2. `get_page_text`: one JSON object per post since `LAST`, between
-   `FEED-BEGIN` and `FEED-END <count>`.
-3. Pass the page text to `python3 $L feed` on stdin. It checks the count,
+2. The download holds one object per post since `LAST`.
+3. `python3 $L feed --from-download`. It checks the count,
    scores each post for its author's level in `people/` (found by LinkedIn
    URL: close 5, met 3, in-touch 2), what it's about (a new job or looking
    for work 4, hard news 5, a launch or achievement 3, a milestone 2,
@@ -357,11 +385,14 @@ to write, or the write skill's to draft if he asks.
 The page can miss people (layout changes, more than 400 new, people hidden
 from the list). LinkedIn's data export catches them.
 
-`python3 $L export` prints the newest export (`EXPORT <path> <age>d`, or
-`EXPORT none`) and what to do with it:
+`python3 $L export --import` prints the newest export (`EXPORT <path> <age>d`,
+or `EXPORT none`) and what to do with it. Don't look for the zip with a
+shell glob (`ls ~/Downloads/*LinkedIn*.zip` is an error in zsh when nothing
+matches): the script finds it.
 
-- `ACTION import` (less than 7 days old): run step 3 on it too (with the zip
-  in place of the json; it's safe to repeat, as known people are skipped).
+- `ACTION import` (less than 7 days old): it runs step 3's import on the zip
+  itself and prints the output (safe to repeat, as known people are
+  skipped). Add its `Created` lines to step 7.
 - `ACTION request` (none, or more than 30 days old): offer to open
   `https://www.linkedin.com/mypreferences/d/download-my-data` in a new tab
   for Ian to request it ("Download larger data archive", or just
@@ -373,16 +404,23 @@ from the list). LinkedIn's data export catches them.
 
 For each person created in step 3 (and any `Pending` ones), look for signs
 Ian has dealt with them. Do the searches in bulk, not one call per person.
-The meetings and people-notes searches are one call: pass step 3's output to
-`python3 $L evidence` on stdin. It prints `name<TAB>level<TAB>evidence` per
-person (`met` with a transcript, `in-touch` with a mention, `forgotten?` with
-neither), so only the calendar and mail are left to search:
 
 - **Calendar:** `list_events` on both calendars from 30 days ago to today,
-  once each. Match each person's full name against attendee display names,
-  and against attendee emails (`first.last@`, `flast@`, `firstlast@`).
-- **Mail:** search both mailboxes for the last 30 days in batches of about
-  10 names: `newer_than:30d ("Name One" OR "Name Two" OR ...)`.
+  once each, and save each result as it is to a file in `$TMPDIR` (or use
+  the file Claude Code saved a long result to).
+- **Meetings, people notes and calendar** in one call:
+  `python3 $L evidence --events "$TMPDIR/cal-work.json" --events "$TMPDIR/cal-personal.json" < "$TMPDIR/linkedin-import.txt"`.
+  It matches each name against meeting transcripts, other people notes and
+  the events' attendees (display names, and `first.last@`, `flast@`,
+  `firstlast@`; not those who declined), and prints
+  `name<TAB>level<TAB>evidence` per person (`met` with a transcript or an
+  event, `in-touch` with a mention, `forgotten?` with neither). Output of
+  `<base>/../../scripts/calendar-events.py attendees` saved to a file works
+  too, as `--attendees <file>`.
+- **Mail:** `python3 $L mail-query < "$TMPDIR/linkedin-import.txt"` prints
+  the Gmail queries, 10 names each
+  (`newer_than:30d ("Name One" OR "Name Two" ...)`). Run each in both
+  mailboxes; don't build them by hand.
 
 Suggest a level for each:
 

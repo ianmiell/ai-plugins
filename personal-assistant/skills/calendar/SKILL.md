@@ -24,9 +24,10 @@ Always pass `calendarId` explicitly, even for work, so it's never ambiguous
 which calendar an action touches.
 
 Check access before each run: `list_events` on both IDs for the requested
-window. The response's `accessRole` must be `owner` (or `writer`) for each.
+window (step 2), then `calendar-events.py access --work <W file> --personal
+<P file>` reads the `accessRole` of each. It must be `owner` (or `writer`).
 If the personal calendar is missing or comes back `reader` /
-`freeBusyReader`, say so up front. You can still show the agenda, but you
+`freeBusyReader`, the script says so and prints the fix; say so up front. You can still show the agenda, but you
 can't change it. The fix is in Google Calendar on the personal account:
 Settings → *ian.miell@gmail.com* → Share with specific people → give
 `ian.miell@container-solutions.com` "Make changes and manage sharing".
@@ -58,6 +59,29 @@ relevant (e.g. "is Doug free?", bank holidays) but never write to them.
 
 Ian's time zone is Europe/London. Pass times without an offset and leave
 `timeZone` unset unless Ian names a zone, as the tool descriptions say.
+
+### The script
+
+`$S` is the plugin's `scripts/` folder (`<base>/../../scripts`, where
+`<base>` is this skill's base directory). `python3 $S/calendar-events.py`
+does the fiddly parts the same way every time, so don't work them out by
+eye or with ad hoc jq or python:
+
+- `window <scope>`: the `startTime` / `endTime` to pass to `list_events`
+  for today, tomorrow, week, next week, invites, a day name, a date or
+  `week-of YYYY-MM-DD`, with GMT or BST per day (right across the clock
+  changes).
+- `agenda`: both calendars as one timeline in London time, one short line
+  per event, tagged W, P or W+P, with CLASH, PENDING, TIGHT and FREE flags,
+  declined events left out (and counted), all-day events first under each
+  day, then NEEDS A DECISION.
+- `free`: free gaps per weekday across both calendars.
+- `verify`: checks a `get_event` result after a change.
+- `access`: the `accessRole` check above.
+- `match` and `attendees` serve the meeting and linkedin-sync skills.
+
+`python3 $S/calendar-events.py --help` and the top of the file have the
+details.
 
 ### Mail
 
@@ -148,39 +172,57 @@ weeks. `free <duration> <when>` means find slots (see step 5).
 
 ### 2. Gather
 
-`list_events` on W and P for the window (`orderBy: startTime`,
-`pageSize: 100`). Drop events Ian has declined (`responseStatus:
-declined` on the `self` attendee) unless asked. Note for each event:
-calendar, start/end, title, location or Meet link, organiser, Ian's
-response status, whether it's `transparent` (shown as free), and
-attendee count.
+`python3 $S/calendar-events.py window <scope>` prints the `startTime` and
+`endTime`. Call `list_events` on W and P with them (`orderBy: startTime`,
+`pageSize: 250`), both in one message. If a result has a `nextPageToken`,
+fetch the next page too and pass every page (`--work` and `--personal`
+can each be given more than once).
+
+Results bigger than the tool limit (a week of W usually is) don't come
+back inline: the harness saves them to a file and gives its path ("exceeds
+maximum allowed tokens ... saved to ..."). That file is fine as it is.
+Pass the path straight to the script; don't open it, and don't write jq or
+python against it. A small result that came back inline goes in on stdin
+as `-` with a heredoc (only one calendar can use stdin; save the other
+with Write to a file under `/tmp/` first). Paste the result exactly as
+returned: the script reads any wrapper.
 
 ### 3. Combine and check
 
-Merge both calendars into one timeline and look for:
-- **Clashes:** overlapping busy events, especially across W and P (e.g. a
-  personal appointment during a work meeting). Ignore events marked free
-  (`transparency: transparent`) and all-day markers, but mention them if
-  relevant.
-- **Pending invites:** Ian's `responseStatus` is `needsAction`.
-- **Tight changes:** back-to-back events in different places with no
-  travel time, where the locations differ.
-- **Same event on both calendars:** e.g. an invite sent to both addresses.
-  Show it once and tag it `W+P`.
+```bash
+python3 $S/calendar-events.py agenda --work <W file> --personal <P file or -> --window <scope>
+```
+
+It merges both calendars into one timeline and flags, per event:
+- **CLASH:** overlapping busy events, especially across W and P (e.g. a
+  personal appointment during a work meeting). Events marked free
+  (`transparent`) and all-day markers don't count; it still shows them
+  (FREE, or first under the day) so you can mention them if relevant.
+- **PENDING:** Ian's response is `needsAction`.
+- **TIGHT:** back-to-back events (within 15 minutes) at different physical
+  places.
+- **W+P:** the same event on both calendars (the same iCalUID, or the same
+  title and start), e.g. an invite sent to both addresses, shown once.
+
+Declined events are left out and counted; add `--declined` when Ian asks
+about them. `--fields minimal` gives only time, calendar, title and flags.
+A `missing:` line means a calendar couldn't be read: say so. Use the
+script's times and flags; don't recompute them by hand.
 
 ### 4. Present
 
-One compact timeline per day, with times in 24h. Tag each event W or P.
-Put clashes and things needing a decision first:
+The agenda is already close to this: one compact timeline per day, times
+in 24h, each event tagged W or P. Tidy it into this shape, with clashes
+and things needing a decision first:
 
 ```
 THU 8 OCT
-⚠ 18:00–21:00 P  Drinks With Corey Quinn — Singer Tavern, City Rd
+⚠ 18:00–21:00 P  Drinks With Corey Quinn · Singer Tavern, City Rd
                overlaps W "Office day plus social" (marked free, till 20:30)
-  09:00–20:30 W  Office day plus social afterwards (free) — Clerkenwell
+  09:00–20:30 W  Office day plus social afterwards (free) · Clerkenwell
   10:30–11:00 W  daily beach
-  11:30–12:30 W  Content Coaching | TF — Zoom   [not responded]
-  15:30–16:00 W  ASML Governance — Meet          [not responded]
+  11:30–12:30 W  Content Coaching | TF · Zoom   [not responded]
+  15:30–16:00 W  ASML Governance · Meet          [not responded]
 
 NEEDS A DECISION
   1. Content Coaching | TF (W, recurring, Tom Farley)  → accept / decline?
@@ -206,7 +248,11 @@ anything Ian might act on, and take shorthand replies ("accept 1 2",
 
 ### 5. Find time
 
-For "when am I free" or booking requests, call `suggest_time` with
+For a quick "when am I free" across both calendars, `python3
+$S/calendar-events.py free --work <W file> --personal <P file> --window
+<scope> --from 09:00 --to 18:00 --min <minutes>` lists the gaps per
+weekday (`--all-days` for weekends too). For booking requests, call
+`suggest_time` with
 `attendeeEmails: ["ian.miell@container-solutions.com",
 "ian.miell@gmail.com"]`, plus any other attendees, so both calendars count
 as busy. Default to working hours 09:00–18:00 on weekdays for work things,
@@ -226,6 +272,21 @@ After approval:
   Ian's comment if given.
 - **Cancel:** `delete_event`, but only for events Ian organised. Otherwise
   decline.
+
+Then check each change took: `get_event` on the event, and pipe the
+result into `verify` with what was meant:
+
+```bash
+python3 $S/calendar-events.py verify --calendar W --start 2026-11-16T10:00 \
+  --end 2026-11-16T10:30 --title "Catch up" --attendee jane@acme.example <<'JSON'
+<the get_event result, exactly as returned>
+JSON
+```
+
+Add `--response accepted` (or declined, tentative) after a response, and
+`--free` or `--busy` for how it shows. It prints `OK`, or each field that
+differs (exit 1): fix it or tell Ian. A cancelled event comes back with
+`status: cancelled`, or not found.
 
 Then report each change in a line (calendar, event, what changed, who was
 notified). If anything failed, give the error.

@@ -22,21 +22,34 @@ skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd p
 voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
 scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
 scripts/voice-check.py  - mechanical check of a draft against the voices (em dashes, banned phrases, US spelling, emoji, length)
-scripts/pa-env.py       - start-of-run checks in one call: machine, gog mailbox access, WhatsApp, Slack/WhatsApp windows; `mark` records a run
-scripts/mail-gather.py  - inbox threads via gog, compactly, with a first-pass hint from the house rules; `read` gives a thread as plain text
-scripts/mail-apply.py   - approved archive/keep/trash/spam/label/GTD-N actions via gog, with the star rules built in
+scripts/pa-env.py       - start-of-run checks in one call: machine, gog mailbox access, WhatsApp, Slack/WhatsApp windows, each isolated so one failure doesn't stop the rest; `auth [--notify]` checks just the gog logins; `mark` records a run
+scripts/mail-gather.py  - inbox threads via gog, compactly, with a first-pass hint from the house rules; `read` gives a thread as plain text; `starred-outside` lists starred threads out of the inbox, marking the ones this plugin starred
+scripts/mail-apply.py   - approved archive/keep/trash/spam/label/GTD-N actions via gog, with the star rules built in; records the stars it sets
 scripts/gtd-find.py     - open gtd tasks mentioning names, thread ids or subject words (`--batch` for a whole triage run)
 scripts/gtd-new-task.py - new gtd task with its source link and notes; for email, labels the thread GTD-<N> and archives it
 scripts/gtd-note.py     - dated note with its source on an existing gtd task, pushed; for email, labels the thread GTD-<N>
-scripts/gtd-list.py     - gtd tasks by prefix with review flags (overdue, due soon, untouched, past meeting); `reminders FROM TO` for the calendar
+scripts/gtd-list.py     - gtd tasks by prefix with review flags (overdue, due soon, untouched); leaves out MEETING: tasks; `reminders FROM TO` for the calendar
 scripts/gtd-label-tidy.py - archive the mail of closed tasks and remove their GTD-<N> labels (rules/close-task-tidies-mail.md)
 scripts/interview-fork.py - fork the pairing exercise repo for a candidate (ContainerSolutions/API-Exercise-<handle>) and give them write access; `--remove` takes it away after the interview (the skill does this without asking); `--list` shows who still has access; asks for the handle if it isn't given
-scripts/people-note.py  - find a person's gtd people file, add an email/slack/whatsapp/meeting log line in the right place, set their level
-scripts/meeting-files.py - the meeting skill's file steps: pending, plan/apply names, .mkv checks, wait for the transcript, dedupe
-scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths)
-scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning, /weekly-plan every Sunday evening
+scripts/people-note.py  - find a person's gtd people file (`find --batch` for a whole run), add an email/slack/whatsapp/meeting log line in the right place, set their level
+scripts/meeting-files.py - the meeting skill's file steps: pending, status (a stem's files in both folders, no globs), plan/apply names, whisper check/start, .mkv checks, wait for the transcript, dedupe, save the summary (git add + push)
+scripts/pa_common.py    - shared helpers for the scripts above (mailboxes, gog with --gmail-no-send, gtd paths, `tool()` and PATH for launchd sessions)
+scripts/pa-notify.py    - macOS notification with the text passed safely to osascript (one line, no markdown, 200 chars); prints the text for PushNotification
+scripts/comms-gather.py - /comms in one zsh-safe call: `scope "<arg>"` (channels, queries, windows, what's off here) and `run` (pa-env check, mail list, GTD label tidy, WhatsApp chats side by side, each isolated, failures summarised)
+scripts/comms-items.py  - the triage ledger: `add` items, `render` numbered tables (--mail for /mail), `expand "<Ian's answer>"` into the mail-apply plan and other steps, `show`, `next` batch, `notify`
+scripts/mail-draft.py   - voice-checked Gmail draft reply or forward through gog, never sent; create_draft arguments for the work connector
+scripts/slack-merge.py  - Slack search results into conversations: window, threads, drops Ian-last, self-DMs, bots; links and gtd-find --batch lines
+scripts/calendar-events.py - W+P calendars from saved list_events results (or gog): window, agenda with clashes/W+P/pending, free, match (meeting), attendees, verify, access
+scripts/weekly-plan-gather.py - the week for /weekly-plan in one print: days in GMT/BST, clashes, free blocks, reminders, open tasks, notes tails, subject
+scripts/pa-mail-html.py - markdown plan to {to, subject, htmlBody} for Ian's work address (weekly, interview)
+scripts/interview-gather.py - the day's interviews: stage, from Ivana yes/no, people, links, CE-N, people/ file, GitHub handles found in saved mail
+scripts/launchd-common.sh - shared by the launchd wrappers: start log line, PATH, network wait, caffeinate, preflight
+scripts/install-common.sh - shared by the install-*.sh scripts: copy to ~/.local/share/personal-assistant/launchd, fill in and load the plist
+scripts/                - launchd agents: /meeting when a new recording or transcript appears, /linkedin-sync every Monday, /comms every morning, /weekly-plan every Sunday evening, /interview on weekday mornings with an interview, OBS auto-record
+skills/timesheet/toggl-grid.js, toggl-fill.js, timesheet.py - read and fill the Toggl grid, propose the split, check the fill and the status
+skills/linkedin-sync/preflight.js - checks a new tab is on LinkedIn and signed in before the step's script
 skills/comms/extract-google-apps.js, google-apps.py - /comms' Google apps check: read the apps with access to each Google account in Chrome, and track which are new, widened or kept
-skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check, local evidence for levels, scoring feed posts worth a response
+skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check and `export --import`, local evidence for levels (with calendar attendees), Gmail queries (`mail-query`), scoring feed posts worth a response; reads the extract scripts' downloads (`--from-download`), says STOP/BUDGET/RERUN after each log line and defers the rest of the queue (`defer --rest`)
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
 tests/                  - `python3 -m unittest discover -s personal-assistant/tests`: the scripts against made-up fixtures and a fake gog
@@ -56,6 +69,23 @@ with:
 ```
 python3 -m unittest discover -s personal-assistant/tests -v
 ```
+
+The skills run in zsh, through the Bash tool. A separator such as `echo ===`
+is an error there, and so is a glob that matches nothing, which aborts the
+whole command. The scripts print their own headers and find files
+themselves, so the skills don't need either.
+
+## Launchd agents
+
+The install-*.sh scripts copy each agent's wrapper (with
+`launchd-common.sh` and anything else it runs) to
+`~/.local/share/personal-assistant/launchd/` and point the plist there, so
+an agent keeps working whichever branch the checkout is on. Re-run the
+installer (with the same time, if it isn't the default) after changing a
+wrapper. Each run logs a `started` line first, with the power source and
+how long since the Mac woke. launchd runs a missed time on waking only if
+the Mac was asleep: when it was shut down, nothing runs and nothing is
+logged.
 
 ## Meeting watcher
 

@@ -4,26 +4,16 @@
 # Run it now with
 #   launchctl kickstart gui/$(id -u)/com.ianmiell.linkedin-sync
 #
-# The agent runs linkedin-sync.sh from this checkout, not from the installed plugin, whose folder
-# name changes with each version. Re-run after moving the checkout.
+# It copies linkedin-sync.sh and launchd-common.sh from this checkout to
+# ~/.local/share/personal-assistant/launchd/ and the agent runs that copy, so it doesn't
+# depend on the branch the checkout is on. Re-run it after changing either script.
 
 set -euo pipefail
+source "$(dirname "$0")/install-common.sh"
 
-LABEL=com.ianmiell.linkedin-sync
-HERE="$(cd "$(dirname "$0")" && pwd)"
 GTD_DIR="${GTD_DIR:-${HOME}/git/gtd}"
-PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
-LOG="${HOME}/Library/Logs/${LABEL}.log"
-DOMAIN="gui/$(id -u)"
-
-launchctl bootout "${DOMAIN}/${LABEL}" 2>/dev/null || true
-
-if [[ ${1:-} == --uninstall ]]
-then
-  rm -f "${PLIST}"
-  echo "Removed ${LABEL}. The log (${LOG}) is left in place."
-  exit 0
-fi
+install_init com.ianmiell.linkedin-sync
+[[ ${1:-} == --uninstall ]] && install_uninstall
 
 if [[ ! -d ${GTD_DIR}/people ]]
 then
@@ -31,13 +21,10 @@ then
   exit 1
 fi
 
-mkdir -p "$(dirname "${PLIST}")" "$(dirname "${LOG}")"
-sed -e "s|__SCRIPT__|${HERE}/linkedin-sync.sh|" \
-    -e "s|__GTD_DIR__|${GTD_DIR}|g" \
-    -e "s|__LOG__|${LOG}|g" \
-    "${HERE}/${LABEL}.plist" > "${PLIST}"
-plutil -lint "${PLIST}"
-launchctl bootstrap "${DOMAIN}" "${PLIST}"
+install_copy linkedin-sync.sh launchd-common.sh
+install_plist -e "s|__SCRIPT__|${DEST}/linkedin-sync.sh|" \
+              -e "s|__GTD_DIR__|${GTD_DIR}|g"
 
 echo "Installed ${LABEL}: Mondays at 08:30, logging to ${LOG}"
+echo "It runs ${DEST}/linkedin-sync.sh: re-run this installer after changing the script."
 echo "Each run starts a background session: list them with 'claude agents', open one with 'claude attach <id>'."

@@ -186,9 +186,19 @@ Only after Ian approves, and only what he approved:
   copy them into a shared drive instead (`copy_file` with `parentId`)
   and repoint the catalog.
 - **Add to the catalog**: the scripts are read-only and the connector
-  can't write cells. Give Ian the rows to paste, as tab-separated lines
-  in the catalog's columns for that tab, with the tab name above each
-  block.
+  can't write cells, so Ian pastes the rows himself. Build them with
+  `python3 $S/catalog-diff.py rows --tab "<tab>" <file_id or link> ...`
+  (one run per tab): it prints one tab-separated line per file in that
+  tab's own column order, with the title, link, date and type filled
+  in and the rest left empty. Where the title carries the link (Most
+  Popular, Blogs) it writes `=HYPERLINK(...)`, which Sheets turns into a
+  linked title on paste. Check the Type it guessed (it says "PDF" where
+  the tab may want "White Paper"), then show each block in a code block
+  with the tab name above it, and say which section heading the rows go
+  under on Internal Content. Its stderr lists the tab's columns and
+  warns about files already on the catalog or missing from the
+  inventory; if it says the columns aren't known, run `read` again or
+  write that tab's rows by hand.
 - **Rename, trash or anything else**: say what you'd do and leave it to
   Ian, unless he explicitly asks you to do it with the connector.
 

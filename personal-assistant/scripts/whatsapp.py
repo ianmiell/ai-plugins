@@ -5,7 +5,9 @@ drafts back to the app for him to send.
 Never writes to WhatsApp's files: each run takes a read-only snapshot of
 ChatStorage.sqlite (and ContactsV2.sqlite, for phone numbers) into memory.
 Nothing is sent: `draft` opens the chat with the text typed in, or copies
-it to the clipboard, and Ian presses Enter himself.
+it to the clipboard, and Ian presses Enter himself. If WhatsApp isn't
+running, `draft` starts it and tries again, then falls back to the
+clipboard and says so.
 
   whatsapp.py chats [--since 2d] [--unread] [--dms|--groups] [--limit N]
   whatsapp.py read CHAT [--since 7d] [--limit 40]
@@ -29,12 +31,16 @@ import re
 import sqlite3
 import subprocess
 import sys
+import time
 import urllib.parse
 
 CONTAINER = os.path.expanduser(
   "~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared")
 CHAT_DB = os.path.join(CONTAINER, "ChatStorage.sqlite")
 CONTACTS_DB = os.path.join(CONTAINER, "ContactsV2.sqlite")
+
+# Seconds to give WhatsApp to start before opening a draft link again.
+DRAFT_RETRY_WAIT = float(os.environ.get("PA_WHATSAPP_START_WAIT") or 4)
 
 # Core Data stores dates as seconds since 2001-01-01 UTC.
 APPLE_EPOCH = 978307200
@@ -367,6 +373,42 @@ def kind_arg(args):
   return None
 
 
+def run_quiet(cmd, stdin_text=None):
+  """Run a macOS helper (open, pbcopy). Returns None on success, else why it failed."""
+  try:
+    p = subprocess.run(cmd, input=(stdin_text or "").encode(), capture_output=True, timeout=30)
+  except (OSError, subprocess.TimeoutExpired) as e:
+    return str(e)
+  if p.returncode != 0:
+    return (p.stderr or p.stdout).decode(errors="replace").strip() or f"exit {p.returncode}"
+  return None
+
+
+def open_url(url):
+  """Open a whatsapp:// link. When WhatsApp isn't running, `open` fails (procNotFound): start
+  the app, give it a few seconds, and try once more. Returns None, or why it failed."""
+  err = run_quiet(["open", url])
+  if err is None:
+    return None
+  if run_quiet(["open", "-a", "WhatsApp"]) is None:
+    time.sleep(DRAFT_RETRY_WAIT)
+    if run_quiet(["open", url]) is None:
+      return None
+  return err
+
+
+def to_clipboard(chat, text, why):
+  """The fallback: copy the draft and say where to paste it. Exits 1 if even that fails."""
+  err = run_quiet(["pbcopy"], text)
+  if err is not None:
+    die(f"couldn't hand the draft over ({why}) and couldn't copy it to the clipboard ({err}): "
+        f"send it to '{chat['name']}' by hand")
+  opened = run_quiet(["open", "-a", "WhatsApp"]) is None
+  print(f"copied the draft to the clipboard ({why}): "
+        + ("" if opened else "start WhatsApp, then ")
+        + f"open '{chat['name']}' in WhatsApp, paste and send")
+
+
 def draft(wa, chat, text, dry_run):
   text = text.strip()
   if not text:
@@ -378,17 +420,17 @@ def draft(wa, chat, text, dry_run):
     if dry_run:
       print(f"would open: {url}")
       return
-    subprocess.run(["open", url], check=True)
-    print(f"opened the chat with {chat['name']} with the draft typed in: press Enter in WhatsApp to send it")
+    err = open_url(url)
+    if err is None:
+      print(f"opened the chat with {chat['name']} with the draft typed in: press Enter in WhatsApp to send it")
+      return
+    to_clipboard(chat, text, f"WhatsApp wouldn't open the chat: {one_line(err, 120)}")
     return
   if dry_run:
     print(f"would copy the draft to the clipboard and open WhatsApp at '{chat['name']}' by hand "
           f"({chat['kind']}, no phone number for a link)")
     return
-  subprocess.run(["pbcopy"], input=text.encode(), check=True)
-  subprocess.run(["open", "-a", "WhatsApp"], check=True)
-  print(f"copied the draft to the clipboard: open '{chat['name']}' in WhatsApp, paste and send "
-        f"(no direct link for a {'group' if chat['kind'] == 'group' else 'contact without a known number'})")
+  to_clipboard(chat, text, f"no direct link for a {'group' if chat['kind'] == 'group' else 'contact without a known number'}")
 
 
 def main():

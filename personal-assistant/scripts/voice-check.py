@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Check a draft against the mechanical rules in voices/*.md.
 
-Reads the draft on stdin (or from a file argument) and prints one line per
+Reads the draft on stdin (or from a file argument; `-` is stdin) and prints one line per
 problem. Exits 0 when clean, 1 when something was flagged, 2 on bad usage.
 Tone is the guides' job; this only catches the mechanical giveaways.
 
   python3 voice-check.py --channel slack <<'EOF'
   draft text
   EOF
+  python3 voice-check.py --channel email draft.txt
 """
 
 import argparse
@@ -158,9 +159,17 @@ def check(text, channel):
 def main():
   parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
   parser.add_argument("--channel", required=True, choices=CHANNELS)
-  parser.add_argument("file", nargs="?", help="draft file (default: stdin)")
+  parser.add_argument("file", nargs="?", help="draft file (default, or -: stdin)")
   args = parser.parse_args()
-  text = open(args.file).read() if args.file else sys.stdin.read()
+  if args.file and args.file != "-":
+    try:
+      with open(args.file, encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    except OSError as e:
+      print(f"can't read {args.file}: {e.strerror or e}", file=sys.stderr)
+      return 2
+  else:
+    text = sys.stdin.read()
   if not text.strip():
     print("empty draft", file=sys.stderr)
     return 2

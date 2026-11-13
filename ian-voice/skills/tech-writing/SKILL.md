@@ -43,9 +43,18 @@ before/after rewrites. **Read both before drafting or reviewing**.
    the structure for the genre (section 7), give evidence in every
    section, and end with a reframe, a device or a kicker.
 4. **Self-check** against `VOICE.md` section 20 and the section 18 list.
-   For a quick mechanical pass, check the draft for em dashes (`—`), en
-   dashes used unspaced, "e.g."/"i.e.", American spellings, and the
-   words to avoid in section 12.
+   For the mechanical pass, save the draft to a file and run
+   `python3 <base>/../../scripts/voice-check.py [--register cs|book] <file>`
+   (`<base>` is this skill's base directory; `-` reads stdin). It flags em
+   and en dashes, "e.g."/"i.e." and "eg,", American spellings (British ones
+   with `--register book`, which leaves punctuation to O'Reilly house
+   style), section 12's avoid list, "whilst" (allowed with `--register
+   cs`), "directory", single bold words, emoji, hashtags, numerals leading
+   a title, the "It's not X. It's Y." reveal and a trailing "Ultimately",
+   one line each with its line number. Exit 1 means something was
+   flagged: fix each one or say why it stands (a literal "landscape", a
+   quoted name), and run it again until it exits 0. It can't judge tone,
+   so the section 20 questions still apply.
 5. **Present** the draft, followed by a short list of:
    - any `TODO:` placeholders and inferred opinions,
    - choices Ian might change (title, hook, what was cut),

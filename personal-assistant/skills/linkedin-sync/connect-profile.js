@@ -8,7 +8,9 @@
 //   needs-email LinkedIn wants their email address: the dialog was dismissed, nothing sent
 //   limit       LinkedIn says the invitation limit is reached: stop sending this run
 //   unexpected  a dialog or page this doesn't know: dismissed if possible; stop and look
-//   error       not a profile page (signed out, or a security check?): stop
+//   not-profile on a profile's address, but no profile loaded (no name in <main>): go on;
+//               `linkedin-state.py log` says STOP after three in a row
+//   error       not a profile page at all (signed out, or a security check?): stop
 // It only ever clicks Connect in the profile's top card (directly or in its More menu), and Send in
 // the invitation dialog that opens. The sidebar ("People also viewed") has Connect buttons of its
 // own, so everything is looked up inside the top card, the innermost <section> holding the name: the
@@ -32,7 +34,8 @@ await (async () => {
   const main = document.querySelector("main");
   const name = main && (main.querySelector("h1") || main.querySelector("h2"));
   const top = name && [...main.querySelectorAll("section")].filter(s => s.contains(name)).pop();
-  if (!/^\/in\//.test(location.pathname) || !top) return done("error", `not a profile page (${location.href})`);
+  if (!/^\/in\//.test(location.pathname)) return done("error", `not a profile page (${location.href})`);
+  if (!top) return done("not-profile", `no profile on the page (${location.href})`);
   const degree = (top.innerText.match(/·\s*(1st|2nd|3rd\+?)/) || [])[1] || "";
   if (degree === "1st") return done("connected");
   const buttons = () => [...top.querySelectorAll("button, a")];

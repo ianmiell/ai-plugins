@@ -15,6 +15,8 @@
 // since SINCE if the view could have been after it: "2w ago" means between 2 and 3 weeks ago.
 // Class names on the page are generated, so it goes by structure: /in/ profile links whose text
 // holds "Viewed ".
+// When done it also saves the list as a download (see save() below) and returns its name as
+// `file`; the page text stays as the fallback for get_page_text.
 await (async () => {
   const SINCE = new Date("__SINCE__");
   const MAX_SCROLLS = 6;   // per call, ~7 viewers each: javascript_tool gives up after 45s
@@ -58,6 +60,26 @@ await (async () => {
   };
   const finished = list => list.some(c => c.at !== null && c.at < SINCE) || list.length >= MAX_CARDS;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Saves the list as a download, ~/Downloads/pa-linkedin-<kind>-<YYYYMMDDTHHMMSSZ>.json
+  // ({kind, count, rows}), for `linkedin-state.py ... --from-download`: nothing to copy by hand.
+  // Returns the file name, or why it couldn't.
+  const save = (kind, rows) => {
+    try {
+      const file = `pa-linkedin-${kind}-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "")}.json`;
+      const href = URL.createObjectURL(new Blob([JSON.stringify({kind, count: rows.length, rows})], {type: "application/json"}));
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = file;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      return file;
+    } catch (e) {
+      return `not saved (${e.message}): use get_page_text`;
+    }
+  };
 
   let list = cards(), done = finished(list), stuck = 0;
   if (!list.length) return JSON.stringify({error: "no viewers with profile links on the page: has the layout changed?"});
@@ -71,14 +93,15 @@ await (async () => {
     done = finished(list) || stuck >= 3;
   }
   const recent = list.filter(c => c.at !== null && c.at >= SINCE);
-  const wanted = recent.filter(c => c.name && c.degree !== "1st");
+  const wanted = recent.filter(c => c.name && c.degree !== "1st")
+    .map(({url, name, headline, degree, viewed}) => ({url, name, headline, degree, viewed}));
+  let file;
   if (done) {
     const pre = document.createElement("pre");
-    pre.textContent = ["VIEWERS-BEGIN",
-      ...wanted.map(({url, name, headline, degree, viewed}) => JSON.stringify({url, name, headline, degree, viewed})),
-      `VIEWERS-END ${wanted.length}`].join("\n");
+    pre.textContent = ["VIEWERS-BEGIN", ...wanted.map(c => JSON.stringify(c)), `VIEWERS-END ${wanted.length}`].join("\n");
     main.replaceChildren(pre);
+    file = save("viewers", wanted);
   }
   return JSON.stringify({premium: true, done, loaded: list.length, count: wanted.length,
-    firstDegree: recent.length - wanted.length, undated: list.filter(c => c.at === null).length});
+    firstDegree: recent.length - wanted.length, undated: list.filter(c => c.at === null).length, file});
 })()

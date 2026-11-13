@@ -250,6 +250,49 @@ class DriveScripts(unittest.TestCase):
     self.assertNotIn("why-things-are-hard", out)
     self.assertNotIn("old-post", out)
 
+  def test_rows_follow_each_tabs_columns(self):
+    self.diff()
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "internal content", "f-onepager",
+                        "https://drive.google.com/file/d/f-case/view?usp=sharing")
+    self.assertEqual(p.stdout,
+                     "\t2025-06-01\tNew one-pager\t\thttps://docs.google.com/presentation/d/f-onepager\n"
+                     "\t2025-06-01\tGlobex case study\t\thttps://drive.google.com/file/d/f-case\n")
+    self.assertIn("Internal Content: # | Date | Title | Author | Link (content)", p.stderr)
+    # Most Popular has no Title column: the title goes in its Link column as a hyperlink.
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "Most Popular", "f-bank2")
+    self.assertEqual(p.stdout, 'Slide Deck\t=HYPERLINK("https://docs.google.com/presentation/d/f-bank2", '
+                               '"Banking on the Cloud v2")\t\n')
+    # Blogs has a Title but no link column, so the link rides on the title.
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "Blogs", "f-webscript")
+    self.assertEqual(p.stdout, '\t2025-06-01\t=HYPERLINK("https://docs.google.com/document/d/f-webscript", '
+                               '"Webinar Sept 2025 script")\n')
+
+  def test_rows_warn_about_unknown_and_catalogued_files(self):
+    self.diff()
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "Most Popular", "f-nope", "f-bank", ok=False)
+    self.assertEqual(p.returncode, 1)
+    self.assertIn("f-nope: not in the cached inventory", p.stderr)
+    self.assertIn("f-bank: already on the catalog at Most Popular!2", p.stderr)
+    self.assertIn("Banking on the Cloud", p.stdout)
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "Types", "f-bank", ok=False)
+    self.assertEqual(p.returncode, 2)
+    self.assertIn("no header row", p.stderr)
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "Podcasts", "f-bank", ok=False)
+    self.assertEqual(p.returncode, 2)
+    self.assertIn("the tabs are: Most Popular, Internal Content, Types, Blogs", p.stderr)
+
+  def test_rows_needs_a_fresh_read(self):
+    self.diff()
+    path = os.path.join(self.state, "drive-cache", "catalog.json")
+    with open(path) as f:
+      cat = json.load(f)
+    del cat["headers"]
+    with open(path, "w") as f:
+      json.dump(cat, f)
+    p = self.run_script("catalog-diff.py", "rows", "--tab", "Blogs", "f-bank", ok=False)
+    self.assertEqual(p.returncode, 2)
+    self.assertIn("run catalog-diff.py read again", p.stderr)
+
 
 class Helpers(unittest.TestCase):
 

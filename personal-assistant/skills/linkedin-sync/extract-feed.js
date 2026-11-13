@@ -23,6 +23,8 @@
 // It clicks nothing: no reactions, comments, "… more", the post's menu or Follow. Class names on the page are
 // generated, so it goes by structure: the hidden "Feed post" heading of each post, the /in/ links
 // in it, and the counts in its Reaction, Comment and Repost buttons.
+// When done it also saves the list as a download (see save() below) and returns its name as
+// `file`; the page text stays as the fallback for get_page_text.
 await (async () => {
   const SINCE = new Date("__SINCE__");
   const MAX_SCROLLS = 8;   // per call: javascript_tool gives up after 45s
@@ -36,6 +38,26 @@ await (async () => {
   if (main.innerText.startsWith("FEED-BEGIN")) return JSON.stringify({error: "the list is already written: read it with get_page_text"});
   const now = Date.now();
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Saves the list as a download, ~/Downloads/pa-linkedin-<kind>-<YYYYMMDDTHHMMSSZ>.json
+  // ({kind, count, rows}), for `linkedin-state.py ... --from-download`: nothing to copy by hand.
+  // Returns the file name, or why it couldn't.
+  const save = (kind, rows) => {
+    try {
+      const file = `pa-linkedin-${kind}-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "")}.json`;
+      const href = URL.createObjectURL(new Blob([JSON.stringify({kind, count: rows.length, rows})], {type: "application/json"}));
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = file;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      return file;
+    } catch (e) {
+      return `not saved (${e.message}): use get_page_text`;
+    }
+  };
   const slugUrl = href => {
     const m = (href || "").match(/^https:\/\/www\.linkedin\.com\/in\/([^/?#]+)/);
     return m ? `https://www.linkedin.com/in/${m[1]}` : null;
@@ -138,12 +160,14 @@ await (async () => {
     stuck = seen.size === before ? stuck + 1 : 0;
     done = finished() || stuck >= 3;
   }
-  const recent = list().filter(r => r.at >= SINCE);
+  const recent = list().filter(r => r.at >= SINCE).map(({at, ...r}) => r);
+  let file;
   if (done) {
     const pre = document.createElement("pre");
-    pre.textContent = ["FEED-BEGIN", ...recent.map(({at, ...r}) => JSON.stringify(r)), `FEED-END ${recent.length}`].join("\n");
+    pre.textContent = ["FEED-BEGIN", ...recent.map(r => JSON.stringify(r)), `FEED-END ${recent.length}`].join("\n");
     main.replaceChildren(pre);
     window.__gtdFeed = null;
+    file = save("feed", recent);
   }
-  return JSON.stringify({done, loaded: seen.size, count: recent.length});
+  return JSON.stringify({done, loaded: seen.size, count: recent.length, file});
 })()

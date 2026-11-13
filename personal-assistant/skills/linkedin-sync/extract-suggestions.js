@@ -10,6 +10,8 @@
 // (in a narrow window): the invitations go from each person's profile with connect-profile.js.
 // Class names on the page are generated, so it goes by structure: the "Invite <name> to connect"
 // buttons, and the /in/ profile link in the card around each one.
+// When done it also saves the list as a download (see save() below) and returns its name as
+// `file`; the page text stays as the fallback for get_page_text.
 await (async () => {
   const MAX_SCROLLS = 6;  // ~30 cards each
   const MAX_CARDS = 150;
@@ -38,6 +40,26 @@ await (async () => {
     return [...found.values()];
   };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Saves the list as a download, ~/Downloads/pa-linkedin-<kind>-<YYYYMMDDTHHMMSSZ>.json
+  // ({kind, count, rows}), for `linkedin-state.py ... --from-download`: nothing to copy by hand.
+  // Returns the file name, or why it couldn't.
+  const save = (kind, rows) => {
+    try {
+      const file = `pa-linkedin-${kind}-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "")}.json`;
+      const href = URL.createObjectURL(new Blob([JSON.stringify({kind, count: rows.length, rows})], {type: "application/json"}));
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = file;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      return file;
+    } catch (e) {
+      return `not saved (${e.message}): use get_page_text`;
+    }
+  };
 
   let list = cards(), stuck = 0;
   for (let i = 0; i < MAX_SCROLLS && list.length < MAX_CARDS && stuck < 2; i++) {
@@ -56,5 +78,5 @@ await (async () => {
   const pre = document.createElement("pre");
   pre.textContent = ["SUGGESTIONS-BEGIN", ...people.map(c => JSON.stringify(c)), `SUGGESTIONS-END ${people.length}`].join("\n");
   main.replaceChildren(pre);
-  return JSON.stringify({loaded: list.length, count: people.length});
+  return JSON.stringify({loaded: list.length, count: people.length, file: save("suggestions", people)});
 })()

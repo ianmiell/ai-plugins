@@ -19,15 +19,22 @@ Reads a plan on stdin, one action per line: `<mailbox> <action> <threadId> [argu
   personal archive 1a15a0c93b4fd2b5
   EOF
 
-Several lines may name one thread; labels go on first, then the thread moves. Every thread
-the plan names that is still in the inbox at the end is starred, and every one that left it
-is unstarred. Sends nothing (gog runs with --gmail-no-send). Drafts aren't done here: they
-need the text Ian approved, so the skill makes them with `gog gmail drafts reply`.
+A `# comment` at the end of a line is ignored. Several lines may name one thread; labels go
+on first, then the thread moves. Every thread the plan names that is still in the inbox at
+the end is starred, and every one that left it is unstarred. Sends nothing (gog runs with
+--gmail-no-send). Drafts aren't done here: they need the text Ian approved, so the skill
+makes them with mail-draft.py.
 Prints a line per thread and a count per mailbox; exits 1 if anything failed.
+
+Every thread it stars is recorded in PA_STATE/starred-by-pa.tsv (`<mailbox> <threadId>
+<date>`, tab-separated), so `mail-gather.py starred-outside` can tell the stars this plugin
+set, which are safe to unstar once the thread has left the inbox, from older ones
+(rules/unstar-outside-inbox.md). A dry run records nothing.
 """
 
 import argparse
 import collections
+import datetime
 import os
 import re
 import sys
@@ -37,6 +44,7 @@ sys.dont_write_bytecode = True  # no __pycache__ in the plugin from importing pa
 import pa_common as pa  # noqa: E402
 
 MOVES = ("archive", "trash", "spam", "label", "keep")
+STARRED_LOG = os.path.join(pa.STATE, "starred-by-pa.tsv")
 ACTIONS = MOVES + ("gtd", "star", "unstar")
 
 
@@ -44,7 +52,7 @@ def parse(lines):
   plan = collections.OrderedDict()
   errors = []
   for i, raw in enumerate(lines, 1):
-    raw = raw.strip()
+    raw = re.sub(r"\s+#.*$", "", raw.strip())  # a trailing `# comment` (comms-items.py adds one)
     if not raw or raw.startswith("#"):
       continue
     parts = raw.split(None, 3)
@@ -107,6 +115,16 @@ class Labels:
     return lid
 
 
+def record_star(mailbox, thread):
+  """Note a star this plugin set (rules/unstar-outside-inbox.md); a failure here never fails the plan."""
+  try:
+    os.makedirs(pa.STATE, exist_ok=True)
+    with open(STARRED_LOG, "a", encoding="utf-8") as f:
+      f.write(f"{mailbox}\t{thread}\t{datetime.date.today().isoformat()}\n")
+  except OSError as e:
+    print(f"(couldn't record the star in {STARRED_LOG}: {e})", file=sys.stderr)
+
+
 def apply_one(mailbox, thread, t, labels, dry_run):
   add, remove = [labels.id(n) for n in t["labels"]], []
   move = t["move"]
@@ -141,6 +159,8 @@ def apply_one(mailbox, thread, t, labels, dry_run):
     args += ["--remove", ",".join(dict.fromkeys(remove))]
   if args:
     pa.gog(mailbox, "gmail", "thread", "modify", thread, *args, dry_run=dry_run)
+    if "STARRED" in add and not dry_run:
+      record_star(mailbox, thread)
   if move == "trash":
     data = pa.gog(mailbox, "gmail", "thread", "get", thread)
     ids = [m["id"] for m in (data.get("thread", data) or {}).get("messages", [])]

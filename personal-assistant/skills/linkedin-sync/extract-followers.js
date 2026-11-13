@@ -13,6 +13,8 @@
 // Follow in them, and clicks nothing but "Show more results".
 // Class names on the page are generated, so it goes by structure: the "Click to follow <name>" and
 // "Click to stop following <name>" buttons, and the /in/ profile link in the card around each one.
+// When done it also saves the list as a download (see save() below) and returns its name as
+// `file`; the page text stays as the fallback for get_page_text.
 await (async () => {
   const MAX_SCROLLS = 8;   // per call, 20 cards each: javascript_tool gives up after 45s
   const MAX_CARDS = 200;   // the newest followers; a weekly run never has this many new ones
@@ -21,6 +23,26 @@ await (async () => {
     return JSON.stringify({error: `not on the followers page (${location.href}): signed out, or a security check?`});
   }
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Saves the list as a download, ~/Downloads/pa-linkedin-<kind>-<YYYYMMDDTHHMMSSZ>.json
+  // ({kind, count, rows}), for `linkedin-state.py ... --from-download`: nothing to copy by hand.
+  // Returns the file name, or why it couldn't.
+  const save = (kind, rows) => {
+    try {
+      const file = `pa-linkedin-${kind}-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "")}.json`;
+      const href = URL.createObjectURL(new Blob([JSON.stringify({kind, count: rows.length, rows})], {type: "application/json"}));
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = file;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      return file;
+    } catch (e) {
+      return `not saved (${e.message}): use get_page_text`;
+    }
+  };
   const cards = () => {
     const found = new Map();
     for (const b of main.querySelectorAll('button[aria-label^="Click to follow "], button[aria-label^="Click to stop following "]')) {
@@ -60,6 +82,7 @@ await (async () => {
   }
   if (!list.length) return JSON.stringify({error: "no follower cards on the page: has the layout changed?"});
   const follow = list.filter(c => !c.following && c.name).map(({url, name, headline}) => ({url, name, headline}));
+  let file;
   if (done) {
     const old = document.getElementById("gtd-followers");
     if (old) old.remove();
@@ -67,6 +90,7 @@ await (async () => {
     pre.id = "gtd-followers";
     pre.textContent = ["FOLLOWERS-BEGIN", ...follow.map(c => JSON.stringify(c)), `FOLLOWERS-END ${follow.length}`].join("\n");
     main.prepend(pre);
+    file = save("followers", follow);
   }
-  return JSON.stringify({done, loaded: list.length, count: follow.length});
+  return JSON.stringify({done, loaded: list.length, count: follow.length, file});
 })()

@@ -12,3 +12,6 @@ thread is new and hasn't been triaged yet.
 - Star them in the same execute step as the other approved actions. Ian
   approving the batch covers this; no separate confirmation is needed.
 - Don't star threads that weren't part of the batch shown to Ian.
+- `scripts/comms-items.py expand` puts a `keep` line in the `mail-apply.py`
+  plan for every shown thread that stays in the inbox, so none is missed;
+  `mail-apply.py` stars them and records the stars it set.

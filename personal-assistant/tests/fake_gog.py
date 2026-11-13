@@ -4,12 +4,16 @@
 FAKE_GOG_STATE is the state ({"accounts": {address: {"labels": [...], "threads": {...}}}}),
 rewritten after every change; FAKE_GOG_LOG gets one JSON line per call. Threads are Gmail API
 threads ({"messages": [{"id", "labelIds", "internalDate", "snippet", "payload"}]}).
+
+An account with "error": "<text>" fails every call with that text on stderr (an expired login,
+say), and one with "sleep": N waits N seconds first (a hung gog).
 """
 
 import fcntl
 import json
 import os
 import sys
+import time
 
 STATE = os.environ["FAKE_GOG_STATE"]
 LOG = os.environ.get("FAKE_GOG_LOG")
@@ -38,6 +42,11 @@ def main():
   box = state["accounts"].get(account)
   if box is None:
     fail(f"fake gog: no account {account}")
+  if box.get("sleep"):
+    lock.close()
+    time.sleep(box["sleep"])
+  if box.get("error"):
+    fail(box["error"])
   assert rest[0] == "gmail", rest
   cmd, args = rest[1], rest[2:]
   out = None

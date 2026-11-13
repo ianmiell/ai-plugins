@@ -2,13 +2,20 @@
 """Find a person's gtd people file, and add a log line to it in the right place.
 
   people-note.py find "Jane Doe" [--email jane@acme.com]
+  people-note.py find --batch <<'EOF'
+  3: Jane Doe | jane@acme.com
+  S2: Bob Smith
+  EOF
   people-note.py log Jane_Doe --kind "email, work" --task 4652 "Asked for a proposal by Fri."
   people-note.py log Jane_Doe --kind meeting --ref meetings/20261016_1508_X.txt "Agreed a pilot."
 
 `find` tries, in order: the exact file (First_Last.md) and its _2, _3 duplicates; files that
 contain the email address; and files whose name has every part of the name (accents folded,
 so "Önsel" finds Onsel_...). It prints one line per candidate: file, why, and the person's
-Company and Level lines.
+Company and Level lines. With --batch it reads `<label>: Name | email` lines on stdin (the
+email is optional) and prints each label with its candidates indented, or `(no file)`, so
+one call covers every person in a triage run (like gtd-find.py --batch). It exits 0 even
+when some have no file.
 
 `log` writes `- YYYY-MM-DD (<kind>): <text> [task N]` at the end of the file's
 `### Email log` section (`### Meeting log` when kind is `meeting`), adding the section once
@@ -216,8 +223,9 @@ def main():
   ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
   sub = ap.add_subparsers(dest="cmd", required=True)
   p = sub.add_parser("find", help="find a person's file")
-  p.add_argument("name")
+  p.add_argument("name", nargs="?")
   p.add_argument("--email")
+  p.add_argument("--batch", action="store_true", help="read `label: Name | email` lines on stdin")
   p = sub.add_parser("log", help="add a log line to a person's file")
   p.add_argument("person", help="file name (Jane_Doe or Jane_Doe.md)")
   p.add_argument("text")
@@ -234,7 +242,28 @@ def main():
   sub.add_parser("check", help="list files with log lines outside their log section")
   args = ap.parse_args()
 
+  if args.cmd == "find" and args.batch:
+    for raw in sys.stdin:
+      raw = raw.strip()
+      if not raw or raw.startswith("#"):
+        continue
+      label, sep, rest = raw.partition(":")
+      if not sep or "@" in label and "|" not in rest:
+        label, rest = raw, raw
+      parts = [x.strip() for x in rest.split("|") if x.strip()]
+      email = next((x for x in parts if "@" in x), None)
+      name = next((x for x in parts if "@" not in x), "")
+      print(f"{label.strip()}: {name}" + (f" <{email}>" if email else ""))
+      hits = find(name, email) if name or email else []
+      if not hits:
+        print("  (no file)")
+      for f, why, info in hits:
+        print(f"  {f}\t{why}\t{info}")
+    return
+
   if args.cmd == "find":
+    if not args.name:
+      ap.error("find needs a name, or --batch")
     hits = find(args.name, args.email)
     if not hits:
       print(f"no file for {args.name}" + (f" or {args.email}" if args.email else ""))

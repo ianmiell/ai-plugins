@@ -4,20 +4,38 @@ the local evidence for new people's levels.
 
   linkedin-state.py window                    # NOW and LAST (step 4.1)
   linkedin-state.py budget [--per-day 20] [--per-week 150]  # invitations sent lately, and LEFT
-  linkedin-state.py queue < viewers.txt       # step 4.4: who to invite, in order
-  linkedin-state.py suggestions < page.txt    # step 5.3: suggested people to invite, in order
-  linkedin-state.py log sent URL "Name"       # after each connect-profile.js result
-  linkedin-state.py follows < page.txt        # step 5b: followers to follow back, in order
+  linkedin-state.py queue --from-download     # step 4.4: who to invite, in order (or < page.txt)
+  linkedin-state.py suggestions --from-download  # step 5.3: suggested people to invite, in order
+  linkedin-state.py log sent URL "Name"       # after each connect-profile.js result: may say STOP
+  linkedin-state.py follows --from-download   # step 5b: followers to follow back, in order
   linkedin-state.py log --follows followed URL "Name"  # after each follow-follower.js result
-  linkedin-state.py defer < rest.tsv          # everyone not yet tried, as deferred
+  linkedin-state.py defer --rest              # the saved queue's untried people, as deferred
+  linkedin-state.py defer < rest.tsv          # these people, as deferred
   linkedin-state.py done NOW                  # write NOW to linkedin-sync-last
-  linkedin-state.py evidence < created.txt    # step 7: meetings and people notes per person
-  linkedin-state.py connections [OUT] < page.txt  # step 2.3: the connections JSON for the import
-  linkedin-state.py export                    # step 6: newest data export, and what to do
-  linkedin-state.py correspondents --gog personal [< to-cc.txt]  # step 3b: who Ian emailed, not in people/
+  linkedin-state.py evidence --events work.json --events personal.json < import.txt  # step 7
+  linkedin-state.py mail-query < import.txt   # step 7: Gmail queries, 10 names each
+  linkedin-state.py connections --from-download [OUT]  # step 2.3: the connections JSON for the import
+  linkedin-state.py export [--import]         # step 6: newest data export, and what to do
+  linkedin-state.py correspondents --gog personal [--threads-json sent.json]  # step 3b
   linkedin-state.py match "Name" [--company X] < results.json   # step 3b: pick the profile from a search
   linkedin-state.py log --email a@b.com sent URL "Name"         # after each step 3b result
-  linkedin-state.py feed < page.txt           # step 5c: posts in Ian's feed worth a response
+  linkedin-state.py feed --from-download      # step 5c: posts in Ian's feed worth a response
+
+Hand-off from the page: each extract-*.js saves what it read as a download,
+~/Downloads/pa-linkedin-<kind>-<YYYYMMDDTHHMMSSZ>.json ({kind, count, rows}; PA_DOWNLOADS overrides
+the folder), and `--from-download` on connections (kind connections), queue (viewers),
+suggestions, follows (followers) and feed reads the newest one of its kind, checks the count,
+and moves it to <state>/downloads so it's never read twice. It waits up to --wait (10) seconds
+for the download, and refuses one more than 3 hours old (from an earlier run). Without
+--from-download they read the get_page_text output on stdin, as before.
+
+`log` also says what to do next, from the statuses logged lately (the last 3 hours, deferred
+lines aside): `STOP <status>` after a limit, unexpected or error, or after three not-profile in a
+row (stop all inviting); `BUDGET` once the viewers queue's --max invitations are sent; and with
+either, the saved queue's people not yet tried, which `defer --rest` (`defer --email --rest` in
+step 3b) logs as deferred. For --follows: `STOP` after a limit, unexpected or error, and `RERUN`
+after three missing in a row (run extract-followers.js again). `queue` and `correspondents` save
+the queue they print (linkedin-queue.tsv, linkedin-correspondents-queue.tsv) for this.
 
 State is in ~/.local/state/personal-assistant (PA_LINKEDIN_STATE overrides it):
 linkedin-sync-last (UTC time of the last sync), linkedin-invites.log (one line per viewer
@@ -51,9 +69,13 @@ suggestion is tried once, and never deferred.
 `evidence` reads `gtd import-connections --auto` output (the `Created <file> | <name> | ...`
 and `Pending ...` lines) or one name per line, and for each person lists meeting transcripts
 of the last 30 days whose name or text has their full name, and other people files that
-mention them. Calendar and mail are still the skill's to search. The suggested level is
-`met` with a transcript, `in-touch` with a mention, otherwise `forgotten?` (until the calendar
-and mail searches have been done).
+mention them. With `--events FILE` (repeatable: the calendar connector's list_events JSON,
+saved as is) it also finds them among the events' attendees, by display name or by address
+(first.last@, flast@, firstlast@), leaving out anyone who declined; `--attendees FILE` takes
+calendar-events.py attendees output instead (its text or --json). Mail is still
+the skill's to search: `mail-query` prints the Gmail queries for it, `newer_than:30d ("Name
+One" OR "Name Two" ...)`, 10 names to a query. The suggested level is `met` with a transcript
+or an event, `in-touch` with a mention, otherwise `forgotten?` (until mail has been searched).
 
 `connections` reads the get_page_text output of the connections page after
 extract-connections.js (GTD-SYNC-BEGIN ... GTD-SYNC-END <count>), checks the count, and writes
@@ -62,8 +84,11 @@ the JSON lines, as they are, to OUT (default $TMPDIR/linkedin-connections-<YYYYM
 
 `correspondents` lists the people Ian has emailed since LAST (sent mail: anyone he wrote to,
 including the senders he replied to), from the To and Cc of his sent messages. `--gog MAILBOX`
-(repeatable) reads a mailbox's sent mail through gog; anything on stdin is read too, one line
-per sent message with its To and Cc addresses (for a mailbox read through the Gmail connector).
+(repeatable) reads a mailbox's sent mail through gog; when gog fails it says which mailbox and
+stops, listing nothing. `--threads-json FILE` (repeatable) reads the Gmail connector's
+search_threads or get_thread results, saved as they are, and takes the To and Cc of each
+message from Ian (from one of his addresses, or labelled SENT). Anything on stdin is read too,
+one line per sent message with its To and Cc addresses.
 It leaves out Ian's own addresses, no-reply and role addresses (info@, support@, ...), the
 senders in rules/senders.tsv, company names (Acme Ltd), messages to more than --max-recipients people (mailouts), anyone
 without a first and last name, anyone already in people/ (the address in a note, or a file
@@ -97,10 +122,12 @@ best first, and prints `score<TAB>name<TAB>level<TAB>why<TAB>age<TAB>url<TAB>tex
 why says what counted ("close; new job; 134 reactions, 60 comments") and url is the post itself
 (postUrl), or the author's recent activity when the page didn't give it. A `#` line first says how many were read and kept.
 
-`export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it)
-and prints `EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than
-7 days old, `ACTION request` when there's none or it's more than 30 days old, else
-`ACTION none`.
+`export` finds the newest *LinkedInDataExport*.zip in ~/Downloads (PA_DOWNLOADS overrides it;
+no shell glob, which zsh turns into an error when nothing matches) and prints
+`EXPORT <path> <age>d` (or `EXPORT none`), then `ACTION import` when it's less than 7 days old,
+`ACTION request` when there's none or it's more than 30 days old, else `ACTION none`. With
+--import and `ACTION import`, it then runs `bin/gtd import-connections --auto <zip>` and prints
+its output (safe to repeat: known people are skipped).
 """
 
 import argparse
@@ -112,6 +139,8 @@ import json
 import math
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -125,10 +154,20 @@ LAST = os.path.join(STATE, "linkedin-sync-last")
 LOG = os.path.join(STATE, "linkedin-invites.log")
 FOLLOWS_LOG = os.path.join(STATE, "linkedin-follows.log")
 CORRESPONDENTS_LOG = os.path.join(STATE, "linkedin-correspondents.log")
+QUEUE = os.path.join(STATE, "linkedin-queue.tsv")
+CORRESPONDENTS_QUEUE = os.path.join(STATE, "linkedin-correspondents-queue.tsv")
+CONSUMED = os.path.join(STATE, "downloads")
 DOWNLOADS = os.path.expanduser(os.environ.get("PA_DOWNLOADS", "~/Downloads"))
 DONE = {"sent", "pending", "connected"}
-INVITE_STATUSES = ["sent", "connected", "pending", "no-connect", "needs-email", "limit", "unexpected", "error",
-                   "deferred"]
+INVITE_STATUSES = ["sent", "connected", "pending", "no-connect", "needs-email", "not-profile", "limit", "unexpected",
+                   "error", "deferred"]
+STOPS = ("limit", "unexpected", "error")
+RECENT_HOURS = 3        # log lines this recent count as this run's, for STOP and RERUN
+QUEUE_MAX_AGE = 12 * 3600
+DOWNLOAD_MAX_AGE = 3 * 3600
+# What each command reads from a download, and the end line of the same list in the page text
+DOWNLOAD_KINDS = {"connections": "GTD-SYNC-END", "viewers": "VIEWERS-END", "suggestions": "SUGGESTIONS-END",
+                  "followers": "FOLLOWERS-END", "feed": "FEED-END"}
 
 
 def utc_now():
@@ -205,6 +244,62 @@ def read_page(text, end):
   return rows
 
 
+def list_downloads():
+  try:
+    return os.listdir(DOWNLOADS)
+  except FileNotFoundError:
+    return []
+  except OSError as e:
+    pa.die(f"can't read {DOWNLOADS} ({e.strerror}): macOS may need to let this app read Downloads "
+           "(System Settings > Privacy & Security > Files and Folders); tell Ian")
+
+
+def from_download(kind, wait):
+  """The rows of the newest pa-linkedin-<kind>-*.json download, checked, then moved out of the way."""
+  pat = re.compile(rf"pa-linkedin-{re.escape(kind)}-\d{{8}}T\d{{6}}Z(?: \(\d+\))?\.json$")
+  deadline = time.time() + wait
+  while True:
+    files = [os.path.join(DOWNLOADS, f) for f in list_downloads() if pat.match(f)]
+    if files or time.time() >= deadline:
+      break
+    time.sleep(0.5)
+  if not files:
+    pa.die(f"no pa-linkedin-{kind}-*.json in {DOWNLOADS} after {wait}s: did Chrome block or ask about the "
+           "download (it asks before a site downloads several files)? Fall back to get_page_text and "
+           "pass the page text on stdin")
+  newest = max(files, key=os.path.getmtime)
+  name, old = os.path.basename(newest), time.time() - os.path.getmtime(newest)
+  if old > DOWNLOAD_MAX_AGE:
+    pa.die(f"{name} is {old / 3600:.0f} hours old, from an earlier run: run the extract script again")
+  try:
+    with open(newest, encoding="utf-8") as f:
+      data = json.load(f)
+  except (OSError, ValueError) as e:
+    pa.die(f"can't read {name}: {e}")
+  rows = data.get("rows") if isinstance(data, dict) else None
+  if not isinstance(rows, list) or data.get("kind") != kind:
+    pa.die(f"{name} isn't a {kind} list ({{kind, count, rows}}) from extract-*.js")
+  if data.get("count") != len(rows):
+    pa.die(f"{name} says {data.get('count')} but has {len(rows)} rows: run the extract script again")
+  os.makedirs(CONSUMED, exist_ok=True)
+  for f in os.listdir(CONSUMED):  # keep a month of them, for looking back
+    p = os.path.join(CONSUMED, f)
+    if time.time() - os.path.getmtime(p) > 30 * 86400:
+      os.remove(p)
+  shutil.move(newest, os.path.join(CONSUMED, name))
+  print(f"# {len(rows)} row(s) from {name}, now in {CONSUMED}", file=sys.stderr)
+  return rows
+
+
+def page_rows(args, kind):
+  """The rows from the download (--from-download) or from the page text on stdin."""
+  if getattr(args, "from_download", None):
+    if args.from_download != kind:
+      pa.die(f"`{args.cmd}` reads {kind} downloads, not {args.from_download}", 2)
+    return from_download(kind, args.wait)
+  return read_page(sys.stdin.read(), DOWNLOAD_KINDS[kind])
+
+
 def cmd_budget(args):
   sent = count_recent("sent", LOG)
   week = count_recent("sent", LOG, hours=7 * 24)
@@ -214,7 +309,7 @@ def cmd_budget(args):
 
 
 def cmd_follows(args):
-  people = read_page(sys.stdin.read(), "FOLLOWERS-END")
+  people = page_rows(args, "followers")
   log = read_log(FOLLOWS_LOG)
   followed = count_recent("followed", FOLLOWS_LOG)
   left = max(0, args.per_day - followed)
@@ -234,7 +329,7 @@ def cmd_follows(args):
 
 
 def cmd_queue(args):
-  viewers = read_page(sys.stdin.read(), "VIEWERS-END")
+  viewers = page_rows(args, "viewers")
   log = read_log()
   queue, seen = [], set()
   for url, (status, name) in log.items():
@@ -249,6 +344,7 @@ def cmd_queue(args):
     queue.append((url, v.get("name", "")))
   print(f"# {len(viewers)} viewer(s) on the page, {len(queue)} to try "
         f"({sum(1 for s, _ in log.values() if s == 'deferred')} deferred from before)")
+  save_queue(QUEUE, args.max, [(url, name) for url, name in queue])
   for i, (url, name) in enumerate(queue):
     if i == args.max:
       print("# over the cap: pass the lines below to `defer`")
@@ -256,7 +352,7 @@ def cmd_queue(args):
 
 
 def cmd_suggestions(args):
-  people = read_page(sys.stdin.read(), "SUGGESTIONS-END")
+  people = page_rows(args, "suggestions")
   log = read_log()
   queue, seen = [], set()
   for p in people:
@@ -271,11 +367,14 @@ def cmd_suggestions(args):
 
 
 def cmd_connections(args):
-  text = sys.stdin.read()
-  if not re.search(r"^\s*GTD-SYNC-END \d+", text, re.M):
-    pa.die("no `GTD-SYNC-END <count>` line: pass the whole get_page_text output, after extract-connections.js")
-  read_page(text, "GTD-SYNC-END")
-  lines = [l.strip() for l in text.splitlines() if l.strip().startswith("{")]
+  if args.from_download:
+    lines = [json.dumps(r, ensure_ascii=False) for r in page_rows(args, "connections")]
+  else:
+    text = sys.stdin.read()
+    if not re.search(r"^\s*GTD-SYNC-END \d+", text, re.M):
+      pa.die("no `GTD-SYNC-END <count>` line: pass the whole get_page_text output, after extract-connections.js")
+    read_page(text, "GTD-SYNC-END")
+    lines = [l.strip() for l in text.splitlines() if l.strip().startswith("{")]
   out = args.out or os.path.join(os.environ.get("TMPDIR", "/tmp"),
                                  f"linkedin-connections-{datetime.date.today():%Y%m%d}.json")
   with open(out, "w", encoding="utf-8") as f:
@@ -283,23 +382,38 @@ def cmd_connections(args):
   print(f"{len(lines)} connection(s) -> {out}")
 
 
+def newest_export():
+  """The newest LinkedIn data export zip in DOWNLOADS, or None."""
+  zips = [os.path.join(DOWNLOADS, f) for f in list_downloads()
+          if "linkedindataexport" in f.lower() and f.lower().endswith(".zip")]
+  zips = [z for z in zips if os.path.isfile(z)]
+  return max(zips, key=os.path.getmtime) if zips else None
+
+
 def cmd_export(args):
-  zips = [os.path.join(DOWNLOADS, f) for f in os.listdir(DOWNLOADS)
-          if "LinkedInDataExport" in f and f.endswith(".zip")] if os.path.isdir(DOWNLOADS) else []
-  if not zips:
+  newest = newest_export()
+  if not newest:
     print("EXPORT none")
     print("ACTION request")
     return
-  newest = max(zips, key=os.path.getmtime)
   age = int((time.time() - os.path.getmtime(newest)) // 86400)
+  action = "import" if age < 7 else "request" if age > 30 else "none"
   print(f"EXPORT {newest} {age}d")
-  print("ACTION " + ("import" if age < 7 else "request" if age > 30 else "none"))
+  print(f"ACTION {action}")
+  if args.do_import and action == "import":
+    try:
+      code, out, err = pa.gtd_cmd("import-connections", "--auto", newest, timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as e:
+      pa.die(f"gtd import-connections --auto {newest}: {e}")
+    print(out.rstrip())
+    if code:
+      pa.die(f"gtd import-connections failed ({code}): {err.strip()}")
 
 
 # Step 3b: people Ian has emailed who aren't in people/
 
 CORRESPONDENT_STATUSES = INVITE_STATUSES + ["ambiguous", "no-match"]
-CORRESPONDENT_RETRY = ("deferred", "limit", "unexpected", "error")  # not done yet: try again next run
+CORRESPONDENT_RETRY = ("deferred", "limit", "unexpected", "error", "not-profile")  # not done yet: try again next run
 NOREPLY_RE = re.compile(r"(no-?reply|do-?not-?reply|notifications?|mailer-daemon|postmaster|bounces?|alerts?)@", re.I)
 ROLE_RE = re.compile(r"^(accounts?|admin|billing|careers|contact|enquir(y|ies)|events|finance|hello|help|hi|hr|"
                      r"info|invoices?|jobs|legal|marketing|news|office|orders|payroll|press|privacy|reception|"
@@ -373,6 +487,8 @@ def sent_recipients(mailbox, since):
     h = (pa.gog(mailbox, "gmail", "get", m["id"], "--format", "metadata") or {}).get("headers") or {}
     return email.utils.getaddresses([h.get("to", ""), h.get("cc", "")])
 
+  msgs = [m for m in msgs if isinstance(m, dict) and m.get("id")]
+
   with concurrent.futures.ThreadPoolExecutor(6) as ex:
     return list(ex.map(one, msgs))
 
@@ -384,13 +500,115 @@ def last_sync():
     return (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def addresses_in(value):
+  """[(display, address)] from a header string, a {name, email} dict, or a list of either."""
+  if isinstance(value, str):
+    return email.utils.getaddresses([value])
+  if isinstance(value, list):
+    return [a for v in value for a in addresses_in(v)]
+  if isinstance(value, dict):
+    addr = value.get("email") or value.get("address") or value.get("emailAddress")
+    if isinstance(addr, dict):
+      return addresses_in(addr)
+    name = value.get("name") or value.get("displayName") or ""
+    return [(name, addr)] if isinstance(addr, str) else []
+  return []
+
+
+def json_docs(text):
+  """The JSON in a saved tool result: the whole text, or one document per line."""
+  try:
+    return [json.loads(text)]
+  except ValueError:
+    docs = []
+    for line in text.splitlines():
+      try:
+        docs.append(json.loads(line))
+      except ValueError:
+        pass
+    return docs
+
+
+def connector_messages(obj, out):
+  """Every message in Gmail connector JSON as (id, sender, to, cc, labels), however it's nested.
+
+  A message is a dict with a from (or sender) and a to or cc, or a Gmail API message with
+  payload.headers. Strings that hold JSON (a tool result's text) are read too.
+  """
+  if isinstance(obj, str):
+    t = obj.strip()
+    if t[:1] in "{[":
+      for doc in json_docs(t):
+        connector_messages(doc, out)
+    return
+  if isinstance(obj, list):
+    for v in obj:
+      connector_messages(v, out)
+    return
+  if not isinstance(obj, dict):
+    return
+  low = {k.lower(): v for k, v in obj.items()}
+  if "messages" not in low:
+    h = pa.headers(obj) if isinstance(obj.get("payload"), dict) else {}
+    sender = low.get("from") or low.get("sender") or h.get("from")
+    to = low.get("to") or low.get("torecipients") or h.get("to")
+    cc = low.get("cc") or low.get("ccrecipients") or h.get("cc")
+    if sender and (to or cc):
+      labels = low.get("labelids") or low.get("labels") or []
+      out.append((low.get("id") or low.get("messageid"), sender, to, cc, labels))
+      return
+  for v in obj.values():
+    connector_messages(v, out)
+
+
+def threads_json_recipients(path):
+  """One list of (display, address) per message from Ian in a saved connector result."""
+  try:
+    with open(path, encoding="utf-8") as f:
+      text = f.read()
+  except OSError as e:
+    pa.die(f"can't read --threads-json {path}: {e.strerror}")
+  found = []
+  for doc in json_docs(text):
+    connector_messages(doc, found)
+  out, seen = [], set()
+  for mid, sender, to, cc, labels in found:
+    if mid and mid in seen:
+      continue
+    seen.add(mid)
+    mine = any(a.lower() in pa.IAN_ADDRESSES for _, a in addresses_in(sender))
+    if mine or (isinstance(labels, list) and "SENT" in labels):
+      out.append(addresses_in(to) + addresses_in(cc))
+  if not out:
+    print(f"# no messages from Ian in {path} ({len(found)} message(s) in all): is it search_threads or "
+          "get_thread output?", file=sys.stderr)
+  return out
+
+
+def gog_failed(mailbox, why):
+  pa.die(f"gog couldn't read the {mailbox} mailbox's sent mail ({why}), so nothing was listed. Check gog can "
+         f"read it (the mail skill's Mailboxes setup), or rerun without `--gog {mailbox}` and say in the "
+         "report that its correspondents weren't looked up.")
+
+
 def cmd_correspondents(args):
   messages = []  # (mailbox, [(display, address)]) per sent message
   for mb in args.gog or []:
     try:
       messages += [(mb, r) for r in sent_recipients(mb, args.since or last_sync())]
     except pa.GogError as e:
-      pa.die(f"gog: {e}")
+      detail = str(e).split(": ", 1)[-1].strip()  # GogError is "<command>: <what gog said>"
+      gog_failed(mb, (detail.splitlines() or ["no output"])[-1][:300])
+    except FileNotFoundError:
+      gog_failed(mb, f"no {pa.GOG} command")
+    except OSError as e:
+      gog_failed(mb, f"{pa.GOG}: {e.strerror}")
+    except subprocess.TimeoutExpired:
+      gog_failed(mb, "it took more than 2 minutes")
+    except (ValueError, KeyError, TypeError, AttributeError) as e:
+      gog_failed(mb, f"output not understood: {type(e).__name__} {e}")
+  for path in args.threads_json or []:
+    messages += [(args.stdin_mailbox, r) for r in threads_json_recipients(path)]
   if not sys.stdin.isatty():
     for line in sys.stdin:
       line = re.sub(r"^\s*(to|cc)\s*:\s*", "", line.strip(), flags=re.I)
@@ -441,6 +659,7 @@ def cmd_correspondents(args):
   rows.sort(key=lambda r: r[0])  # deferred first, otherwise in the order they were found
   print(f"# {len(people)} correspondent(s), {len(rows)} to look up; skipped: "
         + ", ".join(f"{v} {k}" for k, v in skipped.items()))
+  save_queue(CORRESPONDENTS_QUEUE, args.max, [(r[1], r[2]) for r in rows])
   for i, row in enumerate(rows):
     if i == args.max:
       print("# over the cap: pass the lines below to `defer --email`")
@@ -481,6 +700,100 @@ FOLLOW_STATUSES = ["followed", "already", "not-followed", "missing", "limit", "u
 FOLLOW_DONE = ("followed", "already", "not-followed")  # tried once: never queued again
 
 
+def save_queue(path, cap, rows):
+  """The queue as printed (key<TAB>name), so `log` and `defer --rest` know who is left."""
+  os.makedirs(STATE, exist_ok=True)
+  with open(path, "w", encoding="utf-8") as f:
+    f.write(f"# {utc_now()} max {cap}\n")
+    f.writelines(f"{k}\t{' '.join(n.split())}\n" for k, n in rows)
+
+
+def read_queue(path):
+  """(time, max, [(key, name)]) of a saved queue; ("", 0, []) if there's none or it's stale."""
+  try:
+    with open(path, encoding="utf-8") as f:
+      lines = f.read().splitlines()
+  except OSError:
+    return "", 0, []
+  m = re.match(r"# (\S+) max (\d+)", lines[0] if lines else "")
+  if not m or time.time() - os.path.getmtime(path) > QUEUE_MAX_AGE:
+    return "", 0, []
+  rows = [tuple((l.split("\t") + [""])[:2]) for l in lines[1:] if l and not l.startswith("#")]
+  return m.group(1), int(m.group(2)), rows
+
+
+def log_lines(path):
+  try:
+    with open(path, encoding="utf-8") as f:
+      return [l.rstrip("\n").split("\t") for l in f if l.count("\t") >= 2]
+  except OSError:
+    return []
+
+
+def remaining(email_mode):
+  """The saved queue's people with no log line (other than deferred) since it was made."""
+  at, cap, rows = read_queue(CORRESPONDENTS_QUEUE if email_mode else QUEUE)
+  if not at:
+    return [], 0, ""
+  tried = {p[2].lower() for p in log_lines(CORRESPONDENTS_LOG if email_mode else LOG)
+           if p[0] >= at and p[1] != "deferred"}
+  return [(k, n) for k, n in rows if k.lower() not in tried], cap, at
+
+
+def recent_statuses(path):
+  """The statuses of the last RECENT_HOURS, oldest first, without deferred lines."""
+  since = (datetime.datetime.now(datetime.timezone.utc)
+           - datetime.timedelta(hours=RECENT_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+  return [p[1] for p in log_lines(path) if p[0] >= since and p[1] != "deferred"]
+
+
+def invite_signal(email_mode):
+  """STOP or BUDGET after an invitation result, with the people left to defer."""
+  st = recent_statuses(LOG)
+  last = st[-1] if st else ""
+  if last == "limit":
+    say = "STOP limit: LinkedIn's invitation limit: no more invitations this run (steps 3b, 4 and 5)"
+  elif last == "unexpected":
+    say = ("STOP unexpected: take a screenshot, send no more invitations this run (steps 3b, 4 and 5), "
+           "and tell Ian what the page shows")
+  elif last == "error":
+    say = ("STOP error: not a profile page (signed out, or a security check?): take a screenshot and send "
+           "no more invitations this run")
+  elif st[-3:] == ["not-profile"] * 3:
+    say = ("STOP not-profile: three profiles in a row didn't load as profiles: take a screenshot and send no "
+           "more invitations this run, as for error")
+  else:
+    say = ""
+    if not email_mode:
+      left, cap, at = remaining(False)
+      sent = sum(1 for p in log_lines(LOG) if at and p[0] >= at and p[1] == "sent")
+      if at and sent >= cap and left:
+        say = f"BUDGET: {sent} sent since the queue was made, its --max {cap}: stop sending"
+  if not say:
+    return
+  print(say)
+  left, _, _ = remaining(email_mode)
+  rest = "defer --email --rest" if email_mode else "defer --rest"
+  if left:
+    print(f"# not yet tried ({len(left)}): `{rest}` logs them as deferred for the next run")
+    for k, n in left:
+      print(f"{k}\t{n}")
+  else:
+    print("# nobody left in the queue to defer")
+
+
+def follow_signal():
+  st = recent_statuses(FOLLOWS_LOG)
+  last = st[-1] if st else ""
+  if last == "limit":
+    print("STOP limit: LinkedIn won't take more follows: stop following (the next run picks the rest up)")
+  elif last in ("unexpected", "error"):
+    print(f"STOP {last}: take a screenshot, stop following, and tell Ian what the page shows")
+  elif st[-3:] == ["missing"] * 3:
+    print("RERUN: three missing in a row: run extract-followers.js again, then `follows --from-download` "
+          "for a fresh queue (after a second RERUN, stop following and say so)")
+
+
 def cmd_log(args):
   if args.email:
     if args.status not in CORRESPONDENT_STATUSES:
@@ -488,7 +801,8 @@ def cmd_log(args):
     os.makedirs(STATE, exist_ok=True)
     with open(CORRESPONDENTS_LOG, "a", encoding="utf-8") as f:
       f.write(f"{utc_now()}\t{args.status}\t{args.email.lower()}\t{' '.join(args.name.split())}\t{args.url}\n")
-    if args.status in INVITE_STATUSES and args.status != "deferred" and "/in/" in args.url:
+    invite = args.status in INVITE_STATUSES and args.status != "deferred" and "/in/" in args.url
+    if invite:
       append_log(args.status, args.url, args.name)
     print(f"logged {args.status} {args.email} (correspondents)")
   elif args.follows:
@@ -500,12 +814,25 @@ def cmd_log(args):
       pa.die(f"status must be one of {', '.join(INVITE_STATUSES)}", 2)
     append_log(args.status, args.url, args.name)
   print(f"logged {args.status} {args.url}" + (" (follows)" if args.follows else ""))
+  if args.follows:
+    follow_signal()
+  elif args.status != "deferred" and (not args.email or invite):
+    invite_signal(bool(args.email))
 
 
 def cmd_defer(args):
   n = 0
   os.makedirs(STATE, exist_ok=True)
-  for line in sys.stdin:
+  if args.rest:
+    left, _, _ = remaining(args.email)
+    lines = ["\t".join(r) for r in left]
+    try:
+      os.remove(CORRESPONDENTS_QUEUE if args.email else QUEUE)
+    except OSError:
+      pass
+  else:
+    lines = sys.stdin
+  for line in lines:
     line = line.rstrip("\n")
     if not line or line.startswith("#"):
       continue
@@ -545,7 +872,87 @@ def people_in(text):
   return out
 
 
+def calendar_events(obj, out):
+  """Every event (a dict with attendees) in saved list_events JSON, however it's nested."""
+  if isinstance(obj, str):
+    t = obj.strip()
+    if t[:1] in "{[":
+      for doc in json_docs(t):
+        calendar_events(doc, out)
+  elif isinstance(obj, list):
+    for v in obj:
+      calendar_events(v, out)
+  elif isinstance(obj, dict):
+    if isinstance(obj.get("attendees"), list) and ("start" in obj or "summary" in obj):
+      out.append(obj)
+    else:
+      for v in obj.values():
+        calendar_events(v, out)
+
+
+def event_date(ev):
+  start = ev.get("start")
+  if isinstance(start, dict):
+    start = start.get("dateTime") or start.get("date")
+  return str(start or "")[:10]
+
+
+def attendee_match(name, attendee):
+  """Is this attendee the person: their display name, or first.last@, flast@, firstlast@ (and _ or -)."""
+  want = name_tokens(name)
+  if len(want) < 2 or not isinstance(attendee, dict):
+    return False
+  got = name_tokens(attendee.get("displayName") or attendee.get("name") or "")
+  if got and got[0] == want[0] and got[-1] == want[-1]:
+    return True
+  local = (attendee.get("email") or "").split("@")[0].lower()
+  first, last = want[0], want[-1]
+  return local in {f"{first}.{last}", f"{first}_{last}", f"{first}-{last}", f"{first}{last}", f"{first[0]}{last}"}
+
+
+def read_attendees(path):
+  """{lower-case name: (count, last)} from calendar-events.py attendees output, as text
+  ("Jane Doe: 2 event(s), last Tue 20 Oct 2026 "Title" (W), via ...") or --json."""
+  out = {}
+  try:
+    with open(path, encoding="utf-8") as f:
+      text = f.read()
+  except OSError as e:
+    pa.die(f"can't read --attendees {path}: {e.strerror}")
+  try:
+    rows = json.loads(text)
+  except ValueError:
+    rows = None
+  if isinstance(rows, list):
+    for r in rows:
+      if isinstance(r, dict) and r.get("name"):
+        last = r.get("last") or {}
+        what = " ".join(x for x in (last.get("date"), f'"{last["title"]}"' if last.get("title") else "") if x)
+        out[r["name"].lower()] = (int(r.get("count") or 0), what)
+    return out
+  for line in text.splitlines():
+    m = re.match(r"\s*([^:\t#]+?)\s*(?::|\t)\s*(\d+)\b(.*)$", line)
+    if m:
+      last = re.search(r"\blast (.+?)(?:, next |, via |$)", m.group(3))
+      out[m.group(1).lower()] = (int(m.group(2)), last.group(1).strip() if last else "")
+  return out
+
+
 def cmd_evidence(args):
+  events = []
+  for path in args.events or []:
+    try:
+      with open(path, encoding="utf-8") as f:
+        text = f.read()
+    except OSError as e:
+      pa.die(f"can't read --events {path}: {e.strerror}")
+    for doc in json_docs(text):
+      calendar_events(doc, events)
+    if not events:
+      print(f"# no events with attendees in {path}: is it list_events output?", file=sys.stderr)
+  attendees = {}
+  for path in args.attendees or []:
+    attendees.update(read_attendees(path))
   meetings_dir = os.path.join(pa.GTD, "meetings")
   people_dir = os.path.join(pa.GTD, "people")
   cutoff = time.time() - args.days * 86400
@@ -565,9 +972,26 @@ def cmd_evidence(args):
     met = [f for f, t in transcripts if key in t or slug in f.lower()]
     own = own or f"{name.replace(' ', '_')}.md"
     mentioned = [f for f, t in notes if f != own and key in t]
-    level = "met" if met else "in-touch" if mentioned else "forgotten?"
-    ev = [f"meetings/{f}" for f in met[:3]] + [f"people/{f}" for f in mentioned[:3]]
+    cal = []
+    for e in sorted(events, key=event_date, reverse=True):
+      if any(attendee_match(name, a) and (a.get("responseStatus") != "declined") for a in e["attendees"]):
+        cal.append(f"calendar: {' '.join((e.get('summary') or '(no title)').split())} {event_date(e)}")
+    count, last = attendees.get(key, (0, ""))
+    if count:
+      cal.insert(0, f"calendar: {count} event(s)" + (f", last {last}" if last else ""))
+    level = "met" if met or cal else "in-touch" if mentioned else "forgotten?"
+    ev = cal[:2] + [f"meetings/{f}" for f in met[:3]] + [f"people/{f}" for f in mentioned[:3]]
     print(f"{name}\t{level}\t{'; '.join(ev) or '-'}")
+
+
+def cmd_mail_query(args):
+  names = []
+  for name, _ in people_in(sys.stdin.read()):
+    name = " ".join(name.replace('"', "").split())
+    if name and name not in names:
+      names.append(name)
+  for i in range(0, len(names), args.size):
+    print(f"newer_than:{args.days}d (" + " OR ".join(f'"{n}"' for n in names[i:i + args.size]) + ")")
 
 
 LEVEL_POINTS = {"close": 5, "met": 3, "in-touch": 2}
@@ -638,7 +1062,7 @@ def score_post(post, person):
 
 
 def cmd_feed(args):
-  posts = read_page(sys.stdin.read(), "FEED-END")
+  posts = page_rows(args, "feed")
   people = people_by_linkedin()
   best = {}
   for post in posts:
@@ -667,22 +1091,33 @@ def main():
   p = sub.add_parser("budget")
   p.add_argument("--per-day", type=int, default=20)
   p.add_argument("--per-week", type=int, default=150)
+  def from_download(p, kind):
+    p.add_argument("--from-download", nargs="?", const=kind, metavar="KIND",
+                   help=f"read the newest pa-linkedin-{kind}-*.json download, not stdin")
+    p.add_argument("--wait", type=float, default=10, help="seconds to wait for the download (10)")
+
   p = sub.add_parser("queue")
   p.add_argument("--max", type=int, default=20)
+  from_download(p, "viewers")
   p = sub.add_parser("log")
   p.add_argument("--follows", action="store_true", help="a follow-follower.js result, to the follows log")
   p.add_argument("--email", help="a step 3b result for this address, to the correspondents log")
   p.add_argument("status")
   p.add_argument("url")
   p.add_argument("name", nargs="?", default="")
-  sub.add_parser("suggestions")
+  from_download(sub.add_parser("suggestions"), "suggestions")
   p = sub.add_parser("follows")
   p.add_argument("--per-day", type=int, default=25)
+  from_download(p, "followers")
   p = sub.add_parser("connections")
   p.add_argument("out", nargs="?", help="default $TMPDIR/linkedin-connections-<YYYYMMDD>.json")
-  sub.add_parser("export")
+  from_download(p, "connections")
+  p = sub.add_parser("export")
+  p.add_argument("--import", dest="do_import", action="store_true",
+                 help="with ACTION import, run gtd import-connections --auto on the zip")
   p = sub.add_parser("defer")
   p.add_argument("--email", action="store_true", help="correspondents lines (email<TAB>name...)")
+  p.add_argument("--rest", action="store_true", help="the saved queue's people not yet tried, not stdin")
   p = sub.add_parser("correspondents")
   p.add_argument("--gog", action="append", choices=["work", "personal"], help="read this mailbox's sent mail")
   p.add_argument("--stdin-mailbox", choices=["work", "personal"], default="work",
@@ -690,6 +1125,8 @@ def main():
   p.add_argument("--since", help="UTC time, as linkedin-sync-last (default LAST)")
   p.add_argument("--max", type=int, default=20)
   p.add_argument("--max-recipients", type=int, default=8)
+  p.add_argument("--threads-json", action="append", metavar="FILE",
+                 help="saved Gmail connector search_threads/get_thread JSON (counts as --stdin-mailbox)")
   p = sub.add_parser("match")
   p.add_argument("name")
   p.add_argument("--company", default="")
@@ -697,14 +1134,20 @@ def main():
   p.add_argument("now")
   p = sub.add_parser("evidence")
   p.add_argument("--days", type=int, default=30)
+  p.add_argument("--events", action="append", metavar="FILE", help="saved calendar list_events JSON")
+  p.add_argument("--attendees", action="append", metavar="FILE", help="calendar-events.py attendees output")
+  p = sub.add_parser("mail-query")
+  p.add_argument("--days", type=int, default=30)
+  p.add_argument("--size", type=int, default=10, help="names to a query (10)")
   p = sub.add_parser("feed")
   p.add_argument("--min", type=float, default=3.5, help="the lowest score shown")
   p.add_argument("--max", type=int, default=15)
+  from_download(p, "feed")
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
    "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export,
    "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match,
-   "feed": cmd_feed}[args.cmd](args)
+   "feed": cmd_feed, "mail-query": cmd_mail_query}[args.cmd](args)
 
 
 if __name__ == "__main__":

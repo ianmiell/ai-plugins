@@ -1,6 +1,13 @@
-"""Shared helpers for the personal-assistant scripts: mailboxes, gog, gtd paths, the machine.
+"""Shared helpers for the personal-assistant scripts: mailboxes, gog, gtd paths, the machine, tools.
 
 Not run directly. The scripts next to it import it.
+
+Background and launchd sessions start with a bare PATH (/usr/bin:/bin:/usr/sbin:/sbin), so on
+import this puts the usual tool folders (TOOL_DIRS: Homebrew, /usr/local/bin, ~/.local/bin and
+the gtd repo's bin) that exist and aren't on PATH yet at its front. Subprocesses (git hooks,
+bin/gtd-push calling a bare `gtd`) then find them too. `tool(name)` finds one binary:
+
+  pa.tool("ffprobe")      # "/opt/homebrew/bin/ffprobe", or None if it's nowhere
 """
 
 import datetime
@@ -8,6 +15,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -23,8 +31,37 @@ STATE = os.path.expanduser(os.environ.get("PA_STATE", "~/.claude/personal-assist
 OPEN_STATUSES = ("todo", "waiting")
 STATUSES = ("todo", "waiting", "background", "someday", "new", "closed")
 
+# Where tools live when PATH doesn't say: launchd's PATH has none of these.
+TOOL_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", os.path.expanduser("~/.local/bin"),
+             os.path.join(GTD, "bin"))
+
+
+def extend_path():
+  """Put the TOOL_DIRS that exist and aren't on PATH yet at its front (in os.environ, so
+  subprocesses inherit it). Dirs already on PATH keep their place."""
+  have = [d for d in os.environ.get("PATH", "").split(os.pathsep) if d]
+  add = [d for d in TOOL_DIRS if d not in have and os.path.isdir(d)]
+  if add or not have:
+    os.environ["PATH"] = os.pathsep.join(add + (have or ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]))
+
+
+def tool(name):
+  """The full path of a binary: on PATH first, then in TOOL_DIRS. None if it's in neither."""
+  found = shutil.which(name)
+  if found:
+    return found
+  for d in TOOL_DIRS:
+    p = os.path.join(d, name)
+    if os.path.isfile(p) and os.access(p, os.X_OK):
+      return p
+  return None
+
+
+extend_path()
+
 # PA_GOG lets the tests put a fake gog in place of the real one.
-GOG = os.environ.get("PA_GOG", "gog")
+GOG = os.environ.get("PA_GOG") or tool("gog") or "gog"
+GOG_TIMEOUT = 120
 
 
 def die(msg, code=1):
@@ -63,11 +100,18 @@ def machine():
 
 
 class GogError(Exception):
-  pass
+  """A gog call that failed. str() has the command; .detail is just what went wrong."""
+
+  def __init__(self, msg, detail=None):
+    super().__init__(msg)
+    self.detail = detail or msg
 
 
-def gog(mailbox, *args, parse=True, dry_run=False):
-  """Run gog for one mailbox, always with --gmail-no-send. Returns parsed JSON (or text)."""
+def gog(mailbox, *args, parse=True, dry_run=False, timeout=None):
+  """Run gog for one mailbox, always with --gmail-no-send. Returns parsed JSON (or text).
+
+  Raises GogError when gog fails, isn't installed, or takes longer than timeout seconds
+  (GOG_TIMEOUT, 120, by default)."""
   cmd = [GOG, "-a", mailbox_address(mailbox), "--gmail-no-send", "--no-input"]
   if parse:
     cmd += ["--json", "--results-only"]
@@ -77,16 +121,29 @@ def gog(mailbox, *args, parse=True, dry_run=False):
     return None
   # Gmail's per-minute quota runs out on big batches: back off and retry.
   for wait in (5, 15, 30, 60, None):
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    try:
+      p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout or GOG_TIMEOUT)
+    except subprocess.TimeoutExpired:
+      detail = f"no answer from gog after {timeout or GOG_TIMEOUT:g}s"
+      raise GogError(f"{' '.join(cmd[1:])}: {detail}", detail) from None
+    except OSError as e:
+      detail = (f"can't run gog ({GOG}): {e.strerror or e}. Install it (brew install gogcli) "
+                f"or check PATH; looked on PATH and in {', '.join(TOOL_DIRS)}")
+      raise GogError(detail) from None
     if p.returncode == 0 or "rateLimitExceeded" not in (p.stderr + p.stdout) or wait is None:
       break
     time.sleep(wait)
   if p.returncode != 0:
-    raise GogError(f"{' '.join(cmd[1:])}: {(p.stderr or p.stdout).strip()}")
+    detail = (p.stderr or p.stdout).strip() or f"gog exited with {p.returncode}"
+    raise GogError(f"{' '.join(cmd[1:])}: {detail}", detail)
   if not parse:
     return p.stdout
   out = p.stdout.strip()
-  return json.loads(out) if out else None
+  try:
+    return json.loads(out) if out else None
+  except ValueError:
+    detail = f"gog's output isn't JSON: {one_line(out, 80)}"
+    raise GogError(f"{' '.join(cmd[1:])}: {detail}", detail) from None
 
 
 def search(mailbox, query, max_n=25):

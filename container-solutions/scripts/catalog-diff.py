@@ -4,6 +4,7 @@
   catalog-diff.py read                    fetch the catalog (values and hyperlinks) into the cache
   catalog-diff.py diff [--limit 15] [--all] [--drive NAME ...]
   catalog-diff.py blog [--since 2025-01-01]
+  catalog-diff.py rows --tab "Internal Content" ID_OR_LINK ...
 
 `read` keeps one entry per catalog row: tab, row, section heading, title and every link in the
 row (cell text and hyperlinks, so a title like "Demo Video" still yields its Drive file).
@@ -24,6 +25,14 @@ drive-cache/catalog-diff.tsv.
 
 `blog` compares the Blogs tab with the blog's sitemap and lists posts that aren't on it. The
 sitemap's lastmod is the last edit, not the publish date (many old posts share one bulk date).
+
+`rows` prints catalog rows to paste for Drive files in the cached inventory: one tab-separated
+line per file, in that tab's own column order (from its header row, as `read` saw it). It fills
+the title (the file name without its extension), the link, the date (last modified) and the type
+(Slide Deck, Video, PDF, ...), and leaves every other column empty for Ian. A tab whose title and
+link share a column (Most Popular's "Link") gets =HYPERLINK("url", "title"), which Sheets turns
+into a linked title when pasted. It writes nothing: Ian pastes the rows himself. Exits 1 if an ID
+isn't in the inventory (the other rows still print), 2 for an unknown tab or one with no header.
 """
 
 import argparse
@@ -55,6 +64,17 @@ def quoted(tab):
   return "'" + tab.replace("'", "''") + "'"
 
 
+def find_header(values):
+  """(row index, title column) of a tab's header row: the first of its top six rows with a
+  "Title" (or, failing that, "Link") cell. (None, None) if there isn't one."""
+  for r, row in enumerate(values[:6]):
+    low = [str(c).strip().lower() for c in row]
+    for want in ("title", "link"):
+      if want in low:
+        return r, low.index(want)
+  return None, None
+
+
 def entries_for_tab(tab, values, links):
   """One entry per catalog row with something in it. Section headings and the tag-count row
   aren't entries; a heading names the section for the rows below it."""
@@ -62,15 +82,7 @@ def entries_for_tab(tab, values, links):
   for l in links:
     if l.get("link") and not l["link"].startswith("#"):
       by_row[l["row"]].append(l["link"])
-  header, title_col = None, None
-  for r, row in enumerate(values[:6]):
-    low = [str(c).strip().lower() for c in row]
-    for want in ("title", "link"):
-      if want in low:
-        header, title_col = r, low.index(want)
-        break
-    if header is not None:
-      break
+  header, title_col = find_header(values)
   out, section = [], ""
   for r, row in enumerate(values):
     if header is not None and r <= header:
@@ -101,18 +113,21 @@ def read(args):
   cid = catalog_id()
   meta = cs.gog("sheets", "metadata", cid)
   tabs = [s["properties"]["title"] for s in meta.get("sheets", [])]
-  entries = []
+  entries, headers = [], {}
   for tab in tabs:
     values = (cs.gog("sheets", "get", cid, quoted(tab)) or {}).get("values") or []
     links = (cs.gog("sheets", "links", "get", cid, quoted(tab)) or {}).get("links") or []
     got = entries_for_tab(tab, values, links)
     entries += got
+    header, _ = find_header(values)
+    if header is not None:
+      headers[tab] = [str(c).strip() for c in values[header]]
     print(cs.line(tab, f"{len(got)} rows", f"{sum(1 for e in got if e['ids'])} with Drive links",
                   f"{sum(1 for e in got if e['urls'] and not e['ids'])} other links",
                   f"{sum(1 for e in got if not e['urls'])} no link"))
   os.makedirs(cs.CACHE, exist_ok=True)
   with open(CATALOG, "w") as f:
-    json.dump({"id": cid, "tabs": tabs, "entries": entries}, f)
+    json.dump({"id": cid, "tabs": tabs, "headers": headers, "entries": entries}, f)
 
 
 def load_catalog():
@@ -281,6 +296,95 @@ def blog(args):
     print(cs.line(mod, u))
 
 
+# What `rows` puts in a column, by its header. Anything else is left for Ian.
+ROLES = [("title", re.compile(r"(?i)\btitle\b|^\s*name\s*$")),
+         ("link", re.compile(r"(?i)\b(link|url)s?\b")),
+         ("date", re.compile(r"(?i)\bdate\b|\b(published|modified)\b")),
+         ("type", re.compile(r"(?i)\b(type|format|kind)\b"))]
+TYPE_WORDS = {"slides": "Slide Deck", "video": "Video", "pdf": "PDF", "doc": "Document",
+              "sheet": "Spreadsheet", "audio": "Audio", "image": "Image", "folder": "Folder",
+              "form": "Form"}
+EXT = re.compile(r"(?i)\.(pdf|docx?|pptx?|xlsx?|mp4|mov|m4a|mp3|key|png|jpe?g)$")
+
+
+def column_roles(header):
+  """The role of each header cell ("title", "link", "date", "type" or None), each role at most
+  once. A tab with a "Link" column but no "Title" one keeps its titles in the link column."""
+  roles, taken = [], set()
+  for h in header:
+    role = next((r for r, rx in ROLES if r not in taken and rx.search(h)), None)
+    if role:
+      taken.add(role)
+    roles.append(role)
+  if "title" not in taken and "link" in taken:
+    roles = ["title+link" if r == "link" else r for r in roles]
+  return roles
+
+
+def file_url(item):
+  base = {"doc": "https://docs.google.com/document/d/", "slides": "https://docs.google.com/presentation/d/",
+          "sheet": "https://docs.google.com/spreadsheets/d/", "folder": "https://drive.google.com/drive/folders/"}
+  return base.get(cs.kind(item["mime"]), "https://drive.google.com/file/d/") + item["id"]
+
+
+def hyperlink(url, title):
+  q = lambda s: '"' + s.replace('"', '""') + '"'
+  return f"=HYPERLINK({q(url)}, {q(title)})"
+
+
+def pick_tab(cat, want):
+  tabs = cat.get("tabs") or []
+  for match in (lambda t: t == want, lambda t: t.lower() == want.lower(),
+                lambda t: t.lower().startswith(want.lower())):
+    hits = [t for t in tabs if match(t)]
+    if len(hits) == 1:
+      return hits[0]
+  cs.die(f"no single catalog tab called {want!r}; the tabs are: " + ", ".join(tabs), 2)
+
+
+def rows(args):
+  cat = load_catalog()
+  tab = pick_tab(cat, args.tab)
+  if "headers" not in cat:
+    cs.die("the cached catalog has no column headers: run catalog-diff.py read again", 2)
+  header = cat["headers"].get(tab)
+  if not header:
+    cs.die(f"{tab} has no header row with a Title or Link column, so its column order isn't known: "
+           "write its rows by hand", 2)
+  roles = column_roles(header)
+  if not any(r and ("title" in r) for r in roles):
+    cs.die(f"{tab}'s header ({', '.join(header)}) has no title column: write its rows by hand", 2)
+  by_id = {i["id"]: i for i in cs.load_inventory(need=False)}
+  on_catalog = collections.defaultdict(list)
+  for e in cat["entries"]:
+    for fid in e["ids"]:
+      on_catalog[fid].append(ref(e))
+  wanted = []
+  for a in args.ids:
+    for fid in cs.drive_ids(a) or [a.strip()]:
+      if fid not in wanted:
+        wanted.append(fid)
+  print(f"{tab}: " + " | ".join(h or "(blank)" for h in header), file=sys.stderr)
+  missing = 0
+  for fid in wanted:
+    i = by_id.get(fid)
+    if i is None:
+      print(f"{fid}: not in the cached inventory (drive-inventory.py find, or refresh)", file=sys.stderr)
+      missing += 1
+      continue
+    if on_catalog.get(fid):
+      print(f"{fid}: already on the catalog at {' '.join(on_catalog[fid])}", file=sys.stderr)
+    title = EXT.sub("", i["name"]).strip()
+    url = file_url(i)
+    fill = {"title": title, "link": url, "title+link": hyperlink(url, title), "date": i["modified"],
+            "type": TYPE_WORDS.get(cs.kind(i["mime"]), "")}
+    if "link" not in roles and "title+link" not in roles:
+      fill["title"] = hyperlink(url, title)
+    cells = [fill.get(r, "") if r else "" for r in roles]
+    print("\t".join(c.replace("\t", " ").replace("\n", " ") for c in cells))
+  return 1 if missing else 0
+
+
 def main():
   ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   sub = ap.add_subparsers(dest="cmd", required=True)
@@ -293,9 +397,13 @@ def main():
   p = sub.add_parser("blog")
   p.add_argument("--since")
   p.set_defaults(fn=blog)
+  p = sub.add_parser("rows")
+  p.add_argument("--tab", required=True)
+  p.add_argument("ids", nargs="+", metavar="ID_OR_LINK")
+  p.set_defaults(fn=rows)
   args = ap.parse_args()
   try:
-    args.fn(args)
+    sys.exit(args.fn(args) or 0)
   except cs.GogError as e:
     cs.die(str(e))
 

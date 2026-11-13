@@ -4,31 +4,22 @@
 # the inbox (~/Movies/meetings-inbox, where OBS records) or a new bare-stem transcript lands in
 # ~/git/gtd/meetings.
 #
-# The agent runs meeting-watch.sh from this checkout, not from the installed plugin, whose
-# folder name changes with each version. Re-run after moving the checkout.
+# It copies meeting-watch.sh and launchd-common.sh from this checkout to
+# ~/.local/share/personal-assistant/launchd/ and the agent runs that copy, so it doesn't
+# depend on the branch the checkout is on. Re-run it after changing either script.
 #
 # Any inbox recordings and bare-stem transcripts already there are marked as seen so installing
 # doesn't start a session for each; process those with /personal-assistant:meeting.
 
 set -euo pipefail
+source "$(dirname "$0")/install-common.sh"
 
-LABEL=com.ianmiell.meeting-watch
-HERE="$(cd "$(dirname "$0")" && pwd)"
 MEETINGS_DIR="${MEETINGS_DIR:-${HOME}/git/gtd/meetings}"
 INBOX_DIR="${INBOX_DIR:-${HOME}/Movies/meetings-inbox}"
-PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
-LOG="${HOME}/Library/Logs/${LABEL}.log"
 SEEN="${XDG_STATE_HOME:-${HOME}/.local/state}/personal-assistant/meeting-seen"
-DOMAIN="gui/$(id -u)"
 
-launchctl bootout "${DOMAIN}/${LABEL}" 2>/dev/null || true
-
-if [[ ${1:-} == --uninstall ]]
-then
-  rm -f "${PLIST}"
-  echo "Removed ${LABEL}. The seen list (${SEEN}) and log (${LOG}) are left in place."
-  exit 0
-fi
+install_init com.ianmiell.meeting-watch
+[[ ${1:-} == --uninstall ]] && install_uninstall "The seen list (${SEEN}) and log (${LOG}) are left in place."
 
 if [[ ! -d ${MEETINGS_DIR} ]]
 then
@@ -36,7 +27,7 @@ then
   exit 1
 fi
 
-mkdir -p "$(dirname "${PLIST}")" "$(dirname "${LOG}")" "$(dirname "${SEEN}")" "${INBOX_DIR}"
+mkdir -p "$(dirname "${SEEN}")" "${INBOX_DIR}"
 touch "${SEEN}"
 
 shopt -s nullglob
@@ -50,14 +41,12 @@ do
   echo "${stem}" >> "${SEEN}"
 done
 
-sed -e "s|__SCRIPT__|${HERE}/meeting-watch.sh|" \
-    -e "s|__MEETINGS_DIR__|${MEETINGS_DIR}|g" \
-    -e "s|__INBOX_DIR__|${INBOX_DIR}|g" \
-    -e "s|__LOG__|${LOG}|g" \
-    "${HERE}/${LABEL}.plist" > "${PLIST}"
-plutil -lint "${PLIST}"
-launchctl bootstrap "${DOMAIN}" "${PLIST}"
+install_copy meeting-watch.sh launchd-common.sh
+install_plist -e "s|__SCRIPT__|${DEST}/meeting-watch.sh|" \
+              -e "s|__MEETINGS_DIR__|${MEETINGS_DIR}|g" \
+              -e "s|__INBOX_DIR__|${INBOX_DIR}|g"
 
 echo "Installed ${LABEL}: watching ${INBOX_DIR} and ${MEETINGS_DIR}, logging to ${LOG}"
+echo "It runs ${DEST}/meeting-watch.sh: re-run this installer after changing the script."
 echo "Point OBS's recording path at ${INBOX_DIR}."
 echo "New meetings start background sessions: list them with 'claude agents', open one with 'claude attach <id>'."

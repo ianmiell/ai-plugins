@@ -15,10 +15,13 @@ a CCF demo), not for routine admin.
 
 **How to write it:** `scripts/people-note.py` at the plugin root does all of
 this (`find`, then `log`; `check` lists lines that ended up in the wrong place).
-- Find the file by name: `ls ~/git/gtd/people | grep -i 'Firstname_Lastname'`,
-  and also try the email address via `grep -li '<address>' people/*.md`.
-  Watch for changed names (e.g. Louise Corrigan → Louise Cox) and
-  `_2` duplicates. (`people-note.py find "Name" --email <address>`)
+Don't search the people folder by hand with `ls`, `grep` or globs.
+- Find the files: one `people-note.py find --batch` call for everyone in the
+  run, a line each on stdin (`<item>: Firstname Lastname | address`). It
+  tries the exact name and its `_2` duplicates, files that contain the
+  address (which catches changed names, e.g. Louise Corrigan → Louise Cox),
+  and files with every part of the name. (`people-note.py find "Name" --email
+  <address>` for one person.)
 - Add it at the end of the file's `### Email log` section (add the heading
   once if it isn't there, before any `## LinkedIn messages` section that
   `gtd import-messages` keeps at the end). Never edit inside the

@@ -15,13 +15,18 @@
 # /personal-assistant:meeting by hand to pick up anything left over.
 #
 # launchd fires on any change in either folder (OBS writing, remuxes, git pulls), so this must
-# be quick and safe to run repeatedly.
+# be quick and safe to run repeatedly, and it only logs when it finds something new.
+#
+# install-meeting-watch.sh copies this and launchd-common.sh to
+# ~/.local/share/personal-assistant/launchd/, and the agent runs that copy.
 
 set -u
 
 MEETINGS_DIR="${MEETINGS_DIR:-${HOME}/git/gtd/meetings}"
 INBOX_DIR="${INBOX_DIR:-${HOME}/Movies/meetings-inbox}"
 GTD_DIR="$(dirname "${MEETINGS_DIR}")"
+source "$(dirname "$0")/launchd-common.sh" \
+  || { echo "$(date '+%F %T') cannot load launchd-common.sh next to $0" >&2; exit 1; }
 STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/personal-assistant"
 SEEN="${STATE_DIR}/meeting-seen"
 SETTLE_SECONDS=10   # the file must keep the same size for this long
@@ -53,11 +58,7 @@ settled() {
 # launchd's PATH is minimal and ~/.zshrc isn't read, so add claude (~/.local/bin), Homebrew
 # (ffprobe for /meeting's .mkv check) and gtd (bin/gtd-push calls a bare `gtd`); the
 # background session inherits it.
-export PATH="${HOME}/.local/bin:/opt/homebrew/bin:${GTD_DIR}/bin:${PATH}"
-
-start_session() {
-  (cd "${GTD_DIR}" && claude --bg --name "meeting $*" "/personal-assistant:meeting $*")
-}
+pa_path
 
 shopt -s nullglob
 new_stems=()
@@ -69,7 +70,7 @@ do
   grep -qxF "${stem}" "${SEEN}" && continue
   if ! settled "${file}"
   then
-    echo "$(date '+%F %T') ${name} is empty, gone or still growing; will retry on the next change"
+    log "${name} is empty, gone or still growing; will retry on the next change"
     continue
   fi
   echo "${stem}" >> "${SEEN}"
@@ -78,5 +79,7 @@ done
 
 (( ${#new_stems[@]} == 0 )) && exit 0
 
-echo "$(date '+%F %T') new meeting(s): ${new_stems[*]}"
-start_session "${new_stems[@]}" || echo "$(date '+%F %T') failed to start a background claude session" >&2
+# Not logged on every run: launchd fires on every change in either folder.
+log_start "meeting session for ${new_stems[*]}"
+preflight || exit 1
+start_claude --bg --name "meeting ${new_stems[*]}" "/personal-assistant:meeting ${new_stems[*]}"

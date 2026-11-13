@@ -13,6 +13,8 @@
 // profile link as LinkedIn wrote it.
 // Class names on the page are generated, so it goes by structure: /in/ profile links, and the
 // "Connected on" text in the card around them.
+// When done it also saves the list as a download (see save() below) and returns its name as
+// `file`; the page text stays as the fallback for get_page_text.
 await (async () => {
   const SINCE = new Date("__SINCE__T00:00:00");
   const MAX_SCROLLS = 8;   // per call, ~10 cards each: javascript_tool gives up after 45s
@@ -48,6 +50,26 @@ await (async () => {
   }, null);
   const finished = list => (oldest(list) !== null && oldest(list) < SINCE) || list.length >= MAX_CARDS;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Saves the list as a download, ~/Downloads/pa-linkedin-<kind>-<YYYYMMDDTHHMMSSZ>.json
+  // ({kind, count, rows}), for `linkedin-state.py ... --from-download`: nothing to copy by hand.
+  // Returns the file name, or why it couldn't.
+  const save = (kind, rows) => {
+    try {
+      const file = `pa-linkedin-${kind}-${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "")}.json`;
+      const href = URL.createObjectURL(new Blob([JSON.stringify({kind, count: rows.length, rows})], {type: "application/json"}));
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = file;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 60000);
+      return file;
+    } catch (e) {
+      return `not saved (${e.message}): use get_page_text`;
+    }
+  };
 
   let list = cards(), done = finished(list), stuck = 0;
   for (let i = 0; i < MAX_SCROLLS && !done; i++) {
@@ -60,10 +82,12 @@ await (async () => {
     done = finished(list) || stuck >= 3;
   }
   const recent = list.filter(c => c.name && !(new Date(c.connected) < SINCE));
+  let file;
   if (done) {
     const pre = document.createElement("pre");
     pre.textContent = ["GTD-SYNC-BEGIN", ...recent.map(c => JSON.stringify(c)), `GTD-SYNC-END ${recent.length}`].join("\n");
     main.replaceChildren(pre);
+    file = save("connections", recent);
   }
-  return JSON.stringify({done, loaded: list.length, capped: list.length >= MAX_CARDS, count: recent.length});
+  return JSON.stringify({done, loaded: list.length, capped: list.length >= MAX_CARDS, count: recent.length, file});
 })()
