@@ -1,6 +1,6 @@
 // follow-follower.js: run on the followers page, after extract-followers.js has loaded it, with
 // Claude in Chrome's javascript_tool, after replacing __URL__ with a follower's profile URL from its
-// output (see SKILL.md step 5b). Follows that one person back. Returns JSON {status, detail?}:
+// output (see SKILL.md step 3c). Follows that one person back. Returns JSON {status, detail?}:
 //   followed    the button turned into Following
 //   already     Ian already follows them: nothing done
 //   missing     their card isn't loaded on the page (run extract-followers.js again): nothing done

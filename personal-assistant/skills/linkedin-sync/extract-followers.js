@@ -1,15 +1,17 @@
 // extract-followers.js: run on https://www.linkedin.com/mynetwork/network-manager/people-follow/followers/
-// with Claude in Chrome's javascript_tool (see SKILL.md step 5b). Nothing to replace.
+// with Claude in Chrome's javascript_tool (see SKILL.md step 3c). Nothing to replace.
 //
 // The list is newest first and loads 20 cards at a time as the window scrolls (or from "Show more
 // results"). This scrolls at a human pace until MAX_CARDS followers are loaded or the list ends, and
 // returns JSON:
-//   {done, loaded, count}  or  {error}
-// done is false if it stopped after MAX_SCROLLS this call: run it again and it carries on from the
-// cards already loaded. When done, it puts the loaded followers Ian doesn't follow back (their button
-// says Follow, not Following), newest first, at the top of <main>: one JSON object {url, name, headline}
-// per line between FOLLOWERS-BEGIN and FOLLOWERS-END <count> lines, to be read with get_page_text
-// (javascript_tool truncates long results). It keeps the cards, since follow-follower.js clicks
+//   {done, loaded, count, mutual}  or  {error}
+// count is the followers Ian doesn't follow back (their button says Follow, not Following), mutual the
+// ones he does. done is false if it stopped after MAX_SCROLLS this call: run it again and it carries
+// on from the cards already loaded. When done, it puts every loaded follower, newest first, at the top
+// of <main>: one JSON object {url, name, headline, following} per line between FOLLOWERS-BEGIN and
+// FOLLOWERS-END <count of lines> lines, to be read with get_page_text (javascript_tool truncates long
+// results). `linkedin-state.py follows` picks out the ones to follow back, and `mutuals` the mutual
+// follows to invite (the page doesn't say who is a connection). It keeps the cards, since follow-follower.js clicks
 // Follow in them, and clicks nothing but "Show more results".
 // Class names on the page are generated, so it goes by structure: the "Click to follow <name>" and
 // "Click to stop following <name>" buttons, and the /in/ profile link in the card around each one.
@@ -81,16 +83,17 @@ await (async () => {
     done = list.length >= MAX_CARDS || stuck >= 3;
   }
   if (!list.length) return JSON.stringify({error: "no follower cards on the page: has the layout changed?"});
-  const follow = list.filter(c => !c.following && c.name).map(({url, name, headline}) => ({url, name, headline}));
+  const all = list.filter(c => c.name);
+  const follow = all.filter(c => !c.following);
   let file;
   if (done) {
     const old = document.getElementById("gtd-followers");
     if (old) old.remove();
     const pre = document.createElement("pre");
     pre.id = "gtd-followers";
-    pre.textContent = ["FOLLOWERS-BEGIN", ...follow.map(c => JSON.stringify(c)), `FOLLOWERS-END ${follow.length}`].join("\n");
+    pre.textContent = ["FOLLOWERS-BEGIN", ...all.map(c => JSON.stringify(c)), `FOLLOWERS-END ${all.length}`].join("\n");
     main.prepend(pre);
-    file = save("followers", follow);
+    file = save("followers", all);
   }
-  return JSON.stringify({done, loaded: list.length, count: follow.length, file});
+  return JSON.stringify({done, loaded: list.length, count: follow.length, mutual: all.length - follow.length, file});
 })()

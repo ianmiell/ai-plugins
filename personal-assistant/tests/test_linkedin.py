@@ -167,6 +167,34 @@ class LinkedIn(Base):
     self.assertNotIn("RERUN", self.li("log", "--follows", "followed", profile("dd"), "Dd", check=0).stdout)
     self.assertIn("STOP limit", self.li("log", "--follows", "limit", profile("ee"), "Ee", check=0).stdout)
 
+  def test_follows_and_mutuals(self):
+    # Nothing read yet this run: mutuals says to read the followers first
+    self.assertIn("follows --from-download", self.li("mutuals", check=1).stderr)
+    rows = [{"url": profile("new-fan"), "name": "New Fan", "following": False},
+            {"url": profile("old-pal"), "name": "\U0001f4bbOld Pal", "following": True},
+            {"url": profile("got-tried"), "name": "Got Tried", "following": True},
+            {"url": profile("acoaa1"), "name": "José Núñez, PhD", "following": True},
+            {"url": profile("acoaa2"), "name": "Ann Other", "following": True},
+            {"url": profile("follows-me"), "name": "Follows Me", "following": False}]
+    # A connection in people/: on the followers page by member id, so found by name (accents, credentials)
+    with open(os.path.join(self.gtd, "people", "Jose_Nunez.md"), "w") as f:
+      f.write("## José Núñez\n\n- LinkedIn: https://www.linkedin.com/in/jose-nunez\n")
+    with open(os.path.join(self.gtd, "people", "Ann_Other.md"), "w") as f:
+      f.write("## Ann Other\n\n- LinkedIn: https://www.linkedin.com/in/acoaa2\n")
+    self.li("log", "no-connect", profile("got-tried"), "Got Tried", check=0)
+    self.download("followers", rows)
+    out = self.li("follows", "--from-download", "--wait", "0", check=0).stdout.splitlines()
+    self.assertTrue(out[0].startswith("# 2 follower(s) not followed back on the page, 2 to follow"))
+    self.assertEqual(out[1:], [f"{profile('new-fan')}\tNew Fan", f"{profile('follows-me')}\tFollows Me"])
+    # New Fan is followed back this run, Follows Me isn't (LinkedIn didn't take it)
+    self.li("log", "--follows", "followed", profile("new-fan"), "New Fan", check=0)
+    self.li("log", "--follows", "not-followed", profile("follows-me"), "Follows Me", check=0)
+    out = self.li("mutuals", "--visits", "1", check=0).stdout.splitlines()
+    self.assertEqual(out[0], "# 5 mutual follower(s) on the page, 2 to try; skipped: 2 in people/ (connections), "
+                             "1 tried before")
+    self.assertEqual(out[1:], [f"{profile('new-fan')}\tNew Fan", "# over the cap: the next run picks these up",
+                               f"{profile('old-pal')}\t\U0001f4bbOld Pal"])
+
   # --- correspondents: the Gmail connector's JSON, and gog failures
 
   def test_threads_json(self):

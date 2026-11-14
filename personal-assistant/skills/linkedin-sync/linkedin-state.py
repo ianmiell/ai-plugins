@@ -7,8 +7,9 @@ the local evidence for new people's levels.
   linkedin-state.py queue --from-download     # step 4.4: who to invite, in order (or < page.txt)
   linkedin-state.py suggestions --from-download  # step 5.3: suggested people to invite, in order
   linkedin-state.py log sent URL "Name"       # after each connect-profile.js result: may say STOP
-  linkedin-state.py follows --from-download   # step 5b: followers to follow back, in order
+  linkedin-state.py follows --from-download   # step 3c: followers to follow back, in order
   linkedin-state.py log --follows followed URL "Name"  # after each follow-follower.js result
+  linkedin-state.py mutuals                   # step 3c: mutual followers to invite, in order
   linkedin-state.py defer --rest              # the saved queue's untried people, as deferred
   linkedin-state.py defer < rest.tsv          # these people, as deferred
   linkedin-state.py done NOW                  # write NOW to linkedin-sync-last
@@ -44,11 +45,21 @@ follower followed back or tried). The follows have their own log so that followi
 changes whether they're invited.
 
 `follows` reads the get_page_text output of the followers page after extract-followers.js
-(FOLLOWERS-BEGIN ... FOLLOWERS-END <count>), checks the count, and prints `url<TAB>name` lines
-newest first, leaving out anyone the follows log has as followed, already or not-followed
-(LinkedIn wouldn't let Ian follow them: tried once, then left to Ian). After --per-day
-(25) less the follows of the last 24 hours, it prints `# over the cap` and the rest, which the
-next run picks up from the page again.
+(FOLLOWERS-BEGIN ... FOLLOWERS-END <count>; one line per follower loaded, with `following` true
+when Ian follows them back), checks the count, and prints `url<TAB>name` lines for the ones Ian
+doesn't follow back, newest first, leaving out anyone the follows log has as followed, already or
+not-followed (LinkedIn wouldn't let Ian follow them: tried once, then left to Ian). After
+--per-day (25) less the follows of the last 24 hours, it prints `# over the cap` and the rest,
+which the next run picks up from the page again. It saves every follower it read
+(linkedin-followers.tsv) for `mutuals`.
+
+`mutuals` (after the follow-backs) prints `url<TAB>name` lines, newest first, for the followers
+Ian now follows too (`following` on the page, or followed or already in the follows log): mutual
+follows who aren't connected, to invite. It leaves out anyone the invitations log has at all
+(tried once, as for suggestions), and anyone in people/ with a LinkedIn link, by profile or by
+name (a connection: the followers page doesn't say who is one, so the rest are checked on their
+profile by connect-profile.js). After --visits (30) it prints `# over the cap` and the rest, which
+the next run picks up from the page again.
 
 `queue` reads the get_page_text output of the profile views page (or just its JSON lines),
 checks the count against `VIEWERS-END <count>`, and prints `url<TAB>name` lines: viewers
@@ -143,6 +154,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 import urllib.parse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
@@ -153,6 +165,7 @@ STATE = os.path.expanduser(os.environ.get("PA_LINKEDIN_STATE", "~/.local/state/p
 LAST = os.path.join(STATE, "linkedin-sync-last")
 LOG = os.path.join(STATE, "linkedin-invites.log")
 FOLLOWS_LOG = os.path.join(STATE, "linkedin-follows.log")
+FOLLOWERS = os.path.join(STATE, "linkedin-followers.tsv")
 CORRESPONDENTS_LOG = os.path.join(STATE, "linkedin-correspondents.log")
 QUEUE = os.path.join(STATE, "linkedin-queue.tsv")
 CORRESPONDENTS_QUEUE = os.path.join(STATE, "linkedin-correspondents-queue.tsv")
@@ -313,17 +326,65 @@ def cmd_follows(args):
   log = read_log(FOLLOWS_LOG)
   followed = count_recent("followed", FOLLOWS_LOG)
   left = max(0, args.per_day - followed)
+  # Every follower read, for `mutuals` (an old extract-followers.js gave only the ones not followed back)
+  os.makedirs(STATE, exist_ok=True)
+  with open(FOLLOWERS, "w", encoding="utf-8") as f:
+    f.write(f"# {utc_now()}\n")
+    f.writelines(f"{p['url']}\t{' '.join(p.get('name', '').split())}\t{int(bool(p.get('following')))}\n"
+                 for p in people if p.get("url"))
+  back = [p for p in people if not p.get("following")]
   queue, seen = [], set()
-  for p in people:
+  for p in back:
     url = p.get("url")
     if not url or url in seen or log.get(url, ("",))[0] in FOLLOW_DONE:
       continue
     seen.add(url)
     queue.append((url, p.get("name", "")))
-  print(f"# {len(people)} follower(s) not followed back on the page, {len(queue)} to follow; "
+  print(f"# {len(back)} follower(s) not followed back on the page, {len(queue)} to follow; "
         f"FOLLOWED {followed} in the last 24 hours, LEFT {left}")
   for i, (url, name) in enumerate(queue):
     if i == left:
+      print("# over the cap: the next run picks these up")
+    print(f"{url}\t{name}")
+
+
+def name_key(name):
+  """A name to compare: accents, emoji and credentials (", PhD") dropped, lower case."""
+  name = unicodedata.normalize("NFKD", name.split(",")[0])
+  name = "".join(c for c in name if not unicodedata.combining(c)).lower()
+  return " ".join(re.sub(r"[^a-z' -]", " ", name).split())
+
+
+def cmd_mutuals(args):
+  try:
+    with open(FOLLOWERS, encoding="utf-8") as f:
+      lines = f.read().splitlines()
+    fresh = time.time() - os.path.getmtime(FOLLOWERS) <= QUEUE_MAX_AGE
+  except OSError:
+    lines, fresh = [], False
+  if not fresh:
+    pa.die("no followers list from this run: run extract-followers.js and `follows --from-download` first")
+  follows, invites = read_log(FOLLOWS_LOG), read_log()
+  known = people_by_linkedin()
+  names = {name_key(n) for _, n, _ in known.values()}
+  mutual, queue, in_people, tried = 0, [], 0, 0
+  for line in lines:
+    if not line or line.startswith("#"):
+      continue
+    url, name, following = (line.split("\t") + ["", ""])[:3]
+    if following != "1" and follows.get(url, ("",))[0] not in ("followed", "already"):
+      continue
+    mutual += 1
+    if url in invites:
+      tried += 1
+    elif linkedin_slug(url) in known or name_key(name) in names:
+      in_people += 1
+    else:
+      queue.append((url, name))
+  print(f"# {mutual} mutual follower(s) on the page, {len(queue)} to try; skipped: {in_people} in people/ "
+        f"(connections), {tried} tried before")
+  for i, (url, name) in enumerate(queue):
+    if i == args.visits:
       print("# over the cap: the next run picks these up")
     print(f"{url}\t{name}")
 
@@ -752,9 +813,9 @@ def invite_signal(email_mode):
   st = recent_statuses(LOG)
   last = st[-1] if st else ""
   if last == "limit":
-    say = "STOP limit: LinkedIn's invitation limit: no more invitations this run (steps 3b, 4 and 5)"
+    say = "STOP limit: LinkedIn's invitation limit: no more invitations this run (steps 3b, 3c, 4 and 5)"
   elif last == "unexpected":
-    say = ("STOP unexpected: take a screenshot, send no more invitations this run (steps 3b, 4 and 5), "
+    say = ("STOP unexpected: take a screenshot, send no more invitations this run (steps 3b, 3c, 4 and 5), "
            "and tell Ian what the page shows")
   elif last == "error":
     say = ("STOP error: not a profile page (signed out, or a security check?): take a screenshot and send "
@@ -1109,6 +1170,8 @@ def main():
   p = sub.add_parser("follows")
   p.add_argument("--per-day", type=int, default=25)
   from_download(p, "followers")
+  p = sub.add_parser("mutuals")
+  p.add_argument("--visits", type=int, default=30, help="profiles to try this run (30)")
   p = sub.add_parser("connections")
   p.add_argument("out", nargs="?", help="default $TMPDIR/linkedin-connections-<YYYYMMDD>.json")
   from_download(p, "connections")
@@ -1146,7 +1209,7 @@ def main():
   args = ap.parse_args()
   {"window": cmd_window, "budget": cmd_budget, "queue": cmd_queue, "suggestions": cmd_suggestions, "log": cmd_log, "defer": cmd_defer,
    "done": cmd_done, "evidence": cmd_evidence, "connections": cmd_connections, "export": cmd_export,
-   "follows": cmd_follows, "correspondents": cmd_correspondents, "match": cmd_match,
+   "follows": cmd_follows, "mutuals": cmd_mutuals, "correspondents": cmd_correspondents, "match": cmd_match,
    "feed": cmd_feed, "mail-query": cmd_mail_query}[args.cmd](args)
 
 

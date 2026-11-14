@@ -18,7 +18,7 @@ skills/write/SKILL.md    - /write: draft LinkedIn posts and messages, blog posts
 skills/timesheet/SKILL.md - /timesheet: fill in the weekly Toggl Track timesheet in Chrome (8 h a weekday across CCF, pre-sales and holiday) and submit it for approval after Ian's yes
 skills/interview/SKILL.md - /interview: prep a question plan and scorecard for hiring or internal interviews with Container Solutions staff, and write up the notes or transcript as feedback; drafts only
 skills/weekly-plan/SKILL.md - /weekly-plan: plan the coming Mon-Fri from both calendars and open gtd tasks, and email it to Ian
-skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); with Premium, invite recent profile viewers to connect; follow back followers; pick out the posts in his feed he should respond to
+skills/linkedin-sync/    - /linkedin-sync: add new LinkedIn connections to gtd people notes and suggest their levels; invite people Ian has emailed who aren't in people/ (personal mail after his yes); follow back followers and invite mutual follows who aren't connections; with Premium, invite recent profile viewers to connect; pick out the posts in his feed he should respond to
 voices/*.md             - how Ian writes: common.md (shared core) plus email, slack, whatsapp, linkedin, writing, review and notes; read before any draft
 scripts/whatsapp.py     - read-only queries on WhatsApp's local database (chats, read, search, mine) and draft hand-off (whatsapp://send or clipboard)
 scripts/voice-check.py  - mechanical check of a draft against the voices (em dashes, banned phrases, US spelling, emoji, length)
@@ -49,7 +49,7 @@ scripts/                - launchd agents: /meeting when a new recording or trans
 skills/timesheet/toggl-grid.js, toggl-fill.js, timesheet.py - read and fill the Toggl grid, propose the split, check the fill and the status
 skills/linkedin-sync/preflight.js - checks a new tab is on LinkedIn and signed in before the step's script
 skills/comms/extract-google-apps.js, google-apps.py - /comms' Google apps check: read the apps with access to each Google account in Chrome, and track which are new, widened or kept
-skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, email correspondents to look up and match, connections file, data export check and `export --import`, local evidence for levels (with calendar attendees), Gmail queries (`mail-query`), scoring feed posts worth a response; reads the extract scripts' downloads (`--from-download`), says STOP/BUDGET/RERUN after each log line and defers the rest of the queue (`defer --rest`)
+skills/linkedin-sync/linkedin-state.py - linkedin-sync bookkeeping: window, invite queue and log, follow-back queue and log, mutual follows to invite, email correspondents to look up and match, connections file, data export check and `export --import`, local evidence for levels (with calendar attendees), Gmail queries (`mail-query`), scoring feed posts worth a response; reads the extract scripts' downloads (`--from-download`), says STOP/BUDGET/RERUN after each log line and defers the rest of the queue (`defer --rest`)
 rules/*.md              - standing preferences the skills must follow (e.g. starring)
 rules/senders.tsv       - newsletter and notification senders the mail scripts sort without reading
 tests/                  - `python3 -m unittest discover -s personal-assistant/tests`: the scripts against made-up fixtures and a fake gog
@@ -116,12 +116,13 @@ for each from the calendars, meeting transcripts and email. If the account
 has LinkedIn Premium, it also sends a connection request (no note) to each
 profile viewer since the last sync who isn't already a connection, carrying
 over to the next run anyone it doesn't get to. Then it invites the people
-LinkedIn suggests on the Grow page with the most mutual connections. All
-invitations share a budget of about 20 in any 24 hours with Premium
-(viewers first), or 10 without (suggestions only), and at most 150 in any
-7 days to stay under LinkedIn's weekly invitation limit. Then it follows back
-everyone among the newest 200 followers whom Ian doesn't follow yet, at most
-25 a day. The last sync time is in
+LinkedIn suggests on the Grow page with the most mutual connections. Before
+the viewers, it follows back everyone among the newest 200 followers whom
+Ian doesn't follow yet, at most 25 a day, and invites the mutual follows who
+aren't connections. All invitations share a budget of about 20 in any 24
+hours with Premium (people Ian has emailed first, then mutual follows, at
+most 10 between them, then viewers), or 10 without, and at most 150 in any
+7 days to stay under LinkedIn's weekly invitation limit. The last sync time is in
 `~/.local/state/personal-assistant/linkedin-sync-last`, every invitation
 tried is logged in `~/.local/state/personal-assistant/linkedin-invites.log`,
 every correspondent looked up in `linkedin-correspondents.log`,

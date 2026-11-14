@@ -1,6 +1,6 @@
 ---
 name: linkedin-sync
-description: Bring Ian's gtd people notes (~/git/gtd/people) up to date with new LinkedIn connections. Reads the "Recently added" connections page in Ian's own signed-in Chrome back to the newest connection already in people/, adds the new people with `gtd import-connections --auto`, then looks for each one in the calendars, meeting transcripts, email and other people notes and suggests a level (met, in-touch, forgotten) for Ian to confirm. Looks up everyone Ian has emailed since the last sync (written to, or replied to) who isn't in people/, finds them with LinkedIn's people search, and sends a connection request (no note) when the match is clear: straight away for work mail, after Ian's yes for personal mail; these go first in the daily invitations. If Ian has LinkedIn Premium, also sends a connection request (no note) to everyone on the "Who's viewed your profile" page since the last sync who isn't already a connection, and to the people LinkedIn suggests on the Grow page ("People you may know") with the most mutual connections: about 20 invitations a day at most with Premium (viewers first), 10 without (suggestions only), and never more than 150 in any 7 days. Follows back everyone who follows Ian and isn't followed yet (the newest 200 followers, at most 25 follows a day). Reads the posts in Ian's feed from his network since the last sync and picks out the ones he should respond to, by how close the author is to him (their level in people/), how significant the post is (a new job, looking for work, hard news, a launch, a milestone) and how popular. Also picks up a LinkedIn data export in ~/Downloads, and once a month reminds Ian to request one. Use when Ian asks to sync or update people from LinkedIn, "who have I connected with", or invokes /linkedin-sync; the linkedin-sync launchd agent opens a session with it every Monday morning.
+description: Bring Ian's gtd people notes (~/git/gtd/people) up to date with new LinkedIn connections. Reads the "Recently added" connections page in Ian's own signed-in Chrome back to the newest connection already in people/, adds the new people with `gtd import-connections --auto`, then looks for each one in the calendars, meeting transcripts, email and other people notes and suggests a level (met, in-touch, forgotten) for Ian to confirm. Looks up everyone Ian has emailed since the last sync (written to, or replied to) who isn't in people/, finds them with LinkedIn's people search, and sends a connection request (no note) when the match is clear: straight away for work mail, after Ian's yes for personal mail; these go first in the daily invitations. If Ian has LinkedIn Premium, also sends a connection request (no note) to everyone on the "Who's viewed your profile" page since the last sync who isn't already a connection, and to the people LinkedIn suggests on the Grow page ("People you may know") with the most mutual connections: about 20 invitations a day at most with Premium (viewers first), 10 without (suggestions only), and never more than 150 in any 7 days. Follows back everyone who follows Ian and isn't followed yet (the newest 200 followers, at most 25 follows a day), and sends a connection request (no note) to followers he follows too who aren't connections yet (mutual follows), after the email ones and before viewers and suggestions. Reads the posts in Ian's feed from his network since the last sync and picks out the ones he should respond to, by how close the author is to him (their level in people/), how significant the post is (a new job, looking for work, hard news, a launch, a milestone) and how popular. Also picks up a LinkedIn data export in ~/Downloads, and once a month reminds Ian to request one. Use when Ian asks to sync or update people from LinkedIn, "who have I connected with", or invokes /linkedin-sync; the linkedin-sync launchd agent opens a session with it every Monday morning.
 ---
 
 # LinkedIn sync
@@ -13,11 +13,12 @@ and `--auto` adds new people without asking anything.
 
 Step 3b looks up the people Ian has emailed since the last sync who aren't
 in `people/`, and invites the ones LinkedIn's people search finds clearly.
-With Premium, step 4 also invites recent profile viewers to connect, and
-step 5 (with or without Premium) the people LinkedIn suggests, one profile at
-a time at a human pace. Step 5b follows back everyone who follows Ian and
-isn't followed yet. Step 5c reads the posts from Ian's network in his feed and
-picks out the ones he should respond to.
+Step 3c follows back everyone who follows Ian and isn't followed yet, then
+invites the mutual follows who aren't connections. With Premium, step 4 also
+invites recent profile viewers to connect, and step 5 (with or without
+Premium) the people LinkedIn suggests, one profile at a time at a human
+pace. Step 5c reads the posts from Ian's network in his feed and picks out
+the ones he should respond to.
 The time of the last sync is kept in
 `~/.local/state/personal-assistant/linkedin-sync-last`, every
 invitation tried is logged to
@@ -43,7 +44,7 @@ follow-back tried to `linkedin-follows.log` next to it.
 ### Chrome checks
 
 After the first `navigate` of each new tab (the list pages of steps 2, 3b,
-4, 5, 5b and 5c; not every profile), run `preflight.js` (next to this file)
+3c, 4, 5 and 5c; not every profile), run `preflight.js` (next to this file)
 with `javascript_tool` before the step's own script. It returns
 `{ok: true}` or `{ok: false, reason}`. At any point:
 - `ok: false`: do as `reason` says. A sign-in form or security check: stop,
@@ -74,7 +75,7 @@ fall back to `get_page_text` and pass the page text on stdin, without
   connections page, the people search pages of step 3b (at most 20 a run),
   the profile views page, the Grow page, the followers
   page, the feed's Network tab, and the profiles of the people being invited
-  in steps 3b, 4 and 5 (and, in step 6, the data export page for Ian to use).
+  in steps 3b, 3c, 4 and 5 (and, in step 6, the data export page for Ian to use).
   The only clicks are the
   ones `connect-profile.js` makes, Connect in a profile's top card and Send
   in its invitation dialog; Load more on the Grow page, which
@@ -88,11 +89,11 @@ an element they make, not one of LinkedIn's). `extract-feed.js` only scrolls (it
   other profiles, or call LinkedIn's internal APIs. LinkedIn restricts
   accounts that look automated.
 - **Invitations and follow-backs are Ian's standing instruction**
-  (invitations to people he has written to from work mail, to profile
-  viewers with Premium only, to suggested people always; following back
-  everyone who follows him): do them without asking, but keep to the limits
-  in steps 3b, 4, 5 and 5b and stop at the first `limit`, `unexpected` or
-  `error`. People he has written to only from personal mail (family,
+  (invitations to people he has written to from work mail, to mutual
+  follows, to profile viewers with Premium only, to suggested people always;
+  following back everyone who follows him): do them without asking, but keep
+  to the limits in steps 3b, 3c, 4 and 5 and stop at the first `limit`,
+  `unexpected` or `error`. People he has written to only from personal mail (family,
   doctors, schools, tradespeople) are invited only after Ian says yes to
   each, in this session.
 - **Never sign in.** If the page shows a sign-in form, a security check or a
@@ -185,7 +186,7 @@ as in step 4.
    After 20 lines it prints `# over the cap`. It saves the whole list, so
    the rest needs no copying: step 3b.5 defers it.
 2. The invitation budget: `python3 $L budget --per-day 10` (these go first,
-   and steps 4 and 5 count them). Stop inviting at `LEFT`; defer the rest.
+   and steps 3c, 4 and 5 count them). Stop inviting at `LEFT`; defer the rest.
 3. **Personal mail needs Ian's yes.** Look up the `personal` rows (steps 4
    and 5 below, without connecting), then show Ian each clear match: name,
    the LinkedIn headline, the profile link and why it matched. Connect only
@@ -211,10 +212,76 @@ as in step 4.
      `connect-profile.js` as in step 4.4, then
      `python3 $L log --email <email> <status> <url> "<name>"`, which also
      writes the invitations log. Handle each status as in step 4.4. When
-     `log` prints `STOP`, all inviting stops this run (steps 4 and 5 too).
+     `log` prints `STOP`, all inviting stops this run (steps 3c, 4 and 5 too).
 5. Close the tab, and `python3 $L defer --email --rest`: it logs everyone on
    the saved list not yet looked up (over the cap, after a stop, personal
    ones waiting for Ian) as deferred, for the next run.
+
+### 3c. Follow back followers, and invite mutual follows
+
+Ian follows back everyone who follows him (his standing instruction,
+October 2026), with or without Premium, at most **25 follows a day**. Then
+he invites the followers he follows too (mutual follows) who aren't
+connections yet (his standing instruction, November 2026): following is
+one-way, and only an accepted invitation makes a connection. The follows
+run even if step 3b stopped inviting at a `limit` (follows have their own
+limit), but not after an `error` or a security check. The follows have
+their own log, `~/.local/state/personal-assistant/linkedin-follows.log`, so
+following someone never changes whether they're invited.
+
+1. `tabs_create_mcp` for a new tab and navigate it to
+   `https://www.linkedin.com/mynetwork/network-manager/people-follow/followers/`.
+   Read `extract-followers.js` (next to this file) and run it with
+   `javascript_tool`. It loads the newest 200 followers (newest first; the
+   page says how many there are in all) and returns
+   `{done, loaded, count, mutual}` or `{error}`. Its only click is "Show
+   more results".
+   - `done: false`: run it again (it carries on), up to 4 times.
+   - `error`: take a screenshot, tell Ian what it shows, close the tab and go
+     on to step 4.
+   - After a `javascript_tool` timeout, reload the page and start again.
+2. The download holds every follower loaded, each marked `following` when
+   Ian follows them back. In October 2026, 6 of the newest 218 weren't
+   followed back: almost everyone is followed already.
+3. The follow-back queue: `python3 $L follows --from-download`. It checks
+   the count and prints `url<TAB>name` lines for the followers Ian doesn't
+   follow back, leaving out anyone already tried, and after today's budget
+   (25, less the follows of the last 24 hours) prints `# over the cap` and
+   the rest, which the next run picks up. It also saves the whole list for
+   step 3c.6.
+4. For each follower above the cap line, in order, on the same page (no
+   navigating): read `follow-follower.js`, replace `__URL__` with their URL,
+   run it with `javascript_tool` (it waits a few seconds first, so the pace
+   stays human), and log its result with
+   `python3 $L log --follows <status> <url> "<name>"`.
+   - `followed`, `already`, `not-followed`, `missing`: log it and go on.
+     `not-followed` means LinkedIn didn't take the follow (the button stayed
+     Follow); it isn't tried again, and the report lists them for Ian.
+   - `log` prints `RERUN` after three `missing` in a row: run
+     `extract-followers.js` again, then `follows --from-download` for a
+     fresh queue. After a second `RERUN`, stop following and say so.
+   - `log` prints `STOP` after a `limit` (stop following), or an
+     `unexpected` or `error` (take a screenshot, stop following, and tell
+     Ian what the page shows).
+5. The invitation budget: `python3 $L budget --per-day 10` (Premium isn't
+   known until step 4, so mutual follows get at most 10 a day, less step
+   3b's; step 4 then has the rest of the 20). With `LEFT 0`, or if step 3b
+   stopped inviting at a `limit`, `unexpected` or `error`, skip to step
+   3c.7.
+6. The mutual follows: `python3 $L mutuals`. It prints `url<TAB>name` lines,
+   newest first, for the followers Ian now follows too (including the ones
+   just followed back), leaving out anyone the invitations log has at all
+   and anyone in `people/` with a LinkedIn link, by profile or by name (the
+   followers page doesn't say who is a connection, so `connect-profile.js`
+   checks the rest on their profile). After 30 profiles it prints
+   `# over the cap` and the rest, which the next run picks up. Go down the
+   lines above the cap as in step 4.4 (navigate the same tab to their URL,
+   `connect-profile.js`, `python3 $L log <status> <url> "<name>"`, with the
+   same handling of each status and `STOP`), until `LEFT` `sent` or the
+   lines run out. Mutual follows are never deferred (no `defer --rest`
+   here): the next run reads the page afresh. When `log` prints `STOP`, all
+   inviting stops this run (steps 4 and 5 too).
+7. Close the tab.
 
 ### 4. Invite profile viewers (Premium only)
 
@@ -228,8 +295,8 @@ The bookkeeping is done by `linkedin-state.py` next to this file
    24 hours, from the log), `WEEK` (in the last 7 days) and `LEFT`, out of
    **20 a day** with Premium and **150 in any 7 days** (LinkedIn's own weekly
    limit stopped a run at about 220 a week, so stay well under it).
-   Steps 3b, 4 and 5 share it, in that order. Skip this step if step 3b
-   stopped inviting at a `limit`, `unexpected` or `error`.
+   Steps 3b, 3c, 4 and 5 share it, in that order. Skip this step if step 3b
+   or 3c stopped inviting at a `limit`, `unexpected` or `error`.
 2. `tabs_create_mcp` for a new tab and navigate it to
    `https://www.linkedin.com/analytics/profile-views/`. Read
    `extract-viewers.js` (next to this file), replace `__SINCE__` with
@@ -279,9 +346,9 @@ The bookkeeping is done by `linkedin-state.py` next to this file
 LinkedIn's Grow page suggests people to connect with ("<Name>'s connections
 you may know", "Suggestions for you"). Invite the ones with the most mutual
 connections, with what's left of the budget: `python3 $L budget` with
-Premium (20 a day and 150 a week, less what step 4 sent), `python3 $L budget --per-day 10`
-without. With `LEFT 0`, skip this step. Skip it too if step 4 stopped
-sending at a `limit`, `unexpected` or `error`.
+Premium (20 a day and 150 a week, less what steps 3b to 4 sent), `python3 $L budget --per-day 10`
+without. With `LEFT 0`, skip this step. Skip it too if step 3b, 3c or 4
+stopped sending at a `limit`, `unexpected` or `error`.
 
 1. `tabs_create_mcp` for a new tab and navigate it to
    `https://www.linkedin.com/mynetwork/grow/`. Read `extract-suggestions.js`
@@ -301,53 +368,12 @@ sending at a `limit`, `unexpected` or `error`.
    the budget, leave the rest; the next run reads the page afresh.
 5. Close the tab.
 
-### 5b. Follow back followers
-
-Ian follows back everyone who follows him (his standing instruction,
-October 2026), with or without Premium, at most **25 follows a day**. This
-runs even if step 4 or 5 stopped at a `limit` (follows have their own
-limit), but not after an `error` or a security check. The follows have
-their own log, `~/.local/state/personal-assistant/linkedin-follows.log`, so
-following someone never changes whether they're invited.
-
-1. `tabs_create_mcp` for a new tab and navigate it to
-   `https://www.linkedin.com/mynetwork/network-manager/people-follow/followers/`.
-   Read `extract-followers.js` (next to this file) and run it with
-   `javascript_tool`. It loads the newest 200 followers (newest first; the
-   page says how many there are in all) and returns `{done, loaded, count}`
-   or `{error}`. Its only click is "Show more results".
-   - `done: false`: run it again (it carries on), up to 4 times.
-   - `error`: take a screenshot, tell Ian what it shows, close the tab and go
-     on to step 6.
-   - After a `javascript_tool` timeout, reload the page and start again.
-2. The download holds the followers Ian doesn't follow back. In October
-   2026 that was 6 of the newest 218: almost everyone is followed already.
-3. The queue: `python3 $L follows --from-download`. It checks the count and
-   prints `url<TAB>name` lines, leaving out anyone already tried, and after
-   today's budget (25, less the follows of the last 24 hours) prints
-   `# over the cap` and the rest, which the next run picks up.
-4. For each follower above the cap line, in order, on the same page (no
-   navigating): read `follow-follower.js`, replace `__URL__` with their URL,
-   run it with `javascript_tool` (it waits a few seconds first, so the pace
-   stays human), and log its result with
-   `python3 $L log --follows <status> <url> "<name>"`.
-   - `followed`, `already`, `not-followed`, `missing`: log it and go on.
-     `not-followed` means LinkedIn didn't take the follow (the button stayed
-     Follow); it isn't tried again, and the report lists them for Ian.
-   - `log` prints `RERUN` after three `missing` in a row: run
-     `extract-followers.js` again, then `follows --from-download` for a
-     fresh queue. After a second `RERUN`, stop following and say so.
-   - `log` prints `STOP` after a `limit` (stop following), or an
-     `unexpected` or `error` (take a screenshot, stop following, and tell
-     Ian what the page shows).
-5. Close the tab.
-
 ### 5c. Posts to respond to
 
 Ian wants to hear which posts from his network he should respond to: from
 people close to him, or that are big news (a new job, looking for work, hard
 news, a launch, a milestone), or that are taking off. Read only: this runs
-even after a `limit`, `unexpected` or `error` in steps 3b to 5b, but not
+even after a `limit`, `unexpected` or `error` in steps 3b to 5, but not
 after a sign-in or security check. Nothing is posted for Ian: a reply is his
 to write, or the write skill's to draft if he asks.
 
@@ -465,7 +491,8 @@ say so in a line.
 Then tables, each with a link column, for: the new people added (name, role,
 suggested level, `[Profile](url)`), the invitations sent and the ones for
 Ian to do by hand (`needs-email`, `no-connect`, `ambiguous` with each
-candidate's profile), and the follow-backs (`followed`, `not-followed`).
+candidate's profile), the mutual follows invited, and the follow-backs
+(`followed`, `not-followed`).
 Leave out a table with nothing in it, and keep the counts to a line or two
 around them.
 
@@ -477,12 +504,14 @@ many correspondents were listed and skipped (from its `#` line), and by
 status: `sent` by name; `connected` (already connections missing from
 `people/`); `ambiguous` by name with the candidate profiles, and
 `no-match` by name, for Ian to look up by hand; personal ones deferred
-for his yes; how many were deferred over the cap. For step 4:
+for his yes; how many were deferred over the cap. For step 3c: how many
+followers were read, the follow-backs by status (`followed` by name;
+`not-followed` by name with their profile link, for Ian to follow by hand;
+how many are left over the cap), how many mutual follows were listed and
+skipped (from the `mutuals` `#` line), and their invitations by status
+(`sent` by name; `no-connect` and `needs-email` by name). For step 4:
 whether Ian has Premium, `LAST`, how many viewers since then were not
 connections, and the invitations by status (`sent` by name; `needs-email`
 and `no-connect` by name, as Ian may want to connect by hand; how many
 were `deferred`). For step 5: how many suggestions were read, and the
-invitations by status (`sent` by name, with their mutual connections). For
-step 5b: how many followers were read, and the follow-backs by status
-(`followed` by name; `not-followed` by name with their profile link, for
-Ian to follow by hand; how many are left over the cap).
+invitations by status (`sent` by name, with their mutual connections).
